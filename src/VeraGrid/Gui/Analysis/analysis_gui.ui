@@ -1214,7 +1214,7 @@
   <customwidget>
    <class>GraphsWidget</class>
    <extends>QWidget</extends>
-   <header>VeraGrid.Gui.Widgets.qtgraphs_widget</header>
+   <header>VeraGrid.Gui.PlotDialogue.qt_chart_widget</header>
   </customwidget>
  </customwidgets>
  <resources/>

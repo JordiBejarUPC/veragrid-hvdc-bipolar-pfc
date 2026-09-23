@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>PlotDialogue</class>
- <widget class="QDialog" name="PlotDialogue">
+ <widget class="QMainWindow" name="PlotDialogue">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -13,6 +13,7 @@
   <property name="windowTitle">
    <string>Plot</string>
   </property>
+  <widget class="QWidget" name="centralwidget">
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QToolBar" name="plotToolBar">
@@ -178,6 +179,7 @@
     </widget>
    </item>
   </layout>
+  </widget>
   <action name="actionSaveImage">
    <property name="icon">
     <iconset resource="../Icons/icons.qrc">
@@ -237,7 +239,7 @@
   <customwidget>
    <class>GraphsWidget</class>
    <extends>QWidget</extends>
-   <header>VeraGrid.Gui.Widgets.qt_chart_widget</header>
+   <header>VeraGrid.Gui.PlotDialogue.qt_chart_widget</header>
   </customwidget>
  </customwidgets>
  <resources>

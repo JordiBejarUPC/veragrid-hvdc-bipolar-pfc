@@ -8,24 +8,31 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-from PySide6.QtCore import (QCoreApplication, QMetaObject, QSize, Qt)
-from PySide6.QtWidgets import (QFrame, QHBoxLayout,
-                               QPushButton, QSizePolicy, QSpacerItem,
-                               QSplitter, QTableView, QVBoxLayout)
+from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
+    QMetaObject, QObject, QPoint, QRect,
+    QSize, QTime, QUrl, Qt)
+from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
+    QFont, QFontDatabase, QGradient, QIcon,
+    QImage, QKeySequence, QLinearGradient, QPainter,
+    QPalette, QPixmap, QRadialGradient, QTransform)
+from PySide6.QtWidgets import (QApplication, QDialog, QFrame, QHBoxLayout,
+    QHeaderView, QPushButton, QSizePolicy, QSpacerItem,
+    QSplitter, QTableView, QVBoxLayout, QWidget)
 
 from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_GeneratorQCurveEditorDialog(object):
     def setupUi(self, GeneratorQCurveEditorDialog):
         if not GeneratorQCurveEditorDialog.objectName():
             GeneratorQCurveEditorDialog.setObjectName(u"GeneratorQCurveEditorDialog")
-        GeneratorQCurveEditorDialog.resize(900, 520)
+        GeneratorQCurveEditorDialog.resize(802, 545)
         self.verticalLayout = QVBoxLayout(GeneratorQCurveEditorDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.splitter = QSplitter(GeneratorQCurveEditorDialog)
         self.splitter.setObjectName(u"splitter")
-        self.splitter.setOrientation(Qt.Horizontal)
+        self.splitter.setOrientation(Qt.Orientation.Horizontal)
         self.leftFrame = QFrame(self.splitter)
         self.leftFrame.setObjectName(u"leftFrame")
         self.leftLayout = QVBoxLayout(self.leftFrame)
@@ -44,17 +51,31 @@ class Ui_GeneratorQCurveEditorDialog(object):
         self.buttonsLayout.setContentsMargins(0, 0, 0, 0)
         self.addRowButton = QPushButton(self.buttonsFrame)
         self.addRowButton.setObjectName(u"addRowButton")
+        icon = QIcon()
+        icon.addFile(u":/Icons/icons/plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.addRowButton.setIcon(icon)
 
         self.buttonsLayout.addWidget(self.addRowButton)
+
+        self.delRowButton = QPushButton(self.buttonsFrame)
+        self.delRowButton.setObjectName(u"delRowButton")
+        icon1 = QIcon()
+        icon1.addFile(u":/Icons/icons/minus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.delRowButton.setIcon(icon1)
+
+        self.buttonsLayout.addWidget(self.delRowButton)
 
         self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.buttonsLayout.addItem(self.horizontalSpacer)
 
-        self.delRowButton = QPushButton(self.buttonsFrame)
-        self.delRowButton.setObjectName(u"delRowButton")
+        self.applyButton = QPushButton(self.buttonsFrame)
+        self.applyButton.setObjectName(u"applyButton")
+        icon2 = QIcon()
+        icon2.addFile(u":/Icons/icons/accept.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.applyButton.setIcon(icon2)
 
-        self.buttonsLayout.addWidget(self.delRowButton)
+        self.buttonsLayout.addWidget(self.applyButton)
 
 
         self.leftLayout.addWidget(self.buttonsFrame)
@@ -82,6 +103,20 @@ class Ui_GeneratorQCurveEditorDialog(object):
 
     def retranslateUi(self, GeneratorQCurveEditorDialog):
         GeneratorQCurveEditorDialog.setWindowTitle(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Reactive power curve editor", None))
-        self.addRowButton.setText(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Add", None))
-        self.delRowButton.setText(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Del", None))
+#if QT_CONFIG(tooltip)
+        self.addRowButton.setToolTip(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Add entry", None))
+#endif // QT_CONFIG(tooltip)
+        self.addRowButton.setText("")
+#if QT_CONFIG(tooltip)
+        self.delRowButton.setToolTip(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Delete selected", None))
+#endif // QT_CONFIG(tooltip)
+        self.delRowButton.setText("")
+#if QT_CONFIG(tooltip)
+        self.applyButton.setToolTip(QCoreApplication.translate("GeneratorQCurveEditorDialog", u"Apply curve to Qmin, Qmax, Pmin, Pmax", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(statustip)
+        self.applyButton.setStatusTip("")
+#endif // QT_CONFIG(statustip)
+        self.applyButton.setText("")
     # retranslateUi
+

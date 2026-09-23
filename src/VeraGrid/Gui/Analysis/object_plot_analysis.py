@@ -550,7 +550,8 @@ def analyze_transformers(elements: List[Transformer2W],
                          tap_max: float,
                          branch_x_threshold: float,
                          logger: GridErrorLog,
-                         fixable_errors: List[FIXABLE_ERROR_TYPES]):
+                         fixable_errors: List[FIXABLE_ERROR_TYPES],
+                         Sbase: float = 100.0):
     """
 
     :param elements:
@@ -565,6 +566,7 @@ def analyze_transformers(elements: List[Transformer2W],
     :param branch_x_threshold:
     :param logger:
     :param fixable_errors:
+    :param Sbase: Circuit/system power base in MVA.
     :return:
     """
     for i, elm in enumerate(elements):
@@ -740,7 +742,7 @@ def analyze_transformers(elements: List[Transformer2W],
                                                           maximum_difference=transformer_virtual_tap_tolerance))
 
         # check VCC
-        vcc = elm.get_vcc()
+        vcc = elm.get_vcc(Sbase=Sbase)
         if vcc < min_vcc or vcc > max_vcc:
             logger.add(object_type=object_type.value,
                        element_name=elm.name,
@@ -1424,7 +1426,8 @@ def grid_analysis(circuit: MultiCircuit,
                          tap_max=tap_max,
                          branch_x_threshold=branch_x_threshold,
                          logger=logger,
-                         fixable_errors=fixable_errors)
+                         fixable_errors=fixable_errors,
+                         Sbase=circuit.Sbase)
 
     analyze_transformers(elements=circuit.get_windings(),
                          object_type=DeviceType.WindingDevice,
@@ -1437,7 +1440,8 @@ def grid_analysis(circuit: MultiCircuit,
                          tap_max=tap_max,
                          branch_x_threshold=branch_x_threshold,
                          logger=logger,
-                         fixable_errors=fixable_errors)
+                         fixable_errors=fixable_errors,
+                         Sbase=circuit.Sbase)
 
     Pgg, Pgg_prof = analyze_generators(elements=circuit.get_generators(),
                                        object_type=DeviceType.GeneratorDevice,

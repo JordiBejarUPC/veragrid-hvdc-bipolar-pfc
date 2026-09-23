@@ -48,12 +48,13 @@ class PlotSeries:
         self.color: str = color
 
 
-class PlotDialogue(QtWidgets.QDialog):
+class PlotDialogue(QtWidgets.QMainWindow):
     """Own one or more native QWidget charts in explicitly owned Qt tabs."""
 
     __slots__ = ('ui', 'chart', '_tab_charts', '_series_selector_override',
                  '_use_rhi_for_many_series', '_series_catalog', '_plot_series_indices',
-                 '_series_catalog_enabled', '_series_tree_initialized', '_active_save_dialog')
+                 '_series_catalog_enabled', '_series_tree_initialized', '_active_save_dialog',
+                 '_closed')
 
     def __init__(self,
                  title: str = 'Plot',
@@ -66,9 +67,14 @@ class PlotDialogue(QtWidgets.QDialog):
         :param use_rhi_for_many_series: Whether dense XY lines and cumulative areas may use QRhi.
         :return: None.
         """
-        QtWidgets.QDialog.__init__(self, parent)
+        QtWidgets.QMainWindow.__init__(self, parent)
         self.ui: Ui_PlotDialogue = Ui_PlotDialogue()
         self.ui.setupUi(self)
+        self.setWindowFlags(
+            self.windowFlags()
+            | QtCore.Qt.WindowType.CustomizeWindowHint
+            | QtCore.Qt.WindowType.WindowMaximizeButtonHint
+        )
         self.chart: GraphsWidget = self.ui.plotwidget
         self._tab_charts: list[GraphsWidget] = [self.chart]
         self._series_selector_override: bool | None = None
@@ -78,6 +84,7 @@ class PlotDialogue(QtWidgets.QDialog):
         self._series_catalog_enabled: bool = False
         self._series_tree_initialized: bool = False
         self._active_save_dialog: QtWidgets.QFileDialog | None = None
+        self._closed: bool = False
         self.chart.set_rhi_line_rendering(enabled=use_rhi_for_many_series)
         self.ui.plotSplitter.setStretchFactor(0, 0)
         self.ui.plotSplitter.setStretchFactor(1, 1)
@@ -104,23 +111,52 @@ class PlotDialogue(QtWidgets.QDialog):
         :param result: Qt dialog result code.
         :return: None.
         """
-        # Stop tree callbacks before Qt destroys its child items with this dialog.
-        self.ui.seriesTreeWidget.blockSignals(True)
-        self.ui.seriesTreeWidget.clear()
-        self.ui.seriesTreeWidget.blockSignals(False)
-        self.ui.seriesSelectorFrame.setVisible(False)
-        if self._active_save_dialog is not None:
-            self._active_save_dialog.close()
-            self._active_save_dialog = None
+        self._release_plot_resources()
+        _ = result
+        QtWidgets.QMainWindow.close(self)
+
+    def _release_plot_resources(self) -> None:
+        """Release chart and auxiliary dialog resources exactly once.
+
+        :return: None.
+        """
+        if not self._closed:
+            self._closed = True
+            # Stop tree callbacks before Qt destroys its child items with this dialog.
+            self.ui.seriesTreeWidget.blockSignals(True)
+            self.ui.seriesTreeWidget.clear()
+            self.ui.seriesTreeWidget.blockSignals(False)
+            self.ui.seriesSelectorFrame.setVisible(False)
+            if self._active_save_dialog is not None:
+                self._active_save_dialog.close()
+                self._active_save_dialog = None
+            else:
+                pass
+            chart: GraphsWidget
+            for chart in self._tab_charts:
+                chart.dispose()
+            self._tab_charts.clear()
+            self._plot_series_indices.clear()
+            self._series_catalog.clear()
         else:
             pass
-        chart: GraphsWidget
-        for chart in self._tab_charts:
-            chart.dispose()
-        self._tab_charts.clear()
-        self._plot_series_indices.clear()
-        self._series_catalog.clear()
-        QtWidgets.QDialog.done(self, result)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        """Release plot resources when the native close button is used.
+
+        :param event: Qt close event delivered by the window system.
+        :return: None.
+        """
+        # Stop tree callbacks before Qt destroys its child items with this dialog.
+        self._release_plot_resources()
+        QtWidgets.QMainWindow.closeEvent(self, event)
+
+    def reject(self) -> None:
+        """Close the plot window through the dialog-compatible API.
+
+        :return: None.
+        """
+        self.done(0)
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         """Refresh the optional series selector before Qt makes the dialog visible.
@@ -129,7 +165,7 @@ class PlotDialogue(QtWidgets.QDialog):
         :return: None.
         """
         self._refresh_series_selector()
-        QtWidgets.QDialog.showEvent(self, event)
+        QtWidgets.QMainWindow.showEvent(self, event)
 
     def get_current_chart(self) -> GraphsWidget:
         """Return the chart owned by the currently selected tab.

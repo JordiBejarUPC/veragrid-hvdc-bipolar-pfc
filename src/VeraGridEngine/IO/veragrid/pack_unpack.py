@@ -934,6 +934,15 @@ class CreatedOnTheFly:
     This class is to pack all those devices that are created "on the fly" to support legacy formats
     """
 
+    __slots__ = (
+        "legacy_area_dict",
+        "legacy_zone_dict",
+        "legacy_substation_dict",
+        "contingency_groups",
+        "contingencies",
+        "technologies",
+    )
+
     def __init__(self) -> None:
         """
         Constructor

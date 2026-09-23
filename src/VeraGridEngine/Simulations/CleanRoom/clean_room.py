@@ -128,7 +128,7 @@ def select_torch_device(prefer_cuda: bool, verbose: bool) -> torch.device:
 # ----------------------------------------------------------------------------------------------------------------------
 # 2) TIME GRID + CALENDAR FEATURES
 # ----------------------------------------------------------------------------------------------------------------------
-@dataclass
+@dataclass(slots=True)
 class TimeGrid:
     """
     Time grid diagnostics.
@@ -262,7 +262,7 @@ def compute_month_index(timestamps: IntVec) -> IntVec:
     return month.astype(np.int64)
 
 
-@dataclass
+@dataclass(slots=True)
 class AggregateBatch:
     """
     Strongly-typed batch for the aggregate model.
@@ -292,7 +292,7 @@ class AggregateBatch:
         )
 
 
-@dataclass
+@dataclass(slots=True)
 class ShareBatch:
     """
     Strongly-typed batch for the share model.
@@ -1382,7 +1382,7 @@ def generate_synthetic(
 
 
 
-@dataclass
+@dataclass(slots=True)
 class HierarchicalZipSpec:
     """
     Serializable, future-safe spec for training and generation.
@@ -1430,8 +1430,18 @@ class HierarchicalZipArtifact:
     - state_dict tensors (.pt)
     - JSON specs/meta/losses
     """
+    __slots__ = (
+        "spec",
+        "agg_model",
+        "share_model",
+        "agg_losses",
+        "share_losses",
+        "agg_meta",
+        "share_meta",
+        "device",
+    )
 
-    def __init__(self, spec: HierarchicalZipSpec):
+    def __init__(self, spec: HierarchicalZipSpec) -> None:
         self.spec = spec
 
         self.agg_model: Optional[AggregateARModel] = None

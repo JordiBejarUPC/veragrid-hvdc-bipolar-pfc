@@ -323,7 +323,7 @@ def solve_kkt_with_fallback(jac: csc,
     return None, None, np.inf
 
 
-@dataclass
+@dataclass(slots=True)
 class IpsFunctionReturn:
     """
     Represents the returning value of the interior point evaluation
@@ -386,7 +386,7 @@ class IpsFunctionReturn:
         return errors
 
 
-@dataclass
+@dataclass(slots=True)
 class IpsIterationHistory:
     """
     Compact IPS per-iteration history for debugging and solver comparisons.
@@ -403,7 +403,7 @@ class IpsIterationHistory:
     step_norm: Vec
 
 
-@dataclass
+@dataclass(slots=True)
 class IpsSolution:
     """
     Represents the returning value of the interior point solution

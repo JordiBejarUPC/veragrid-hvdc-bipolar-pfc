@@ -24,12 +24,18 @@ from VeraGridEngine.enumerations import (
     DynamicSimulationMode,
 )
 import VeraGridEngine.Devices as dev
+from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType, WireInTower
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
+from VeraGridEngine.IO.dgs.dgs_schematic_import import (
+    build_preferred_position_by_object_id,
+    import_dgs_substations_and_schematic_diagrams,
+)
 from VeraGridEngine.IO.dgs.dgs_logical_actuator_binding import (
     bind_dgs_logical_actuator_runtime,
     prepare_dgs_logical_actuator_topology,
@@ -6868,17 +6874,49 @@ def _build_phase_map(stacubics: List[StaCubic], logger: Logger) -> PhaseMap:
     return phase_map
 
 
-def _build_graphics_positions(intgrfs: List[IntGrf]) -> Dict[str, Tuple[float, float]]:
-    """
-    Build graphics positions.
+def _get_source_dgs_id_from_api_idtag(api_idtag: str | None) -> str | None:
+    """Recover the source FID from an imported object, including parallel copies."""
+    if api_idtag is None or api_idtag == "":
+        return None
 
-    :param intgrfs: intgrfs parameter.
-    :return: Function result.
-    """
-    pos_by_objid: Dict[str, Tuple[float, float]] = dict()
-    for graphic in intgrfs:
-        pos_by_objid[graphic.pDataObj] = (float(graphic.rCenterX), float(graphic.rCenterY))
-    return pos_by_objid
+    identifier_parts: List[str] = api_idtag.rsplit(":", maxsplit=1)
+    if len(identifier_parts) == 2 and identifier_parts[1].isdigit():
+        return identifier_parts[0]
+    return api_idtag
+
+
+def _build_diagram_api_objects_by_dgs_id(
+        grid: dev.MultiCircuit,
+) -> Dict[str, List[ALL_DEV_TYPES]]:
+    """Index only static drawable objects for schematic reconstruction."""
+    result: Dict[str, List[ALL_DEV_TYPES]] = dict()
+
+    for api_object in grid.get_all_elements_iter():
+        if not isinstance(
+                api_object,
+                (
+                    BranchParent,
+                    dev.Transformer3W,
+                    dev.TransformerNW,
+                    dev.Generator,
+                    dev.StaticGenerator,
+                    dev.Battery,
+                    dev.Load,
+                    dev.ExternalGrid,
+                    dev.Shunt,
+                    dev.ControllableShunt,
+                    dev.CurrentInjection,
+                ),
+        ):
+            continue
+
+        source_id: str | None = _get_source_dgs_id_from_api_idtag(api_object.idtag)
+        normalized_source_id: str | None = _ref_id(source_id)
+        if normalized_source_id is None or normalized_source_id == "":
+            continue
+        result.setdefault(normalized_source_id, list()).append(api_object)
+
+    return result
 
 
 def _add_elmzone_zones(dgs_grid: DgsCircuit, grid: dev.MultiCircuit) -> Dict[str, dev.Zone]:
@@ -7897,7 +7935,7 @@ def dgs_to_circuit(path: str,
     stacubic_dict, cubics_by_objid = _build_stacubic_mappings(stacubics=dgs_grid.stacubics)
     phase_map = _build_phase_map(stacubics=dgs_grid.stacubics, logger=logger)
 
-    pos_by_objid: Dict[str, Tuple[float, float]] = _build_graphics_positions(intgrfs=dgs_grid.intgrfs)
+    pos_by_objid: Dict[str, Tuple[float, float]] = build_preferred_position_by_object_id(dgs_grid=dgs_grid)
     area_by_id: Dict[str, dev.Area] = _add_elmarea_areas(dgs_grid=dgs_grid, grid=grid)
     zone_by_id: Dict[str, dev.Zone] = _add_elmzone_zones(dgs_grid=dgs_grid, grid=grid)
     branch_group_by_id: Dict[str, dev.BranchGroup] = _add_elmbranch_groups(dgs_grid=dgs_grid, grid=grid)
@@ -8182,6 +8220,21 @@ def dgs_to_circuit(path: str,
         bus_by_term_id=bus_by_term_id,
         switch_by_cubic_id=switch_by_cubic_id,
         branch_group_by_id=branch_group_by_id,
+    )
+
+    # PowerFactory control/block diagrams are deliberately never materialized.
+    # The schematic importer applies a strict ElmNet/ElmSite/ElmSubstat
+    # whitelist, independently of whether dynamic model data is requested.
+    diagram_api_objects_by_dgs_id: Dict[str, List[ALL_DEV_TYPES]] = (
+        _build_diagram_api_objects_by_dgs_id(grid=grid)
+    )
+    import_dgs_substations_and_schematic_diagrams(
+        dgs_grid=dgs_grid,
+        grid=grid,
+        bus_by_term_id=bus_by_term_id,
+        zone_by_id=zone_by_id,
+        api_objects_by_dgs_id=diagram_api_objects_by_dgs_id,
+        logger=logger,
     )
 
     if use_dynamic_information:
