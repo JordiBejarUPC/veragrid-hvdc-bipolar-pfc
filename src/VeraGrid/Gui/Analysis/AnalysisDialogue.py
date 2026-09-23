@@ -19,8 +19,7 @@ from VeraGrid.Gui.Analysis.object_plot_analysis import (FIXABLE_ERROR_TYPES, Fix
                                                         FixableErrorOutOfRange, FixableErrorRangeFlip,
                                                         FixableErrorValueCorrection, FixableTransformerVtaps,
                                                         GridErrorLog, grid_analysis)
-from VeraGrid.Gui.Icons import icons_rc
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.general_dialogues import Logger, LogsDialogue
 from VeraGrid.Gui.results_model import ResultsModel

@@ -379,7 +379,7 @@ class Assets:
         self._control_pcs: List[dev.ControlPc] = list()
 
         # list of declared diagrams
-        self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
+        self._diagrams: dev.DiagramTree = dev.DiagramTree()
 
         # Class to handle the dynamic Vars and Consts
         self._var_factory: dev.VarFactory = dev.VarFactory()
@@ -6618,16 +6618,35 @@ class Assets:
     @property
     def diagrams(self) -> List[Union[dev.MapDiagram, dev.SchematicDiagram]]:
         """
-        Get the list of diagrams
+        Get the list/tree of diagrams
         :return:
         """
         return self._diagrams
 
     @diagrams.setter
-    def diagrams(self, value: List[Union[dev.MapDiagram, dev.SchematicDiagram]]):
-        self._diagrams = value
+    def diagrams(self, value: Union[dev.DiagramTree, List[Union[dev.MapDiagram, dev.SchematicDiagram]]]):
+        if isinstance(value, dev.DiagramTree):
+            self._diagrams = value
+        elif isinstance(value, (list, tuple)):
+            self._diagrams = dev.DiagramTree()
+            for d in value:
+                self._diagrams.append(d)
+        else:
+            self._diagrams = value
 
-    def get_diagrams(self) -> List[Union[dev.MapDiagram, dev.SchematicDiagram]]:
+    @property
+    def diagram_tree(self) -> dev.DiagramTree:
+        """
+        Explicit property to access the diagram tree
+        :return: DiagramTree
+        """
+        return self._diagrams
+
+    @diagram_tree.setter
+    def diagram_tree(self, value: dev.DiagramTree):
+        self.diagrams = value
+
+    def get_diagrams(self) -> dev.DiagramTree:
         """
         Get list of diagrams
         :return: MapDiagram, SchematicDiagram device
@@ -6641,13 +6660,16 @@ class Assets:
         """
         return len(self.diagrams) > 0
 
-    def add_diagram(self, diagram: Union[dev.MapDiagram, dev.SchematicDiagram]):
+    def add_diagram(self,
+                    diagram: Union[dev.MapDiagram, dev.SchematicDiagram],
+                    folder: Optional[dev.DiagramFolder] = None):
         """
         Add diagram
         :param diagram: MapDiagram, SchematicDiagram device
+        :param folder: Optional DiagramFolder
         :return:
         """
-        self.diagrams.append(diagram)
+        self._diagrams.add_diagram(diagram, folder=folder)
 
     def remove_diagram(self, diagram: Union[dev.MapDiagram, dev.SchematicDiagram]):
         """
@@ -6655,7 +6677,7 @@ class Assets:
         :param diagram: MapDiagram, SchematicDiagram device
         """
         try:
-            self.diagrams.remove(diagram)
+            self._diagrams.remove_diagram(diagram)
         except ValueError as e:
             print(e)
 
@@ -8044,8 +8066,9 @@ class Assets:
 
 
         elif device_type == DeviceType.TransformerNwDevice:
-            for d in devices:
-                d.set_var_factory(self._var_factory)
+            # TODO: TransformerNwDevice is not a DynamicDevice (for now). We must inspect how to model it dynamically
+            # for d in devices:
+            #     d.set_var_factory(self._var_factory)
             self._transformers_nw = devices
 
 
@@ -9417,13 +9440,12 @@ class Assets:
 
         elif elm_type == DeviceType.MarketUnitsGroupDevice:
             elm = dev.MarketUnitsGroup()
-            dictionary_of_lists = {
-                DeviceType.FacilityDevice: self.facilities,
-            }
+            dictionary_of_lists = dict()
 
         elif elm_type == DeviceType.MarketUnitDevice:
             elm = dev.MarketUnit()
             dictionary_of_lists = {
+                DeviceType.FacilityDevice: self.facilities,
                 DeviceType.MarketUnitsGroupDevice: self.market_unit_groups,
             }
 

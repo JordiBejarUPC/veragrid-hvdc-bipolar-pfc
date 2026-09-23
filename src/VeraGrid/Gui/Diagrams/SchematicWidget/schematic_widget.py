@@ -5,14 +5,12 @@
 from __future__ import annotations
 import sys
 import os
-import json
 import numpy as np
 import shiboken6
 from typing import Any, List, Set, Dict, Union, Tuple, TYPE_CHECKING, Iterable, TypeVar
 from collections.abc import Callable
 from collections import defaultdict
 from warnings import warn
-import networkx as nx
 
 from PySide6.QtCore import (Qt, QPoint, QSize, QPointF, QRect, QRectF, QMimeData, QIODevice, QByteArray,
                             QDataStream, QModelIndex, QTimer, QCoreApplication)
@@ -37,7 +35,6 @@ from VeraGridEngine.Devices.Branches.transformer3w import Transformer3W, Winding
 from VeraGridEngine.Devices.Branches.transformerNw import TransformerNW
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.battery import Battery
-from VeraGridEngine.Devices.Injections.shunt import Shunt
 from VeraGridEngine.Devices.Injections.controllable_shunt import ControllableShunt
 from VeraGridEngine.Devices.Injections.static_generator import StaticGenerator
 from VeraGridEngine.Devices.Injections.load import Load
@@ -78,7 +75,7 @@ from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.general_dialogues import InputNumberDialogue
 from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
@@ -2554,35 +2551,41 @@ class SchematicWidget(BaseDiagramWidget):
         # Fit the view
         self.editor_graphics_view.fitInView(boundaries, Qt.AspectRatioMode.KeepAspectRatio)
 
-    def center_nodes(self, margin_factor: float = 0.1, elements: Union[None, List[Union[Bus, FluidNode]]] = None):
+    def center_nodes(self, margin_factor: float = 0.1, elements: Union[None, List[Union[Bus, FluidNode]]] = None) -> None:
         """
-        Center the view in the nodes
-        :param margin_factor:
-        :param elements: list of API
+        Center the view in the nodes.
+
+        :param margin_factor: Margin factor around bounding rectangle
+        :param elements: List of API objects to center on, or None to center all
         """
 
         if elements is None:
-            boundaries = self.diagram_scene.itemsBoundingRect()
+            boundaries: QRectF = self.diagram_scene.itemsBoundingRect()
 
             if boundaries.isNull():
                 return
+            else:
+                pass
 
-            mx = boundaries.width() * margin_factor
-            my = boundaries.height() * margin_factor
+            mx: float = boundaries.width() * margin_factor
+            my: float = boundaries.height() * margin_factor
             boundaries.adjust(-mx, -my, mx, my)
             self.diagram_scene.setSceneRect(boundaries)
             self.editor_graphics_view.fitInView(boundaries, Qt.AspectRatioMode.KeepAspectRatio)
             self.editor_graphics_view.scale(1.0, 1.0)
             return
+        else:
+            pass
 
-        min_x = sys.maxsize
-        min_y = sys.maxsize
-        max_x = -sys.maxsize
-        max_y = -sys.maxsize
-        max_w = 100
-        max_h = 60
+        min_x: float = sys.maxsize
+        min_y: float = sys.maxsize
+        max_x: float = -sys.maxsize
+        max_y: float = -sys.maxsize
+        max_w: float = 100.0
+        max_h: float = 60.0
+        found_any: bool = False
 
-        elements_s = set(elements)
+        elements_s: set = set(elements)
         for item in self.diagram_scene.items():
             if isinstance(item, (BusGraphicItem,
                                  FluidNodeGraphicItem,
@@ -2590,8 +2593,8 @@ class SchematicWidget(BaseDiagramWidget):
                                  TransformerNWGraphicItem)):
 
                 if item.api_object in elements_s:
-                    x = item.pos().x()
-                    y = item.pos().y()
+                    x: float = item.pos().x()
+                    y: float = item.pos().y()
 
                     max_x = max(max_x, x)
                     min_x = min(min_x, x)
@@ -2599,16 +2602,28 @@ class SchematicWidget(BaseDiagramWidget):
                     min_y = min(min_y, y)
                     max_w = max(max_w, item.rect().width())
                     max_h = max(max_h, item.rect().height())
+                    found_any = True
+                else:
+                    pass
+            else:
+                pass
+
+        if not found_any:
+            # Fall back to centering on all items when no specified elements match visible scene items
+            self.center_nodes(margin_factor=margin_factor, elements=None)
+            return
+        else:
+            pass
 
         # set the limits of the view
-        dx = max_x - min_x
-        dy = max_y - min_y
-        mx = margin_factor * dx
-        my = margin_factor * dy
+        dx: float = max_x - min_x
+        dy: float = max_y - min_y
+        mx: float = margin_factor * dx
+        my: float = margin_factor * dy
 
-        h = dy + 2 * my + max_h
-        w = dx + 2 * mx + max_w
-        boundaries = QRectF(min_x - mx, min_y - my, w, h)
+        h: float = dy + 2 * my + max_h
+        w: float = dx + 2 * mx + max_w
+        boundaries: QRectF = QRectF(min_x - mx, min_y - my, w, h)
 
         self.diagram_scene.setSceneRect(boundaries)
         self.editor_graphics_view.fitInView(boundaries, Qt.AspectRatioMode.KeepAspectRatio)

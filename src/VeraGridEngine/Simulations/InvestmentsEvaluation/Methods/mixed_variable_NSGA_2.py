@@ -28,8 +28,17 @@ class MixedVariableProblem(ElementwiseProblem):
     """
     Problem formulation packaging to use the pymoo library
     """
+    __slots__ = (
+        "logger",
+        "grid",
+        "device_template_dict",
+        "variables",
+        "devices",
+        "default_template",
+        "obj_func",
+    )
 
-    def __init__(self, grid: MultiCircuit, obj_func, n_obj):
+    def __init__(self, grid: MultiCircuit, obj_func, n_obj) -> None:
         """
         :param obj_func:
         :param n_obj:

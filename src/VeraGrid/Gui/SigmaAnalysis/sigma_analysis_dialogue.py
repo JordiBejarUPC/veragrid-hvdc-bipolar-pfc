@@ -7,7 +7,7 @@ import numpy as np
 from PySide6 import QtGui, QtWidgets
 
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_gui import Ui_MainWindow
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.dialog_lifecycle import exec_dialog_safely
 from VeraGrid.Gui.results_model import ResultsModel
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit

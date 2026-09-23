@@ -5,7 +5,7 @@ from PySide6 import QtCore, QtGui, QtTest, QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditor, GeneratorQCurveEditor
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
-from VeraGrid.Gui.Widgets.qt_chart_widget import ChartSeries, ChartSeriesType, GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import ChartSeries, ChartSeriesType, GraphsWidget
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve

@@ -11,8 +11,8 @@ import numpy as np
 from PySide6 import QtWidgets
 from PySide6.QtGui import QColor
 
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
-from VeraGrid.Gui.Widgets.qt_rhi_line_chart_widget import RhiLineChartWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_rhi_line_chart_widget import RhiLineChartWidget
 
 
 def test_rhi_line_chart_packs_series_colors_and_clears_invalid_replacement(

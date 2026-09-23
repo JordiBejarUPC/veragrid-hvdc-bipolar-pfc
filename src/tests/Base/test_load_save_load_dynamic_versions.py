@@ -13,13 +13,11 @@ from VeraGridEngine.Utils.Symbolic.symbolic_io import compare_blocks
 
 def test_load_save_load_dynamic_versions() -> None:
     """
-    This test checks if the saving and load process is correct
+    This test checks if the saving and load process is correct for old dynamic versions with legacy.
 
     The test consists in:
-    - loading grids in different gridcal variations (grid1)
-    - saving the grid with a different name
-    - loading the saved grid (grid2)
-    - comparing that grid1 == grid2
+    - Loading grids created from gui and from scripting with dynamic models.
+    - The grids were created in old VeraGrid versions in which some symbolism might have changed compared to the current version.
 
     """
     folder = os.path.join('data', 'dynamic_versions')
@@ -77,8 +75,59 @@ def test_load_save_load_dynamic_versions() -> None:
         'kundur_static_6_5_17.veragrid',
         'kundur_static_6_5_22.veragrid',
         'kundur_static_6_5_29.veragrid',
+        'emt_syst_from_gui_6_0_22.veragrid', #NOT WORKING
+        'emt_syst_from_gui_6_1_3.veragrid',
+        'emt_syst_from_gui_6_1_4.veragrid',
+        'emt_syst_from_gui_6_2_0.veragrid',
+        'emt_syst_from_gui_6_2_3.veragrid',
+        'emt_syst_from_gui_6_2_4.veragrid',
+        'emt_syst_from_gui_6_2_11.veragrid',
+        'emt_syst_from_gui_6_3_2.veragrid',
+        'emt_syst_from_gui_6_3_4.veragrid',
+        'emt_syst_from_gui_6_3_8.veragrid',
+        # 'emt_syst_from_gui_6_4_0.veragrid',
+        'emt_syst_from_gui_6_4_2.veragrid',
+        'emt_syst_from_gui_6_5_0.veragrid',
+        'emt_syst_from_gui_6_5_17.veragrid',
+        'emt_syst_from_gui_6_5_22.veragrid',
+        'emt_syst_from_gui_6_5_29.veragrid',
+        # 'emt_syst_from_gui_6_5_37.veragrid',
+        'emt_syst_rms_6_1_3.veragrid',
+        'emt_syst_rms_6_1_4.veragrid',
+        'emt_syst_rms_6_2_0.veragrid',
+        'emt_syst_rms_6_2_3.veragrid',
+        'emt_syst_rms_6_2_4.veragrid',
+        'emt_syst_rms_6_2_11.veragrid',
+        'emt_syst_rms_6_3_2.veragrid',
+        'emt_syst_rms_6_3_4.veragrid',
+        'emt_syst_rms_6_3_8.veragrid',
+        # 'emt_syst_rms_6_4_0.veragrid',
+        'emt_syst_rms_6_4_2.veragrid',
+        'emt_syst_rms_6_5_0.veragrid',
+        'emt_syst_rms_6_5_17.veragrid',
+        'emt_syst_rms_6_5_22.veragrid',
+        # 'emt_syst_rms_6_5_29.veragrid',
+        'emt_syst_rms_6_5_37.veragrid',
+        'emt_syst_static_6_1_3.veragrid',
+        'emt_syst_static_6_1_4.veragrid',
+        'emt_syst_static_6_2_0.veragrid',
+        'emt_syst_static_6_2_3.veragrid',
+        'emt_syst_static_6_2_4.veragrid',
+        'emt_syst_static_6_2_11.veragrid',
+        'emt_syst_static_6_3_2.veragrid',
+        'emt_syst_static_6_3_4.veragrid',
+        'emt_syst_static_6_3_8.veragrid',
+        # 'emt_syst_static_6_4_0.veragrid',
+        'emt_syst_static_6_4_2.veragrid',
+        'emt_syst_static_6_5_0.veragrid',
+        'emt_syst_static_6_5_17.veragrid',
+        'emt_syst_static_6_5_22.veragrid',
+        # 'emt_syst_static_6_5_29.veragrid',
+        'emt_syst_static_6_5_37.veragrid',
+
     ]:
 
+        print(f"Testing file {name}")
         fname = os.path.join(folder, name)
 
         # open the main grid

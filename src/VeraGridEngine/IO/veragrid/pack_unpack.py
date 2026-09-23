@@ -934,6 +934,15 @@ class CreatedOnTheFly:
     This class is to pack all those devices that are created "on the fly" to support legacy formats
     """
 
+    __slots__ = (
+        "legacy_area_dict",
+        "legacy_zone_dict",
+        "legacy_substation_dict",
+        "contingency_groups",
+        "contingencies",
+        "technologies",
+    )
+
     def __init__(self) -> None:
         """
         Constructor
@@ -1732,735 +1741,20 @@ def handle_legacy_jsons(model_data: Dict[str, List],
                                 value=f"{generator.name} -> {emission.name} at {rate}")
 
 
-def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
-                        previous_circuit: Union[MultiCircuit, None] = None,
-                        project_directory: str | Path | None = None,
-                        refine_pointers: bool = True,
-                        text_func: Union[Callable, None] = None,
-                        progress_func: Union[Callable, None] = None,
-                        logger: Logger = Logger()) -> MultiCircuit:
-    """
-    Interpret data
-    :param project_directory: file project directory
-    :param refine_pointers: Refine (and possibly delete) the pointer objects such as investments and contingencies?
-    :param data: dictionary of data frames and other information
-    :param previous_circuit: Optional previous VeraGrid circuit. This is relevant in case of loading grid increments
-    :param text_func: text callback function
-    :param progress_func: progress callback function
-    :param logger: Logger to register events
-    :return: MultiCircuit instance
-    """
-    # create circuit
-    circuit = MultiCircuit()
-
-    # Legacy circuit information parsing -------------------------------------------------------------------------------
-    if 'name' in data.keys():
-        circuit.name = str(data['name'])
-        if circuit.name == 'nan':
-            circuit.name = ''
-
-    if 'idtag' in data.keys():
-        val = str(data['idtag'])
-        if val != '':
-            circuit.idtag = val
-        else:
-            logger.add_warning("Had to create a new idtag", value=circuit.idtag)
-
-    # set the base magnitudes
-    if 'baseMVA' in data.keys():
-        circuit.Sbase = data['baseMVA']
-
-    # Set comments
-    if 'Comments' in data.keys():
-        circuit.comments = str(data['Comments'])
-        if circuit.comments == 'nan':
-            circuit.comments = ''
-
-    if 'ModelVersion' in data.keys():
-        circuit.model_version = int(data['ModelVersion'])
-
-    if 'UserName' in data.keys():
-        circuit.user_name = data['UserName']
-
-    # dictionary of objects to iterate
-    template_object_types = get_objects_dictionary()
-
-    # time profile -----------------------------------------------------------------------------------------------------
-    if 'time' in data.keys():
-        time_df = data['time']
-        try:
-            circuit.time_profile = pd.to_datetime(time_df.values[:, 0], dayfirst=True, format='mixed')
-        except ValueError:
-            circuit.time_profile = pd.to_datetime(time_df.values[:, 0], dayfirst=True)
-    else:
-        circuit.time_profile = None
-
-    # dictionary of dictionaries by element type
-    if previous_circuit is None:
-        elements_dict_by_type = dict()
-    else:
-        elements_dict_by_type = previous_circuit.get_all_elements_dict_by_type(add_locations=True, string_keys=False)
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Legacy DataFrame processing
-    # for each element type...
-    item_count = 0
-    n_data_types = len(template_object_types)
-    for object_type_key, template_elm in template_object_types.items():
-
-        if text_func is not None:
-            text_func(f"Parsing {object_type_key} table data...")
-
-        # try to get the DataFrame
-        # Todo: here we should get the data from template_object_types dict, not from data dict
-        df = data.get(object_type_key, None)
-
-        if df is not None:
-
-            # fill in the objects
-            if df.shape[0] > 0:
-
-                parsed_devices, devices_dict, on_the_fly = parse_object_type_from_dataframe(
-                    main_df=df,
-                    template_elm=template_elm,
-                    elements_dict_by_type=elements_dict_by_type,
-                    time_profile=circuit.time_profile,
-                    object_type_key=object_type_key,
-                    data=data,
-                    logger=logger
-                )
-
-                # add the elements that were created on the fly...
-                for name, on_the_fly_elm in on_the_fly.legacy_area_dict.items():
-                    circuit.add_area(obj=on_the_fly_elm)
-                for name, on_the_fly_elm in on_the_fly.legacy_zone_dict.items():
-                    circuit.add_zone(obj=on_the_fly_elm)
-                for name, on_the_fly_elm in on_the_fly.legacy_substation_dict.items():
-                    circuit.add_substation(obj=on_the_fly_elm)
-                for conn_group in on_the_fly.contingency_groups:
-                    circuit.add_contingency_group(obj=conn_group)
-                for cont in on_the_fly.contingencies:
-                    circuit.add_contingency(obj=cont)
-                for tech_name, technology in on_the_fly.technologies.items():
-                    circuit.add_technology(obj=technology)
-
-                # set/augment the dictionary per type for later
-                prev_dict = elements_dict_by_type.get(template_elm.device_type, dict())
-                elements_dict_by_type[template_elm.device_type] = dict(prev_dict, **devices_dict)
-
-                # add the devices to the circuit
-                circuit.set_elements_list_by_type(device_type=template_elm.device_type,
-                                                  devices=parsed_devices,
-                                                  logger=logger)
-
-            else:
-                # no objects of this type
-                pass
-        else:
-            # the file does not contain information for the data type (not a problem...)
-            pass
-
-        if progress_func is not None:
-            progress_func(float(item_count + 1) / float(n_data_types) * 100)
-
-        item_count += 1
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Parse the declarative information stored in JSON ``.model`` files.
-    # These files are just .json stored in the model_data inside the zip file
-
-    model_data: Dict[str, Any] | None = data.get('model_data', None)
-    blocks_data: Dict[int, Dict[str, Any]] = dict()
-
-    # Allow compatibility with old VeraGrid versions
-    symbolic_data = normalize_dynamic_legacy(data=data, logger=logger)
-
-    if symbolic_data is not None:
-        blocks_data = symbolic_data.get("blocks", dict())
-    else:
-        blocks_data = dict()
-
-    # if model_data is not None:
-    #     if len(model_data) > 0:
-    #         # Some scripting releases appended the same physical devices twice.
-    #         # Exact repetitions are collapsed by idtag. When only RMS/EMT model
-    #         # references differ, the reference to the populated block wins so the
-    #         # recoverable dynamic model is retained in the unique device record.
-    #         model_content_fields: List[str] = list()
-    #         model_content_fields.append("children")
-    #         model_content_fields.append("state_vars")
-    #         model_content_fields.append("state_eqs")
-    #         model_content_fields.append("algebraic_vars")
-    #         model_content_fields.append("algebraic_eqs")
-    #         model_content_fields.append("diff_vars")
-    #         model_content_fields.append("differential_eqs")
-    #         model_content_fields.append("parameters")
-    #         model_content_fields.append("event_dict")
-    #         model_content_fields.append("external_mapping")
-    #         model_content_fields.append("api_obj_mapping")
-    #         model_content_fields.append("procedural_logic")
-    #
-    #         dynamic_model_properties: List[str] = list()
-    #         dynamic_model_properties.append("rms_model")
-    #         dynamic_model_properties.append("emt_model")
-    #         collapsed_device_count: int = 0
-    #         model_table_name: str
-    #         raw_model_table: Any
-    #         for model_table_name, raw_model_table in model_data.items():
-    #             if isinstance(raw_model_table, list):
-    #                 model_table: List[Any] = raw_model_table
-    #                 unique_model_entries: List[Any] = list()
-    #                 model_entry_by_idtag: Dict[str, Dict[str, Any]] = dict()
-    #                 raw_model_entry: Any
-    #                 for raw_model_entry in model_table:
-    #                     if isinstance(raw_model_entry, dict):
-    #                         model_entry: Dict[str, Any] = raw_model_entry
-    #                         raw_idtag: Any = model_entry.get("idtag", None)
-    #                         if raw_idtag is not None:
-    #                             device_idtag: str = str(raw_idtag)
-    #                             existing_model_entry: Dict[str, Any] | None = model_entry_by_idtag.get(
-    #                                 device_idtag, None
-    #                             )
-    #                             if existing_model_entry is None:
-    #                                 model_entry_by_idtag[device_idtag] = model_entry
-    #                                 unique_model_entries.append(model_entry)
-    #                             else:
-    #                                 if existing_model_entry == model_entry:
-    #                                     collapsed_device_count += 1
-    #                                 else:
-    #                                     # Compare every persisted physical property
-    #                                     # while deliberately excluding model pointers.
-    #                                     physical_properties_match: bool = True
-    #                                     persisted_property_names: set[str] = set(existing_model_entry.keys())
-    #                                     persisted_property_names.update(model_entry.keys())
-    #                                     persisted_property_name: str
-    #                                     for persisted_property_name in persisted_property_names:
-    #                                         if persisted_property_name not in dynamic_model_properties:
-    #                                             if (existing_model_entry.get(persisted_property_name, None)
-    #                                                     != model_entry.get(persisted_property_name, None)):
-    #                                                 physical_properties_match = False
-    #                                             else:
-    #                                                 pass
-    #                                         else:
-    #                                             pass
-    #
-    #                                     if physical_properties_match:
-    #                                         dynamic_model_property: str
-    #                                         for dynamic_model_property in dynamic_model_properties:
-    #                                             existing_model_reference: Any = existing_model_entry.get(
-    #                                                 dynamic_model_property, None
-    #                                             )
-    #                                             candidate_model_reference: Any = model_entry.get(
-    #                                                 dynamic_model_property, None
-    #                                             )
-    #
-    #                                             if isinstance(existing_model_reference, dict):
-    #                                                 existing_model_uid: int | None = normalize_persisted_block_uid(
-    #                                                     existing_model_reference.get("model", None)
-    #                                                 )
-    #                                             else:
-    #                                                 existing_model_uid = normalize_persisted_block_uid(
-    #                                                     existing_model_reference
-    #                                                 )
-    #
-    #                                             if isinstance(candidate_model_reference, dict):
-    #                                                 candidate_model_uid: int | None = normalize_persisted_block_uid(
-    #                                                     candidate_model_reference.get("model", None)
-    #                                                 )
-    #                                             else:
-    #                                                 candidate_model_uid = normalize_persisted_block_uid(
-    #                                                     candidate_model_reference
-    #                                                 )
-    #
-    #                                             existing_model_has_content: bool = False
-    #                                             if existing_model_uid is not None:
-    #                                                 existing_block_data: Dict[str, Any] | None = blocks_data.get(
-    #                                                     existing_model_uid, None
-    #                                                 )
-    #                                                 if existing_block_data is not None:
-    #                                                     content_field_name: str
-    #                                                     for content_field_name in model_content_fields:
-    #                                                         content_value: Any = existing_block_data.get(
-    #                                                             content_field_name, None
-    #                                                         )
-    #                                                         if content_value is not None:
-    #                                                             if isinstance(content_value, (list, dict, str)):
-    #                                                                 if len(content_value) > 0:
-    #                                                                     existing_model_has_content = True
-    #                                                                 else:
-    #                                                                     pass
-    #                                                             else:
-    #                                                                 existing_model_has_content = True
-    #                                                         else:
-    #                                                             pass
-    #                                                 else:
-    #                                                     pass
-    #                                             else:
-    #                                                 pass
-    #
-    #                                             candidate_model_has_content: bool = False
-    #                                             if candidate_model_uid is not None:
-    #                                                 candidate_block_data: Dict[str, Any] | None = blocks_data.get(
-    #                                                     candidate_model_uid, None
-    #                                                 )
-    #                                                 if candidate_block_data is not None:
-    #                                                     for content_field_name in model_content_fields:
-    #                                                         content_value = candidate_block_data.get(
-    #                                                             content_field_name, None
-    #                                                         )
-    #                                                         if content_value is not None:
-    #                                                             if isinstance(content_value, (list, dict, str)):
-    #                                                                 if len(content_value) > 0:
-    #                                                                     candidate_model_has_content = True
-    #                                                                 else:
-    #                                                                     pass
-    #                                                             else:
-    #                                                                 candidate_model_has_content = True
-    #                                                         else:
-    #                                                             pass
-    #                                                 else:
-    #                                                     pass
-    #                                             else:
-    #                                                 pass
-    #
-    #                                             if candidate_model_has_content:
-    #                                                 if not existing_model_has_content:
-    #                                                     existing_model_entry[dynamic_model_property] = \
-    #                                                         candidate_model_reference
-    #                                                 else:
-    #                                                     if candidate_model_uid != existing_model_uid:
-    #                                                         # Existing loader pointer dictionaries used the
-    #                                                         # last record for an idtag. Preserve that precedence
-    #                                                         # when both historical records contain real models.
-    #                                                         existing_model_entry[dynamic_model_property] = \
-    #                                                             candidate_model_reference
-    #                                                         logger.add_warning(
-    #                                                             msg=("Duplicate device has different populated "
-    #                                                                  "dynamic models"),
-    #                                                             device=device_idtag,
-    #                                                             value=existing_model_uid,
-    #                                                             expected_value=candidate_model_uid,
-    #                                                             device_property=dynamic_model_property,
-    #                                                             device_class=model_table_name,
-    #                                                         )
-    #                                                     else:
-    #                                                         pass
-    #                                             else:
-    #                                                 pass
-    #
-    #                                         collapsed_device_count += 1
-    #                                     else:
-    #                                         # Conflicting physical records cannot be merged semantically.
-    #                                         # Retain the first complete record deterministically and report
-    #                                         # the ambiguity instead of rewriting physical network data.
-    #                                         logger.add_warning(
-    #                                             msg="Duplicate device idtag has conflicting persisted properties",
-    #                                             device=device_idtag,
-    #                                             device_class=model_table_name,
-    #                                         )
-    #                                         collapsed_device_count += 1
-    #                         else:
-    #                             unique_model_entries.append(model_entry)
-    #                     else:
-    #                         unique_model_entries.append(raw_model_entry)
-    #
-    #                 if len(unique_model_entries) != len(model_table):
-    #                     model_data[model_table_name] = unique_model_entries
-    #                 else:
-    #                     pass
-    #             else:
-    #                 pass
-    #
-    #         if collapsed_device_count > 0:
-    #             logger.add_info(
-    #                 msg="Collapsed duplicate legacy device records",
-    #                 value=collapsed_device_count,
-    #             )
-    #         else:
-    #             pass
-    #     else:
-    #         pass
-    # else:
-    #     pass
-
-    block_parser = BlockParser(
-        var_factory=circuit.var_factory,
-        logger=logger,
-        procedural_logic_codec=ProceduralLogicCodec(),
-    )
-    if symbolic_data is not None:
-        if len(symbolic_data) > 0:
-            if "shared_references" in symbolic_data:
-                block_parser.parse_references(symbolic_data["shared_references"])
-            else:
-                pass
-            block_parser.parse_consts(symbolic_data["consts"])
-            block_parser.parse_vars(symbolic_data["vars"])
-            block_parser.parse_diff_vars(symbolic_data["diff_vars"])
-
-            if "connections" in symbolic_data:
-                block_parser.parse_connections(symbolic_data["connections"])
-            else:
-                pass
-            # BlockParser owns compatibility with all historical dynamics
-            # containers, including list-based tables, inline children and
-            # archives created before main_block_uids existed.
-            block_parser.parse_blocks(blocks_data=blocks_data,
-                                      main_block_uids=symbolic_data.get("main_block_uids", None))
-        else:
-            pass  # the symbolic data is empty
-    else:
-        pass  # there is no symbolic data records
-
-    if model_data is not None:
-
-        if len(model_data) > 0:
-
-            # parse circuit own data
-            circuit_data: Dict[str, str | int | float] | None = model_data.get('circuit', None)
-            if circuit_data is not None:
-                circuit.parse(data=circuit_data)
-
-            # parse time
-            tdata = model_data.get('time', None)
-            if tdata is not None:
-                circuit.set_unix_time(arr=tdata['unix'])
-
-                snapshot_unix_time = tdata.get('snapshot_unix', None)
-                if snapshot_unix_time is not None:
-                    circuit.set_snapshot_time_unix(val=snapshot_unix_time)
-
-            else:
-                logger.add_error(msg=f'The file must have time data regardless of the profiles existence')
-                circuit.time_profile = None
-
-            # for each element type...
-            item_count = 0
-            n_data_types = len(template_object_types)
-            for object_type_key, template_elm in template_object_types.items():
-
-                if text_func is not None:
-                    text_func(f"Parsing {object_type_key} model data...")
-
-                # query the device type into the data set
-                data_list = model_data.get(object_type_key, None)
-
-                if data_list is not None:
-                    parsed_devices, devices_dict = parse_object_type_from_json(
-                        template_elm=template_elm,
-                        data_list=data_list,
-                        elements_dict_by_type=elements_dict_by_type,
-                        time_profile=circuit.time_profile,
-                        block_parser=block_parser,
-                        logger=logger,
-                        text_func=text_func
-                    )
-
-                    # set/augment the dictionary per type for later
-                    prev_dict = elements_dict_by_type.get(template_elm.device_type, dict())
-                    prev_dict.update(devices_dict)  # augment prev_dict with devices_dict
-                    elements_dict_by_type[template_elm.device_type] = prev_dict
-
-                    # add the devices to the circuit
-                    circuit.set_elements_list_by_type(device_type=template_elm.device_type,
-                                                      devices=parsed_devices,
-                                                      logger=logger)
-                else:
-                    # Legacy and optional sections should not generate warnings when absent.
-                    if object_type_key not in {'branch', 'fmu_template'}:
-                        logger.add_warning(msg=f'No data for {object_type_key}')
-
-                if progress_func is not None:
-                    progress_func(float(item_count + 1) / float(n_data_types) * 100)
-
-                item_count += 1
-
-            # Handle the legacy objects that may be present in the data bus not declared in the program
-            # i.e. generator_technology
-            handle_legacy_jsons(model_data=model_data,
-                                elements_dict_by_type=elements_dict_by_type,
-                                logger=logger)
-
-    # fill in device into pointer devices ------------------------------------------------------------------------------
-
-    to_delete: List[ALL_DEV_TYPES] = list()
-    all_elements_dict: Dict[str, ALL_DEV_TYPES] = dict()
-    for dtype in [
-        DeviceType.PiMeasurementDevice,
-        DeviceType.QiMeasurementDevice,
-        DeviceType.PfMeasurementDevice,
-        DeviceType.QfMeasurementDevice,
-        DeviceType.PtMeasurementDevice,
-        DeviceType.QtMeasurementDevice,
-        DeviceType.PgMeasurementDevice,
-        DeviceType.QgMeasurementDevice,
-        DeviceType.IfMeasurementDevice,
-        DeviceType.ItMeasurementDevice,
-        DeviceType.VaMeasurementDevice,
-        DeviceType.VmMeasurementDevice,
-        DeviceType.ContingencyDevice,
-        DeviceType.InvestmentDevice,
-        DeviceType.RemedialActionDevice,
-        DeviceType.RmsEventDevice,
-        DeviceType.EmtEventDevice,
-        DeviceType.ShortCircuitEvent
-    ]:
-        elms = circuit.get_elements_by_type(device_type=dtype)
-
-        for elm in elms:
-
-            if elm.tpe != DeviceType.NoDevice:
-                # search in the per-device type dictionary (already created and faster)
-                referenced_dict = elements_dict_by_type[elm.tpe]
-                referenced_elm = referenced_dict.get(elm.device_idtag, None)
-            else:
-                # lazy-creation of the all elements dict, takes time to initialize
-                if len(all_elements_dict) == 0:
-                    all_elements_dict, _ = circuit.get_all_elements_dict()
-                referenced_elm = all_elements_dict.get(elm.device_idtag, None)
-
-            if referenced_elm is None:
-                to_delete.append(elm)
-            else:
-                elm.set_device(elm=referenced_elm)
-
-    # Delete pointer elements that refer to missing objects.
-    for elm in to_delete:
-        circuit.delete_element(elm)
-        logger.add_error(msg="Invalid pointer element deleted",
-                         device_class=elm.device_type.value,
-                         device=elm.name)
-
-    # fill in wires into towers ----------------------------------------------------------------------------------------
-    if text_func is not None:
-        text_func("Tower wires...")
-    if 'tower_wires' in data.keys():
-        df = data['tower_wires']
-
-        for i in range(df.shape[0]):
-            tower_name = df['tower_name'].values[i]
-            wire_name = df['wire_name'].values[i]
-
-            if ((tower_name in elements_dict_by_type[DeviceType.OverheadLineTypeDevice].keys()) and
-                    (wire_name in elements_dict_by_type[DeviceType.WireDevice].keys())):
-                tower: devices.OverheadLineType = elements_dict_by_type[DeviceType.OverheadLineTypeDevice][tower_name]
-                wire: devices.Wire = elements_dict_by_type[DeviceType.WireDevice][wire_name]
-                xpos = df['xpos'].values[i]
-                ypos = df['ypos'].values[i]
-                phase = df['phase'].values[i]
-                tower.add_wire_relationship(wire=wire, xpos=xpos, ypos=ypos, phase=phase)
-    else:
-        pass
-
-    # create diagrams --------------------------------------------------------------------------------------------------
-    if text_func is not None:
-        text_func("Parsing diagrams...")
-
-    # try to get the list of diagrams
-    list_of_diagrams: List[Dict[str, Any]] = data.get('diagrams', None)
-
-    if list_of_diagrams is not None:
-
-        if len(list_of_diagrams):
-            obj_dict = circuit.get_all_elements_dict_by_type(add_locations=True)
-
-            for diagram_dict in list_of_diagrams:
-
-                if diagram_dict['type'] in [DiagramType.Schematic.value, "bus-branch"]:
-                    diagram = devices.SchematicDiagram()
-                    diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
-                    circuit.add_diagram(diagram)
-
-                elif diagram_dict['type'] == DiagramType.SubstationLineMap.value:
-                    diagram = devices.MapDiagram()
-                    diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
-                    circuit.add_diagram(diagram)
-                else:
-                    print('unrecognized diagram', diagram_dict['type'])
-
-    if text_func is not None:
-        text_func("Done!")
-
-    # search contingencies, investments and remedial actions pointed devices
-    # and remove those that point nowhere
-    if refine_pointers:
-        circuit.refine_pointer_objects(logger=logger)
-
-    if circuit.has_time_series:
-        circuit.ensure_profiles_exist()
-
-    resolved_project_directory: Path | None
-    if project_directory is None:
-        resolved_project_directory = None
-    else:
-        resolved_project_directory = Path(project_directory)
-    _resolve_circuit_fmu_paths(circuit, resolved_project_directory)
-
-    # Enable auto updates internally only after everything has been filled
-    for elm in circuit.get_all_elements_iter():
-        elm.enable_auto_updates()
-
-    return circuit
-
-
-def parse_multiverse_data(data: Dict[str, VERAGRID_FILE_TYPE],
-                          metadata: Dict[str, Dict[str, int | float] | int | None],
-                          text_func: Union[Callable, None] = None,
-                          progress_func: Union[Callable, None] = None,
-                          logger: Logger = Logger()) -> devices.MultiVerse:
-    """
-
-    :param data:
-    :param metadata:
-    :param text_func:
-    :param progress_func:
-    :param logger:
-    :return:
-    """
-    mv = devices.MultiVerse(current_model=None)
-
-    diffs_dict: Dict[str, MultiCircuit] = dict()
-    diagrams_dict: Dict[str, List[Dict[str, Any]]] = dict()
-    composed_by_node_id: Dict[int, MultiCircuit] = dict()
-
-    # IMPORTANT:
-    # Multiverse node payloads are not all full circuits.
-    #
-    # - Root nodes store a full authoritative MultiCircuit.
-    # - Non-root nodes store only the electrical delta against their parent.
-    #
-    # This has two non-obvious effects on loading:
-    #
-    # 1. Electrical references in child payloads may legitimately point to objects that are
-    #    not present in the child's delta payload, because those objects live in the parent /
-    #    ancestor composed circuit. Example: a child adds a new line whose bus_to points to a
-    #    bus inherited from the parent scenario. If the child payload were parsed in isolation,
-    #    that reference would fail with "Could not locate reference".
-    #
-    # 2. Node-owned diagrams are full scenario diagrams, not diagram deltas. A child diagram may
-    #    therefore reference both child-owned and inherited parent-owned API objects. Parsing such
-    #    diagrams against the raw child delta payload would also fail.
-    #
-    # Because of that, multiverse loading must happen in two phases:
-    # - First parse the electrical payloads in parent-before-child order, passing the fully composed
-    #   parent circuit as previous_circuit so child references to inherited objects can be resolved.
-    # - Then, after the tree exists, parse each node's diagrams against that node's full composed
-    #   scenario, never against the raw delta payload.
-    node_metadata = get_multiverse_node_metadata(metadata)
-    ordered_records = order_multiverse_records(metadata)
-    all_elements_dict: Dict[str, ALL_DEV_TYPES] = dict()
-
-    for record in ordered_records:
-        node_id = int(record["node_id"])
-        circuit_idtag = str(record["circuit_idtag"])
-        parent_id_raw = record["parent_id"]
-        parent_id = None if parent_id_raw is None else int(parent_id_raw)
-
-        multiverse_data = data.get("multiverse", None)
-        if multiverse_data is not None:
-            model_data = multiverse_data.get(circuit_idtag, None)
-
-            if model_data is not None:
-                diagrams_dict[circuit_idtag] = model_data.get("diagrams", list())
-
-                model_without_diagrams = dict(model_data)
-                model_without_diagrams["diagrams"] = list()
-
-                previous_circuit = None if parent_id is None else composed_by_node_id[parent_id]
-
-                grid = parse_veragrid_data(data=model_without_diagrams,
-                                           previous_circuit=previous_circuit,
-                                           refine_pointers=False,
-                                           text_func=text_func,
-                                           progress_func=progress_func,
-                                           logger=logger)
-
-                # we create a dictionary of all the elements in all the scenarios such that finding pointers doesn't fail later
-                d, ok = grid.get_all_elements_dict(logger=logger)
-                all_elements_dict.update(d)
-
-                grid.idtag = circuit_idtag
-                diffs_dict[circuit_idtag] = grid
-
-                if parent_id is None:
-                    composed_by_node_id[node_id] = grid.copy()
-                else:
-                    composed = composed_by_node_id[parent_id].copy()
-                    composed.merge_circuit(grid)
-                    composed.name = grid.name
-                    composed_by_node_id[node_id] = composed
-            else:
-                # model_data is None
-                pass
-        else:
-            # multiverse is None
-            pass
-
-    # Refine pointer in all grids
-    for idtag, grid in diffs_dict.items():
-        grid.refine_pointer_objects(logger=logger, all_elements_dict=all_elements_dict)
-
-    # Parse the multiverse data
-    try:
-        mv.parse_json(diffs_dict=diffs_dict, metadata=metadata)
-    except ValueError as e:
-        logger.add_error(str(e))
-
-    # Parse diagrams only after the multiverse tree exists, so each node can resolve them
-    # against its full composed scenario instead of its raw delta payload.
-    for record in node_metadata.values():
-        node_id = int(record["node_id"])
-        circuit_idtag = str(record["circuit_idtag"])
-        if mv.check_node(node_id):
-            node = mv.get_node(node_id)
-            full_circuit = mv.checkout(node)
-            obj_dict = full_circuit.get_all_elements_dict_by_type(add_locations=True)
-            parsed_diagrams: List[Any] = list()
-
-            for diagram_dict in diagrams_dict.get(circuit_idtag, list()):
-                if diagram_dict['type'] in [DiagramType.Schematic.value, "bus-branch"]:
-                    diagram = devices.SchematicDiagram()
-                    diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
-                    parsed_diagrams.append(diagram)
-
-                elif diagram_dict['type'] == DiagramType.SubstationLineMap.value:
-                    diagram = devices.MapDiagram()
-                    diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
-                    parsed_diagrams.append(diagram)
-
-            node.diagrams = parsed_diagrams
-        else:
-            logger.add_error("Node ID not found", value=str(node_id))
-
-    if isinstance(metadata, dict):
-        active_node_id_raw: int = metadata.get("active_node_id", -1)
-        if mv.current_node is not None and mv.current_model is not None:
-            obj_dict = mv.current_model.get_all_elements_dict_by_type(add_locations=True)
-            mv.current_model.diagrams = copy_diagrams(diagrams=mv.current_node.diagrams, obj_dict=obj_dict)
-
-        if (active_node_id_raw > -1
-                and (mv.current_node is None or mv.current_node.node_id != int(active_node_id_raw))):
-            if mv.check_node(active_node_id_raw):
-                mv.activate_scenario(int(active_node_id_raw))
-
-    return mv
-
 
 def normalize_dynamic_legacy(data: VERAGRID_FILE_TYPE,
-                             logger: Logger):
+                             logger: Logger) -> Dict[str, Any] | None:
     """
     Normalize previous VeraGrid versions which used different mappings in the dynamic symbolism:
     - Some static mapping ParamPowerFlowReferenceType are now named differently.
     - Duplicated mapping of some parameters both in the parent block and the child block.
 
-    :param data: data
-    :param logger:
-    :return symbolic_data:
+    :param data: veragrid file data
+    :param logger: logger object used
+    :return symbolic_data: symbolic dictionary or None, if there's no symbolic data.
     """
 
     symbolic_data: Dict[str, Any] | None = data.get('symbolic_data', None)
-    model_data: Dict[str, Any] | None = data.get('model_data', None)
-    blocks_data: Dict[int, Dict[str, Any]] = dict()
 
     if symbolic_data is not None:
         if len(symbolic_data) > 0:
@@ -2669,3 +1963,531 @@ def normalize_dynamic_legacy(data: VERAGRID_FILE_TYPE,
 
     return symbolic_data
 
+
+def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
+                        previous_circuit: Union[MultiCircuit, None] = None,
+                        project_directory: str | Path | None = None,
+                        refine_pointers: bool = True,
+                        text_func: Union[Callable, None] = None,
+                        progress_func: Union[Callable, None] = None,
+                        logger: Logger = Logger()) -> MultiCircuit:
+    """
+    Interpret data
+    :param project_directory: file project directory
+    :param refine_pointers: Refine (and possibly delete) the pointer objects such as investments and contingencies?
+    :param data: dictionary of data frames and other information
+    :param previous_circuit: Optional previous VeraGrid circuit. This is relevant in case of loading grid increments
+    :param text_func: text callback function
+    :param progress_func: progress callback function
+    :param logger: Logger to register events
+    :return: MultiCircuit instance
+    """
+    # create circuit
+    circuit = MultiCircuit()
+
+    # Legacy circuit information parsing -------------------------------------------------------------------------------
+    if 'name' in data.keys():
+        circuit.name = str(data['name'])
+        if circuit.name == 'nan':
+            circuit.name = ''
+
+    if 'idtag' in data.keys():
+        val = str(data['idtag'])
+        if val != '':
+            circuit.idtag = val
+        else:
+            logger.add_warning("Had to create a new idtag", value=circuit.idtag)
+
+    # set the base magnitudes
+    if 'baseMVA' in data.keys():
+        circuit.Sbase = data['baseMVA']
+
+    # Set comments
+    if 'Comments' in data.keys():
+        circuit.comments = str(data['Comments'])
+        if circuit.comments == 'nan':
+            circuit.comments = ''
+
+    if 'ModelVersion' in data.keys():
+        circuit.model_version = int(data['ModelVersion'])
+
+    if 'UserName' in data.keys():
+        circuit.user_name = data['UserName']
+
+    # dictionary of objects to iterate
+    template_object_types = get_objects_dictionary()
+
+    # time profile -----------------------------------------------------------------------------------------------------
+    if 'time' in data.keys():
+        time_df = data['time']
+        try:
+            circuit.time_profile = pd.to_datetime(time_df.values[:, 0], dayfirst=True, format='mixed')
+        except ValueError:
+            circuit.time_profile = pd.to_datetime(time_df.values[:, 0], dayfirst=True)
+    else:
+        circuit.time_profile = None
+
+    # dictionary of dictionaries by element type
+    if previous_circuit is None:
+        elements_dict_by_type = dict()
+    else:
+        elements_dict_by_type = previous_circuit.get_all_elements_dict_by_type(add_locations=True, string_keys=False)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Legacy DataFrame processing
+    # for each element type...
+    item_count = 0
+    n_data_types = len(template_object_types)
+    for object_type_key, template_elm in template_object_types.items():
+
+        if text_func is not None:
+            text_func(f"Parsing {object_type_key} table data...")
+
+        # try to get the DataFrame
+        # Todo: here we should get the data from template_object_types dict, not from data dict
+        df = data.get(object_type_key, None)
+
+        if df is not None:
+
+            # fill in the objects
+            if df.shape[0] > 0:
+
+                parsed_devices, devices_dict, on_the_fly = parse_object_type_from_dataframe(
+                    main_df=df,
+                    template_elm=template_elm,
+                    elements_dict_by_type=elements_dict_by_type,
+                    time_profile=circuit.time_profile,
+                    object_type_key=object_type_key,
+                    data=data,
+                    logger=logger
+                )
+
+                # add the elements that were created on the fly...
+                for name, on_the_fly_elm in on_the_fly.legacy_area_dict.items():
+                    circuit.add_area(obj=on_the_fly_elm)
+                for name, on_the_fly_elm in on_the_fly.legacy_zone_dict.items():
+                    circuit.add_zone(obj=on_the_fly_elm)
+                for name, on_the_fly_elm in on_the_fly.legacy_substation_dict.items():
+                    circuit.add_substation(obj=on_the_fly_elm)
+                for conn_group in on_the_fly.contingency_groups:
+                    circuit.add_contingency_group(obj=conn_group)
+                for cont in on_the_fly.contingencies:
+                    circuit.add_contingency(obj=cont)
+                for tech_name, technology in on_the_fly.technologies.items():
+                    circuit.add_technology(obj=technology)
+
+                # set/augment the dictionary per type for later
+                prev_dict = elements_dict_by_type.get(template_elm.device_type, dict())
+                elements_dict_by_type[template_elm.device_type] = dict(prev_dict, **devices_dict)
+
+                # add the devices to the circuit
+                circuit.set_elements_list_by_type(device_type=template_elm.device_type,
+                                                  devices=parsed_devices,
+                                                  logger=logger)
+
+            else:
+                # no objects of this type
+                pass
+        else:
+            # the file does not contain information for the data type (not a problem...)
+            pass
+
+        if progress_func is not None:
+            progress_func(float(item_count + 1) / float(n_data_types) * 100)
+
+        item_count += 1
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Parse the declarative information stored in JSON ``.model`` files.
+    # These files are just .json stored in the model_data inside the zip file
+
+    model_data: Dict[str, Any] | None = data.get('model_data', None)
+
+    # Allow compatibility with old VeraGrid versions
+    symbolic_data = normalize_dynamic_legacy(data=data, logger=logger)
+
+    if symbolic_data is not None:
+        blocks_data = symbolic_data.get("blocks", dict())
+    else:
+        blocks_data = dict()
+
+    block_parser = BlockParser(
+        var_factory=circuit.var_factory,
+        logger=logger,
+        procedural_logic_codec=ProceduralLogicCodec(),
+    )
+    if symbolic_data is not None:
+        if len(symbolic_data) > 0:
+            if "shared_references" in symbolic_data:
+                block_parser.parse_references(symbolic_data["shared_references"])
+            else:
+                pass
+            block_parser.parse_consts(symbolic_data["consts"])
+            block_parser.parse_vars(symbolic_data["vars"])
+            block_parser.parse_diff_vars(symbolic_data["diff_vars"])
+
+            if "connections" in symbolic_data:
+                block_parser.parse_connections(symbolic_data["connections"])
+            else:
+                pass
+            # BlockParser owns compatibility with all historical dynamics
+            # containers, including list-based tables, inline children and
+            # archives created before main_block_uids existed.
+            block_parser.parse_blocks(blocks_data=blocks_data,
+                                      main_block_uids=symbolic_data.get("main_block_uids", None))
+        else:
+            pass  # the symbolic data is empty
+    else:
+        pass  # there is no symbolic data records
+
+    if model_data is not None:
+
+        if len(model_data) > 0:
+
+            # parse circuit own data
+            circuit_data: Dict[str, str | int | float] | None = model_data.get('circuit', None)
+            if circuit_data is not None:
+                circuit.parse(data=circuit_data)
+
+            # parse time
+            tdata = model_data.get('time', None)
+            if tdata is not None:
+                circuit.set_unix_time(arr=tdata['unix'])
+
+                snapshot_unix_time = tdata.get('snapshot_unix', None)
+                if snapshot_unix_time is not None:
+                    circuit.set_snapshot_time_unix(val=snapshot_unix_time)
+
+            else:
+                logger.add_error(msg=f'The file must have time data regardless of the profiles existence')
+                circuit.time_profile = None
+
+            # for each element type...
+            item_count = 0
+            n_data_types = len(template_object_types)
+            for object_type_key, template_elm in template_object_types.items():
+
+                if text_func is not None:
+                    text_func(f"Parsing {object_type_key} model data...")
+
+                # query the device type into the data set
+                data_list = model_data.get(object_type_key, None)
+
+                if data_list is not None:
+                    parsed_devices, devices_dict = parse_object_type_from_json(
+                        template_elm=template_elm,
+                        data_list=data_list,
+                        elements_dict_by_type=elements_dict_by_type,
+                        time_profile=circuit.time_profile,
+                        block_parser=block_parser,
+                        logger=logger,
+                        text_func=text_func
+                    )
+
+                    # set/augment the dictionary per type for later
+                    prev_dict = elements_dict_by_type.get(template_elm.device_type, dict())
+                    prev_dict.update(devices_dict)  # augment prev_dict with devices_dict
+                    elements_dict_by_type[template_elm.device_type] = prev_dict
+
+                    # add the devices to the circuit
+                    circuit.set_elements_list_by_type(device_type=template_elm.device_type,
+                                                      devices=parsed_devices,
+                                                      logger=logger)
+                else:
+                    # Legacy and optional sections should not generate warnings when absent.
+                    if object_type_key not in {'branch', 'fmu_template'}:
+                        logger.add_warning(msg=f'No data for {object_type_key}')
+
+                if progress_func is not None:
+                    progress_func(float(item_count + 1) / float(n_data_types) * 100)
+
+                item_count += 1
+
+            # Handle the legacy objects that may be present in the data bus not declared in the program
+            # i.e. generator_technology
+            handle_legacy_jsons(model_data=model_data,
+                                elements_dict_by_type=elements_dict_by_type,
+                                logger=logger)
+
+    # fill in device into pointer devices ------------------------------------------------------------------------------
+
+    to_delete: List[ALL_DEV_TYPES] = list()
+    all_elements_dict: Dict[str, ALL_DEV_TYPES] = dict()
+    for dtype in [
+        DeviceType.PiMeasurementDevice,
+        DeviceType.QiMeasurementDevice,
+        DeviceType.PfMeasurementDevice,
+        DeviceType.QfMeasurementDevice,
+        DeviceType.PtMeasurementDevice,
+        DeviceType.QtMeasurementDevice,
+        DeviceType.PgMeasurementDevice,
+        DeviceType.QgMeasurementDevice,
+        DeviceType.IfMeasurementDevice,
+        DeviceType.ItMeasurementDevice,
+        DeviceType.VaMeasurementDevice,
+        DeviceType.VmMeasurementDevice,
+        DeviceType.ContingencyDevice,
+        DeviceType.InvestmentDevice,
+        DeviceType.RemedialActionDevice,
+        DeviceType.RmsEventDevice,
+        DeviceType.EmtEventDevice,
+        DeviceType.ShortCircuitEvent
+    ]:
+        elms = circuit.get_elements_by_type(device_type=dtype)
+
+        for elm in elms:
+
+            if elm.tpe != DeviceType.NoDevice:
+                # search in the per-device type dictionary (already created and faster)
+                referenced_dict = elements_dict_by_type[elm.tpe]
+                referenced_elm = referenced_dict.get(elm.device_idtag, None)
+            else:
+                # lazy-creation of the all elements dict, takes time to initialize
+                if len(all_elements_dict) == 0:
+                    all_elements_dict, _ = circuit.get_all_elements_dict()
+                referenced_elm = all_elements_dict.get(elm.device_idtag, None)
+
+            if referenced_elm is None:
+                to_delete.append(elm)
+            else:
+                elm.set_device(elm=referenced_elm)
+
+    # Delete pointer elements that refer to missing objects.
+    for elm in to_delete:
+        circuit.delete_element(elm)
+        logger.add_error(msg="Invalid pointer element deleted",
+                         device_class=elm.device_type.value,
+                         device=elm.name)
+
+    # fill in wires into towers ----------------------------------------------------------------------------------------
+    if text_func is not None:
+        text_func("Tower wires...")
+    if 'tower_wires' in data.keys():
+        df = data['tower_wires']
+
+        for i in range(df.shape[0]):
+            tower_name = df['tower_name'].values[i]
+            wire_name = df['wire_name'].values[i]
+
+            if ((tower_name in elements_dict_by_type[DeviceType.OverheadLineTypeDevice].keys()) and
+                    (wire_name in elements_dict_by_type[DeviceType.WireDevice].keys())):
+                tower: devices.OverheadLineType = elements_dict_by_type[DeviceType.OverheadLineTypeDevice][tower_name]
+                wire: devices.Wire = elements_dict_by_type[DeviceType.WireDevice][wire_name]
+                xpos = df['xpos'].values[i]
+                ypos = df['ypos'].values[i]
+                phase = df['phase'].values[i]
+                tower.add_wire_relationship(wire=wire, xpos=xpos, ypos=ypos, phase=phase)
+    else:
+        pass
+
+    # create diagrams --------------------------------------------------------------------------------------------------
+    if text_func is not None:
+        text_func("Parsing diagrams...")
+
+    # try to get the list of diagrams
+    list_of_diagrams: List[Dict[str, Any]] = data.get('diagrams', None)
+
+    if list_of_diagrams is not None:
+
+        if len(list_of_diagrams):
+            obj_dict = circuit.get_all_elements_dict_by_type(add_locations=True)
+            diagrams_by_id: Dict[str, devices.BaseDiagram] = dict()
+
+            for diagram_dict in list_of_diagrams:
+
+                if diagram_dict['type'] in [DiagramType.Schematic.value, "bus-branch"]:
+                    diagram = devices.SchematicDiagram()
+                    diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
+                    circuit.add_diagram(diagram)
+                    diagrams_by_id[diagram.idtag] = diagram
+
+                elif diagram_dict['type'] == DiagramType.SubstationLineMap.value:
+                    diagram = devices.MapDiagram()
+                    diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
+                    circuit.add_diagram(diagram)
+                    diagrams_by_id[diagram.idtag] = diagram
+                else:
+                    print('unrecognized diagram', diagram_dict['type'])
+
+            diagram_tree_data = data.get('diagram_tree', None)
+            if diagram_tree_data is not None and hasattr(circuit.diagrams, 'parse_data'):
+                circuit.diagrams.parse_data(diagram_tree_data, diagrams_by_id)
+
+    if text_func is not None:
+        text_func("Done!")
+
+    # search contingencies, investments and remedial actions pointed devices
+    # and remove those that point nowhere
+    if refine_pointers:
+        circuit.refine_pointer_objects(logger=logger)
+
+    if circuit.has_time_series:
+        circuit.ensure_profiles_exist()
+
+    resolved_project_directory: Path | None
+    if project_directory is None:
+        resolved_project_directory = None
+    else:
+        resolved_project_directory = Path(project_directory)
+    _resolve_circuit_fmu_paths(circuit, resolved_project_directory)
+
+    # Enable auto updates internally only after everything has been filled
+    for elm in circuit.get_all_elements_iter():
+        elm.enable_auto_updates()
+
+    return circuit
+
+
+def parse_multiverse_data(data: Dict[str, VERAGRID_FILE_TYPE],
+                          metadata: Dict[str, Dict[str, int | float] | int | None],
+                          text_func: Union[Callable, None] = None,
+                          progress_func: Union[Callable, None] = None,
+                          logger: Logger = Logger()) -> devices.MultiVerse:
+    """
+
+    :param data:
+    :param metadata:
+    :param text_func:
+    :param progress_func:
+    :param logger:
+    :return:
+    """
+    mv = devices.MultiVerse(current_model=None)
+
+    diffs_dict: Dict[str, MultiCircuit] = dict()
+    diagrams_dict: Dict[str, List[Dict[str, Any]]] = dict()
+    diagram_tree_dict: Dict[str, Optional[Dict[str, Any]]] = dict()
+    composed_by_node_id: Dict[int, MultiCircuit] = dict()
+
+    # IMPORTANT:
+    # Multiverse node payloads are not all full circuits.
+    #
+    # - Root nodes store a full authoritative MultiCircuit.
+    # - Non-root nodes store only the electrical delta against their parent.
+    #
+    # This has two non-obvious effects on loading:
+    #
+    # 1. Electrical references in child payloads may legitimately point to objects that are
+    #    not present in the child's delta payload, because those objects live in the parent /
+    #    ancestor composed circuit. Example: a child adds a new line whose bus_to points to a
+    #    bus inherited from the parent scenario. If the child payload were parsed in isolation,
+    #    that reference would fail with "Could not locate reference".
+    #
+    # 2. Node-owned diagrams are full scenario diagrams, not diagram deltas. A child diagram may
+    #    therefore reference both child-owned and inherited parent-owned API objects. Parsing such
+    #    diagrams against the raw child delta payload would also fail.
+    #
+    # Because of that, multiverse loading must happen in two phases:
+    # - First parse the electrical payloads in parent-before-child order, passing the fully composed
+    #   parent circuit as previous_circuit so child references to inherited objects can be resolved.
+    # - Then, after the tree exists, parse each node's diagrams against that node's full composed
+    #   scenario, never against the raw delta payload.
+    node_metadata = get_multiverse_node_metadata(metadata)
+    ordered_records = order_multiverse_records(metadata)
+    all_elements_dict: Dict[str, ALL_DEV_TYPES] = dict()
+
+    for record in ordered_records:
+        node_id = int(record["node_id"])
+        circuit_idtag = str(record["circuit_idtag"])
+        parent_id_raw = record["parent_id"]
+        parent_id = None if parent_id_raw is None else int(parent_id_raw)
+
+        multiverse_data = data.get("multiverse", None)
+        if multiverse_data is not None:
+            model_data = multiverse_data.get(circuit_idtag, None)
+
+            if model_data is not None:
+                diagrams_dict[circuit_idtag] = model_data.get("diagrams", list())
+                diagram_tree_dict[circuit_idtag] = model_data.get("diagram_tree", None)
+
+                model_without_diagrams = dict(model_data)
+                model_without_diagrams["diagrams"] = list()
+                model_without_diagrams.pop("diagram_tree", None)
+
+                previous_circuit = None if parent_id is None else composed_by_node_id[parent_id]
+
+                grid = parse_veragrid_data(data=model_without_diagrams,
+                                           previous_circuit=previous_circuit,
+                                           refine_pointers=False,
+                                           text_func=text_func,
+                                           progress_func=progress_func,
+                                           logger=logger)
+
+                # we create a dictionary of all the elements in all the scenarios such that finding pointers doesn't fail later
+                d, ok = grid.get_all_elements_dict(logger=logger)
+                all_elements_dict.update(d)
+
+                grid.idtag = circuit_idtag
+                diffs_dict[circuit_idtag] = grid
+
+                if parent_id is None:
+                    composed_by_node_id[node_id] = grid.copy()
+                else:
+                    composed = composed_by_node_id[parent_id].copy()
+                    composed.merge_circuit(grid)
+                    composed.name = grid.name
+                    composed_by_node_id[node_id] = composed
+            else:
+                # model_data is None
+                pass
+        else:
+            # multiverse is None
+            pass
+
+    # Refine pointer in all grids
+    for idtag, grid in diffs_dict.items():
+        grid.refine_pointer_objects(logger=logger, all_elements_dict=all_elements_dict)
+
+    # Parse the multiverse data
+    try:
+        mv.parse_json(diffs_dict=diffs_dict, metadata=metadata)
+    except ValueError as e:
+        logger.add_error(str(e))
+
+    # Parse diagrams only after the multiverse tree exists, so each node can resolve them
+    # against its full composed scenario instead of its raw delta payload.
+    for record in node_metadata.values():
+        node_id = int(record["node_id"])
+        circuit_idtag = str(record["circuit_idtag"])
+        if mv.check_node(node_id):
+            node = mv.get_node(node_id)
+            full_circuit = mv.checkout(node)
+            obj_dict = full_circuit.get_all_elements_dict_by_type(add_locations=True)
+            parsed_diagrams: devices.DiagramTree = devices.DiagramTree()
+            diagrams_by_id: Dict[str, devices.BaseDiagram] = dict()
+
+            for diagram_dict in diagrams_dict.get(circuit_idtag, list()):
+                if diagram_dict['type'] in [DiagramType.Schematic.value, "bus-branch"]:
+                    diagram = devices.SchematicDiagram()
+                    diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
+                    parsed_diagrams.append(diagram)
+                    diagrams_by_id[diagram.idtag] = diagram
+
+                elif diagram_dict['type'] == DiagramType.SubstationLineMap.value:
+                    diagram = devices.MapDiagram()
+                    diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
+                    parsed_diagrams.append(diagram)
+                    diagrams_by_id[diagram.idtag] = diagram
+
+            node_tree_data = diagram_tree_dict.get(circuit_idtag, None)
+            if node_tree_data is not None and hasattr(parsed_diagrams, 'parse_data'):
+                parsed_diagrams.parse_data(node_tree_data, diagrams_by_id)
+
+            node.diagrams = parsed_diagrams
+            if node.circuit is not None:
+                node.circuit.diagrams = parsed_diagrams
+        else:
+            logger.add_error("Node ID not found", value=str(node_id))
+
+    if isinstance(metadata, dict):
+        active_node_id_raw: int = metadata.get("active_node_id", -1)
+        if mv.current_node is not None and mv.current_model is not None:
+            obj_dict = mv.current_model.get_all_elements_dict_by_type(add_locations=True)
+            mv.current_model.diagrams = copy_diagrams(diagrams=mv.current_node.diagrams, obj_dict=obj_dict)
+
+        if (active_node_id_raw > -1
+                and (mv.current_node is None or mv.current_node.node_id != int(active_node_id_raw))):
+            if mv.check_node(active_node_id_raw):
+                mv.activate_scenario(int(active_node_id_raw))
+
+    return mv

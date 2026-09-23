@@ -15,7 +15,7 @@ import pytest
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 
 
 def load_large_chart_data(data_path: Path) -> tuple[np.ndarray, tuple[str, ...], tuple[np.ndarray, ...]]:
