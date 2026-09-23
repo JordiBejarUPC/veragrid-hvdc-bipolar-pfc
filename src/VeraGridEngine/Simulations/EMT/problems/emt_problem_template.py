@@ -256,6 +256,7 @@ class EmtBoundaryUpdateProtocol(Protocol):
     """
     Structural protocol implemented by EMT boundary update providers.
     """
+    __slots__ = ()
 
     def update(self, t: float, x: Vec, params: Vec) -> float | None:
         """
@@ -479,6 +480,56 @@ class EmtProblemTemplate(ABC):
     CONSTANT_PARAMS_NAME = "cprms"
     DIFF_NAME = "diff"
     TIME_NAME = "glob_time"
+
+    __slots__ = (
+        "sys_block",
+        "grid",
+        "_glob_time",
+        "_newton_trace_collector",
+        "_init_eqs_flat",
+        "_diff_init_eqs_flat",
+        "_state_vars",
+        "_algebraic_vars",
+        "_state_eqs",
+        "_algebraic_eqs",
+        "_diff_vars",
+        "_static_parameter_values",
+        "_variable_parameters",
+        "_event_parameters_eqs",
+        "_runtime_mode_uids",
+        "_constant_parameters",
+        "_parameters_values",
+        "_runtime_all_parameters_source",
+        "_runtime_all_eqs_source",
+        "_runtime_continuous_parameters",
+        "_runtime_mode_parameters",
+        "_runtime_continuous_eqs",
+        "_runtime_mode_eqs",
+        "_runtime_continuous_slice",
+        "_runtime_mode_slice",
+        "_vars_glob_name2uid",
+        "init_guess",
+        "event_params_init_dict",
+        "diff_init_guess",
+        "_event_params_values",
+        "_constant_params_values",
+        "progress_signal",
+        "progress_text",
+        "_n_vars",
+        "_n_state",
+        "_n_alg",
+        "_n_algebraic",
+        "_n_diff",
+        "_n_params",
+        "_n_event_params",
+        "_uid2idx_vars",
+        "_uid2idx_diff",
+        "_uid2idx_params",
+        "_uid2idx_event_params",
+        "_compiler_names_dict",
+        "_alias_names_dict",
+        "_uid2idx_t",
+    )
 
     def __init__(self,
                  sys_block: Block,

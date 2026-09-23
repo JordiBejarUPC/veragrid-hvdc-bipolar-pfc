@@ -85,6 +85,9 @@ class NpEncoder(json.JSONEncoder):
     """
 
     """
+
+    __slots__ = ()
+
     def default(self, obj):
         dtypes = (np.datetime64, np.complexfloating)
         if isinstance(obj, dtypes):

@@ -336,8 +336,14 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
     # Compile HVDC results (available for the complete grid since HVDC line as
     # formulated are split objects
     # Pt is the "generation" at the sending point
-    results.Pf_hvdc = - Pf_hvdc * nc.Sbase  # we change the sign to keep the sign convention with AC lines
-    results.Pt_hvdc = - Pt_hvdc * nc.Sbase  # we change the sign to keep the sign convention with AC lines
+    results.Pf_hvdc_A = - Pf_hvdc * nc.Sbase  # we change the sign to keep the sign convention with AC lines
+    results.Pf_hvdc_B = - Pf_hvdc * nc.Sbase  # we change the sign to keep the sign convention with AC lines
+    results.Pf_hvdc_C = - Pf_hvdc * nc.Sbase  # we change the sign to keep the sign convention with AC lines
+
+    results.Pt_hvdc_A = - Pt_hvdc * nc.Sbase  # we change the sign to keep the sign convention with AC lines
+    results.Pt_hvdc_B = - Pt_hvdc * nc.Sbase  # we change the sign to keep the sign convention with AC lines
+    results.Pt_hvdc_C = - Pt_hvdc * nc.Sbase  # we change the sign to keep the sign convention with AC lines
+
     results.loading_hvdc = loading_hvdc
     results.losses_hvdc = Losses_hvdc * nc.Sbase
 
@@ -428,7 +434,6 @@ def multi_island_pf_nc_3ph(nc: NumericalCircuit,
     # do the reactive power partition and store the values
     # __split_reactive_power_into_devices(nc=nc, Qbus=results.Sbus.imag, results=results)
 
-    results.three_phase = True
     return results
 
 

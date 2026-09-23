@@ -200,6 +200,7 @@ class DGSElement:
     """
     Base class
     """
+    __slots__ = ()
     element_type: str
     properties_list: List[DgsProperty]
     properties: Dict[str, DgsProperty]
@@ -265,6 +266,11 @@ class DGSElement:
 
 
 class ChaRef(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+    )
     element_type = 'ChaRef'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -279,6 +285,18 @@ class ChaRef(DGSElement):
 
 
 class ChaVec(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "scale",
+        "usage",
+        "approx",
+        "vector_SIZEROW",
+        "vector_0",
+        "vector_1",
+        "vector_2",
+    )
     element_type = 'ChaVec'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -307,6 +325,16 @@ class ChaVec(DGSElement):
 
 
 class ElmComp(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "outserv",
+        "pblk",
+        "pelm",
+        "contents",
+    )
     element_type = 'ElmComp'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -357,6 +385,17 @@ class ElmComp(DGSElement):
 
 
 class ElmDsl(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "outserv",
+        "params",
+        "pelm",
+        "signal",
+        "parameter_names",
+    )
     element_type = 'ElmDsl'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -422,6 +461,14 @@ class ElmDsl(DGSElement):
 
 
 class BlkFrom(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "sSig_SIZEROW",
+        "sSig_0",
+        "loc_name",
+        "signals",
+    )
     element_type = 'BlkFrom'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -449,6 +496,14 @@ class BlkFrom(DGSElement):
 
 
 class BlkGoto(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "sSig_SIZEROW",
+        "sSig_0",
+        "signals",
+    )
     element_type = 'BlkGoto'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -532,6 +587,11 @@ class BlkGoto(DGSElement):
 
 class BlkDiv(DGSElement):
     """Represent one native graphical division node from an ASCII DGS file."""
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+    )
 
     element_type: str = 'BlkDiv'
     properties_list: List[DgsProperty] = [
@@ -549,6 +609,11 @@ class BlkDiv(DGSElement):
 
 class BlkMul(DGSElement):
     """Represent one native graphical multiplication node from an ASCII DGS file."""
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+    )
 
     element_type: str = 'BlkMul'
     properties_list: List[DgsProperty] = [
@@ -566,6 +631,12 @@ class BlkMul(DGSElement):
 
 class BlkSwt(DGSElement):
     """Represent one native graphical switch node from an ASCII DGS file."""
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "iNeg",
+    )
 
     element_type: str = 'BlkSwt'
     properties_list: List[DgsProperty] = [
@@ -584,6 +655,15 @@ class BlkSwt(DGSElement):
 
 
 class BlkRef(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "typ_id",
+        "cdisName",
+        "params",
+        "states",
+        "internals",
+    )
     element_type = 'BlkRef'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -622,6 +702,17 @@ class BlkRef(DGSElement):
 
 
 class BlkSig(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "inodfrom",
+        "loc_name",
+        "iconfrom",
+        "inodto",
+        "iconto",
+        "pnodfrom",
+        "pnodto",
+    )
     element_type = 'BlkSig'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -648,6 +739,15 @@ class BlkSig(DGSElement):
 
 
 class BlkSlot(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "element",
+        "filtmod",
+        "outputs",
+        "inputs",
+    )
     element_type = 'BlkSlot'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -683,6 +783,19 @@ class BlkSlot(DGSElement):
 
 
 class BlkSum(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "iInput0",
+        "iInput0_act",
+        "iInput1",
+        "iInput1_act",
+        "iInput3",
+        "iInput3_act",
+        "iInput2",
+        "iInput2_act",
+    )
     element_type = 'BlkSum'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -713,6 +826,23 @@ class BlkSum(DGSElement):
 
 
 class ElmAsm(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "ngnum",
+        "i_mot",
+        "outserv",
+        "pgini",
+        "qgini",
+        "chr_name",
+        "idfig",
+        "bustp",
+        "cCategory",
+        "pmode",
+    )
     element_type = 'ElmAsm'
     properties_list = [
         DgsProperty('FID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -751,6 +881,18 @@ class ElmAsm(DGSElement):
 
 
 class ElmCoup(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "chr_name",
+        "aUsage",
+        "nneutral",
+        "nphase",
+        "on_off",
+        "for_name",
+    )
     element_type = 'ElmCoup'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -787,6 +929,14 @@ class ElmBranch(DGSElement):
     ElmBranch is a hierarchical container used to organize the project/model and
     the single-line diagram. It does NOT define electrical connectivity.
     """
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "for_name",
+        "fold_id",
+        "iDatCon0",
+        "iDatCon1",
+    )
     element_type = 'ElmBranch'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -807,6 +957,17 @@ class ElmBranch(DGSElement):
 
 
 class ElmFeeder(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "obj_id",
+        "iorient",
+        "i_scale",
+        "Iset",
+        "icolor",
+        "outserv",
+    )
     element_type = 'ElmFeeder'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -833,6 +994,29 @@ class ElmFeeder(DGSElement):
 
 
 class ElmGenstat(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "bus1",
+        "outserv",
+        "sgn",
+        "cosn",
+        "ngnum",
+        "pgini",
+        "qgini",
+        "av_mode",
+        "mode_inp",
+        "ip_ctrl",
+        "cCategory",
+        "c_pmod",
+        "ddroop",
+        "usp_max",
+        "usp_min",
+        "usetp",
+        "cQ_min",
+        "cQ_max",
+    )
     element_type = 'ElmGenstat'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -1128,6 +1312,22 @@ class ElmVscmono(DGSElement):
 
 
 class ElmLne(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "dline",
+        "chr_name",
+        "fline",
+        "outserv",
+        "pStoch",
+        "for_name",
+        "GPScoords_SIZEROW",
+        "GPScoords_SIZECOL",
+        "nlnum",
+        "inAir",
+    )
     element_type = 'ElmLne'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -1164,6 +1364,18 @@ class ElmLne(DGSElement):
 
 
 class ElmZpu(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "for_name",
+        "fold_id",
+        "Sn",
+        "ratfac",
+        "r_pu",
+        "x_pu",
+        "outserv",
+    )
     element_type = 'ElmZpu'
     properties_list = [
         DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
@@ -1198,6 +1410,17 @@ class ElmZpu(DGSElement):
 
 
 class ElmScap(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "for_name",
+        "fold_id",
+        "ucn",
+        "Curn",
+        "xcap",
+        "outserv",
+    )
     element_type = 'ElmScap'
     properties_list = [
         DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
@@ -1228,6 +1451,21 @@ class ElmScap(DGSElement):
 
 
 class ElmSind(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "for_name",
+        "fold_id",
+        "typ_id",
+        "ucn",
+        "Sn",
+        "uk",
+        "Pcu",
+        "Rin",
+        "initial_resistance_column_declared",
+        "outserv",
+    )
     element_type = 'ElmSind'
     properties_list = [
         # test_export_v5.dgs uses FID(...) not ID(...)
@@ -1275,6 +1513,13 @@ class ElmSind(DGSElement):
 
 class TypSind(DGSElement):
     """PowerFactory Series Reactor type (TypSind)."""
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "Re",
+        "Xe",
+    )
     element_type = 'TypSind'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -1295,6 +1540,12 @@ class TypSind(DGSElement):
 
 class ComLdf(DGSElement):
     """PowerFactory Load Flow Calculation type (ComLdf)."""
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "iopt_pq",
+    )
     element_type = 'ComLdf'
     properties_list = [
         DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
@@ -1310,6 +1561,16 @@ class ComLdf(DGSElement):
 
 
 class ElmLnesec(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "chr_name",
+        "dline",
+        "fline",
+        "index",
+    )
     element_type = 'ElmLnesec'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -1334,6 +1595,21 @@ class ElmLnesec(DGSElement):
 
 
 class ElmVac(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "for_name",
+        "fold_id",
+        "outserv",
+        "itype",
+        "Pload",
+        "Qload",
+        "Pgen",
+        "Qgen",
+        "Pzload",
+        "Qzload",
+    )
     element_type = 'ElmVac'
     properties_list = [
         DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
@@ -1374,6 +1650,32 @@ class ElmVac(DGSElement):
 
 
 class ElmLod(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "chr_name",
+        "plini",
+        "plinir",
+        "plinis",
+        "plinit",
+        "qlini",
+        "qlinir",
+        "qlinis",
+        "qlinit",
+        "scale0",
+        "outserv",
+        "i_sym",
+        "for_name",
+        "mode_inp",
+        "slini",
+        "coslini",
+        "pf_recap",
+        "i_scale",
+        "classif",
+        "phtech",
+    )
     element_type = 'ElmLod'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -1430,6 +1732,15 @@ class ElmLod(DGSElement):
 
 
 class ElmLodlv(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "chr_name",
+        "for_name",
+        "ulini",
+    )
     element_type = 'ElmLodlv'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -1452,6 +1763,17 @@ class ElmLodlv(DGSElement):
 
 
 class ElmLodlvp(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "chr_name",
+        "for_name",
+        "lneposkm",
+        "outserv",
+        "ulini",
+    )
     element_type = 'ElmLodlvp'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -1478,6 +1800,14 @@ class ElmLodlvp(DGSElement):
 
 
 class ElmNet(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "frnom",
+        "for_name",
+        "pDiagram",
+    )
     element_type = 'ElmNet'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -1498,6 +1828,32 @@ class ElmNet(DGSElement):
 
 
 class ElmShnt(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "chr_name",
+        "shtype",
+        "ushnm",
+        "qcapn",
+        "ncapx",
+        "ncapa",
+        "outserv",
+        "qrean",
+        "ctech",
+        "fres",
+        "greaf0",
+        "grea",
+        "iswitch",
+        "qtotn",
+        "tandc",
+        "usetp",
+        "rpara",
+        "i_cont",
+        "usetp_mx",
+        "usetp_mn",
+        "cgnd",
+    )
     element_type = 'ElmShnt'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -1556,6 +1912,27 @@ class ElmShnt(DGSElement):
 
 
 class ElmSvs(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "chr_name",
+        "qmin",
+        "qmax",
+        "tcrmax",
+        "nxcap",
+        "nfixcap",
+        "Qfixcap",
+        "outserv",
+        "usetp",
+        "ddroop",
+        "Srated",
+        "i_ctrl",
+        "i_droop",
+        "nncap",
+        "tcrqact",
+        "qsetp",
+    )
     element_type = 'ElmSvs'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -1624,6 +2001,15 @@ class ElmSvs(DGSElement):
 
 
 class ElmSite(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "for_name",
+        "fold_id",
+        "sType",
+        "GPSlat",
+        "GPSlon",
+    )
     element_type = 'ElmSite'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -1646,6 +2032,19 @@ class ElmSite(DGSElement):
 
 
 class ElmSubstat(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "Unom",
+        "pRA",
+        "for_name",
+        "sShort",
+        "sType",
+        "GPSlat",
+        "GPSlon",
+    )
     element_type = 'ElmSubstat'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -1678,6 +2077,33 @@ class ElmSubstat(DGSElement):
 
 
 class ElmSym(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "ngnum",
+        "i_mot",
+        "chr_name",
+        "outserv",
+        "pgini",
+        "qgini",
+        "usetp",
+        "iv_mode",
+        "q_min",
+        "q_max",
+        "Pmin_uc",
+        "Pmax_uc",
+        "iqtype",
+        "for_name",
+        "cCategory",
+        "cosgini",
+        "pf_recap",
+        "av_mode",
+        "phtech",
+        "ip_ctrl",
+        "c_pmod",
+    )
     element_type = 'ElmSym'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -1754,6 +2180,28 @@ class ElmTerm(DGSElement):
     *  vtarget: Voltage Control: Target Voltage in p.u.
 
     """
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "iUsage",
+        "uknom",
+        "chr_name",
+        "outserv",
+        "phtech",
+        "for_name",
+        "systype",
+        "unknom",
+        "iminus",
+        "GPSlat",
+        "GPSlon",
+        "vtarget",
+        "m_u",
+        "m_phiu",
+        "cpArea",
+        "cpZone",
+    )
     element_type = 'ElmTerm'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -1802,6 +2250,32 @@ class ElmTerm(DGSElement):
 
 
 class ElmTr2(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "outserv",
+        "nntap",
+        "sernum",
+        "constr",
+        "chr_name",
+        "cgnd_h",
+        "cgnd_l",
+        "i_auto",
+        "ntrcn",
+        "ratfac",
+        "for_name",
+        "ntnum",
+        "usetp",
+        "usp_low",
+        "usp_up",
+        "t2ldc",
+        "mTaps_SIZEROW",
+        "mTaps_SIZECOL",
+        "i_eahv",
+        "i_ealv",
+    )
     element_type = 'ElmTr2'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -1860,6 +2334,53 @@ class ElmTr2(DGSElement):
 
 
 class ElmTr3(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "outserv",
+        "nt3nm",
+        "n3tap_h",
+        "n3tap_m",
+        "n3tap_l",
+        "chr_name",
+        "for_name",
+        "i_auto_hl",
+        "ictrlside",
+        "ntrcn",
+        "t3ldc",
+        "usetp",
+        "usp_low",
+        "usp_up",
+        "mTaps_SIZEROW",
+        "mTaps_SIZECOL",
+        "mTaps_0_0",
+        "mTaps_0_1",
+        "mTaps_0_2",
+        "mTaps_0_3",
+        "mTaps_0_4",
+        "mTaps_0_5",
+        "mTaps_0_6",
+        "mTaps_0_7",
+        "mTaps_1_0",
+        "mTaps_1_1",
+        "mTaps_1_2",
+        "mTaps_1_3",
+        "mTaps_1_4",
+        "mTaps_1_5",
+        "mTaps_1_6",
+        "mTaps_1_7",
+        "mTaps_2_0",
+        "mTaps_2_1",
+        "mTaps_2_2",
+        "mTaps_2_3",
+        "mTaps_2_4",
+        "mTaps_2_5",
+        "mTaps_2_6",
+        "mTaps_2_7",
+        "iMeasTap",
+    )
     element_type = 'ElmTr3'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -1957,6 +2478,97 @@ class ElmTr3(DGSElement):
         self.iMeasTap: int = 0
 
 class ElmTr4(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "outserv",
+        "nt4nm",
+        "ictrlside",
+        "ntrcn",
+        "usetp",
+        "usp_low",
+        "usp_up",
+        "chr_name",
+        "for_name",
+        "Inom_l3",
+        "Inom_l2",
+        "Inom_l1",
+        "Inom_h0",
+        "Snom_l3",
+        "Snom_l2",
+        "Snom_l1",
+        "Snom_h0",
+        "Snom_l3_a",
+        "Snom_l2_a",
+        "Snom_l1_a",
+        "Snom_h0_a",
+        "xSbasepu_lv3",
+        "xSbasepu_lv2",
+        "xSbasepu_lv1",
+        "xSbasepu_hv0",
+        "rSbasepu_lv3",
+        "rSbasepu_lv2",
+        "rSbasepu_lv1",
+        "rSbasepu_hv0",
+        "xSbasepu_l2l3",
+        "xSbasepu_l1l3",
+        "xSbasepu_l1l2",
+        "xSbasepu_h0l3",
+        "xSbasepu_h0l2",
+        "xSbasepu_h0l1",
+        "rSbasepu_l2l3",
+        "rSbasepu_l1l3",
+        "rSbasepu_l1l2",
+        "rSbasepu_h0l3",
+        "rSbasepu_h0l2",
+        "rSbasepu_h0l1",
+        "x0Sbasepu_lv3",
+        "x0Sbasepu_lv2",
+        "x0Sbasepu_lv1",
+        "x0Sbasepu_hv0",
+        "r0Sbasepu_lv3",
+        "r0Sbasepu_lv2",
+        "r0Sbasepu_lv1",
+        "r0Sbasepu_hv0",
+        "bSbasepu",
+        "pT_lv3",
+        "pT_lv2",
+        "pT_lv1",
+        "pT_hv0",
+        "i_tapini_lv3",
+        "i_tapini_lv2",
+        "i_tapini_lv1",
+        "i_tapini_hv0",
+        "ntap_h0",
+        "ntap_l1",
+        "ntap_l2",
+        "ntap_l3",
+        "busl3",
+        "busl2",
+        "busl1",
+        "bush0",
+        "cpSubstat",
+        "cpArea",
+        "cpZone",
+        "cpGrid",
+        "GPSlon",
+        "GPSlat",
+        "maxload",
+        "ratfac_l3",
+        "ratfac_l2",
+        "ratfac_l1",
+        "ratfac_h0",
+        "desc_0",
+        "desc_1",
+        "desc_2",
+        "desc_3",
+        "commissionDate",
+        "sernum",
+        "dat_src",
+    )
     element_type = 'ElmTr4'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -2183,6 +2795,32 @@ class ElmTr4(DGSElement):
 
 
 class ElmXnet(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "outserv",
+        "snss",
+        "rntxn",
+        "z2tz1",
+        "snssmin",
+        "rntxnmin",
+        "z2tz1min",
+        "chr_name",
+        "bustp",
+        "pgini",
+        "qgini",
+        "phiini",
+        "usetp",
+        "cgnd",
+        "iintgnd",
+        "ikssmin",
+        "r0tx0",
+        "r0tx0min",
+        "cmax",
+        "xd",
+        "xq",
+    )
     element_type = 'ElmXnet'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -2239,6 +2877,14 @@ class ElmXnet(DGSElement):
 
 
 class ElmZone(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "for_name",
+        "fold_id",
+        "icolor",
+        "curscale",
+    )
     element_type = 'ElmZone'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -2259,6 +2905,14 @@ class ElmZone(DGSElement):
 
 
 class ElmArea(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "icolor",
+        "for_name",
+    )
     element_type = 'ElmArea'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
@@ -2279,6 +2933,11 @@ class ElmArea(DGSElement):
 
 
 class General(DGSElement):
+    __slots__ = (
+        "ID",
+        "Descr",
+        "Val",
+    )
     element_type = 'General'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -2293,6 +2952,22 @@ class General(DGSElement):
 
 
 class BlkDef(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "isMacro",
+        "level",
+        "outputs",
+        "inputs",
+        "states",
+        "params",
+        "upper_limit_params",
+        "lower_limit_params",
+        "internals",
+        "equations_raw",
+    )
     element_type = 'BlkDef'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier of the block definition', py_name='ID'),
@@ -2403,6 +3078,12 @@ class BlkDef(DGSElement):
 
 
 class IntFolder(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "iopt_typ",
+    )
     element_type = 'IntFolder'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -2419,6 +3100,13 @@ class IntFolder(DGSElement):
 
 
 class IntRef(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "obj_id",
+    )
     element_type = 'IntRef'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier of the internal reference object', py_name='ID'),
@@ -2437,6 +3125,12 @@ class IntRef(DGSElement):
 
 
 class IntTemplate(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+    )
     element_type = 'IntTemplate'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier of the internal template', py_name='ID'),
@@ -2453,6 +3147,12 @@ class IntTemplate(DGSElement):
 
 
 class Matrix(DGSElement):
+    __slots__ = (
+        "ID",
+        "MatRow",
+        "MatColumn",
+        "Val",
+    )
     element_type = 'Matrix'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Identifier of the matrix object', py_name='ID'),
@@ -2469,6 +3169,25 @@ class Matrix(DGSElement):
 
 
 class IntGrf(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "iCol",
+        "iVis",
+        "iLevel",
+        "rCenterX",
+        "rCenterY",
+        "sSymNam",
+        "pDataObj",
+        "iRot",
+        "rSizeX",
+        "rSizeY",
+        "sAttr_SIZEROW",
+        "sAttr_0",
+        "sAttr_1",
+        "sAttr_2",
+    )
     element_type = 'IntGrf'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -2511,6 +3230,33 @@ class IntGrf(DGSElement):
 
 
 class IntGrfcon(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "rX_SIZEROW",
+        "rX_0",
+        "rX_1",
+        "rX_2",
+        "rX_3",
+        "rY_SIZEROW",
+        "rY_0",
+        "rY_1",
+        "rY_2",
+        "rY_3",
+        "rX_4",
+        "rX_5",
+        "rX_6",
+        "rX_7",
+        "rX_8",
+        "rX_9",
+        "rY_4",
+        "rY_5",
+        "rY_6",
+        "rY_7",
+        "rY_8",
+        "rY_9",
+    )
     element_type = 'IntGrfcon'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -2569,6 +3315,15 @@ class IntGrfcon(DGSElement):
 
 
 class IntGrfnet(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "snap_on",
+        "grid_on",
+        "ortho_on",
+        "pDataFolder",
+    )
     element_type = 'IntGrfnet'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -2591,6 +3346,17 @@ class IntGrfnet(DGSElement):
 
 
 class RelFuse(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "typ_id",
+        "chr_name",
+        "aUsage",
+        "nphase",
+        "on_off",
+        "outserv",
+    )
     element_type = 'RelFuse'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -2617,6 +3383,19 @@ class RelFuse(DGSElement):
 
 
 class StaCubic(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "chr_name",
+        "obj_bus",
+        "obj_id",
+        "for_name",
+        "it2p1",
+        "it2p2",
+        "it2p3",
+        "cPhInfo",
+    )
     element_type = 'StaCubic'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -2647,6 +3426,16 @@ class StaCubic(DGSElement):
 
 
 class StaSwitch(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "on_off",
+        "typ_id",
+        "iUse",
+        "for_name",
+        "aUsage",
+    )
     element_type = 'StaSwitch'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -2671,6 +3460,17 @@ class StaSwitch(DGSElement):
 
 
 class StaCt(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "chr_name",
+        "ptapset",
+        "stapset",
+        "outserv",
+        "typ_id",
+    )
     element_type = 'StaCt'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier of the current transformer', py_name='ID'),
@@ -2932,6 +3732,17 @@ class ElmPhi(DGSElement):
 
 
 class StaVt(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "chr_name",
+        "ptapset",
+        "stapset",
+        "typ_id",
+        "outserv",
+    )
     element_type = 'StaVt'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier of the voltage transformer', py_name='ID'),
@@ -2958,6 +3769,16 @@ class StaVt(DGSElement):
 
 
 class TypSwitch(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "Ron",
+        "Xon",
+        "InomA",
+        "InomB",
+        "for_name",
+    )
     element_type = 'TypSwitch'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier of the breaker or switch type', py_name='ID'),
@@ -3024,6 +3845,31 @@ class TypSwitch(DGSElement):
 
 
 class TypAsmo(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "i_mode",
+        "aiazn",
+        "amazn",
+        "amkzn",
+        "anend",
+        "cosn",
+        "effic",
+        "frequ",
+        "i_cage",
+        "nppol",
+        "pgn",
+        "ugn",
+        "xmrtr",
+        "xstr",
+        "sgn",
+        "nslty",
+        "rstr",
+        "xm",
+        "rrtrA",
+        "xrtrA",
+    )
     element_type = 'TypAsmo'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -3078,6 +3924,14 @@ class TypAsmo(DGSElement):
 
 
 class TypFuse(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "frq",
+        "irat",
+        "urat",
+    )
     element_type = 'TypFuse'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -3098,6 +3952,36 @@ class TypFuse(DGSElement):
 
 
 class TypLne(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "uline",
+        "sline",
+        "aohl_",
+        "aohl_declared",
+        "rline",
+        "xline",
+        "cline",
+        "rline0",
+        "xline0",
+        "cline0",
+        "rtemp",
+        "Ithr",
+        "chr_name",
+        "nlnph",
+        "nneutral",
+        "for_name",
+        "InomAir",
+        "cohl_",
+        "cohl_declared",
+        "tmax",
+        "systp",
+        "frnom",
+        "mlei",
+        "bline",
+        "bline0",
+    )
     element_type = 'TypLne'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -3205,6 +4089,24 @@ class TypLne(DGSElement):
 
 
 class TypLod(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "kpu",
+        "kqu",
+        "systp",
+        "phtech",
+        "for_name",
+        "aP",
+        "bP",
+        "kpu0",
+        "kpu1",
+        "aQ",
+        "bQ",
+        "kqu0",
+        "kqu1",
+    )
     element_type = 'TypLod'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -3245,6 +4147,43 @@ class TypLod(DGSElement):
 
 
 class TypSym(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "sgn",
+        "ugn",
+        "cosn",
+        "xd",
+        "xq",
+        "xdsss",
+        "rstr",
+        "xstr",
+        "xdsat",
+        "satur",
+        "Q_min",
+        "Q_max",
+        "q_min",
+        "q_max",
+        "for_name",
+        "nphase",
+        "nslty",
+        "x0sy",
+        "r0sy",
+        "x2sy",
+        "r2sy",
+        "iopt_data",
+        "xds",
+        "xqs",
+        "xl",
+        "xdss",
+        "xqss",
+        "xrlq",
+        "tds",
+        "tqs",
+        "tdss",
+        "tqss",
+    )
     element_type = 'TypSym'
 
     # We comment out the dynamic stuff because it will trigger errors at import
@@ -3325,6 +4264,36 @@ class TypSym(DGSElement):
 
 
 class TypTr2(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "strn",
+        "frnom",
+        "utrn_h",
+        "utrn_l",
+        "uktr",
+        "pcutr",
+        "uk0tr",
+        "ur0tr",
+        "tr2cn_h",
+        "tr2cn_l",
+        "nt2ag",
+        "curmg",
+        "pfe",
+        "zx0hl_n",
+        "tap_side",
+        "dutap",
+        "phitr",
+        "nntap0",
+        "ntpmn",
+        "ntpmx",
+        "manuf",
+        "chr_name",
+        "for_name",
+        "nt2ph",
+        "itapch",
+    )
     element_type = 'TypTr2'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -3389,6 +4358,55 @@ class TypTr2(DGSElement):
 
 
 class TypTr3(DGSElement):
+    __slots__ = (
+        "ID",
+        "loc_name",
+        "fold_id",
+        "curm3",
+        "du3tp_h",
+        "du3tp_l",
+        "du3tp_m",
+        "n3tmn_h",
+        "n3tmn_l",
+        "n3tmn_m",
+        "n3tmx_h",
+        "n3tmx_l",
+        "n3tmx_m",
+        "n3tp0_h",
+        "n3tp0_l",
+        "n3tp0_m",
+        "nt3ag_h",
+        "nt3ag_l",
+        "nt3ag_m",
+        "pcut3_h",
+        "pcut3_l",
+        "pcut3_m",
+        "pfe",
+        "ph3tr_h",
+        "ph3tr_l",
+        "ph3tr_m",
+        "strn3_h",
+        "strn3_l",
+        "strn3_m",
+        "tr3cn_h",
+        "tr3cn_l",
+        "tr3cn_m",
+        "uk0hl",
+        "uk0hm",
+        "uk0ml",
+        "uktr3_h",
+        "uktr3_l",
+        "uktr3_m",
+        "ur0hl",
+        "ur0hm",
+        "ur0ml",
+        "utrn3_h",
+        "utrn3_l",
+        "utrn3_m",
+        "for_name",
+        "itapos",
+        "i3loc",
+    )
     element_type = 'TypTr3'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -3504,6 +4522,128 @@ class TypTr3(DGSElement):
         self.i3loc: int = 0
 
 class TypTr4(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "inputData",
+        "pfe",
+        "chr_name",
+        "for_name",
+        "dat_src",
+        "trcon_h0",
+        "trcon_l1",
+        "trcon_l2",
+        "trcon_l3",
+        "vecgrp",
+        "ansiclass",
+        "manuf",
+        "appr_modby",
+        "appr_modif",
+        "sn_h0",
+        "sn_l1",
+        "sn_l2",
+        "sn_l3",
+        "un_h0",
+        "un_l1",
+        "un_l2",
+        "un_l3",
+        "uk_h0l1",
+        "uk_h0l2",
+        "uk_h0l3",
+        "uk_l1l2",
+        "uk_l1l3",
+        "uk_l2l3",
+        "pcu_h0l1",
+        "pcu_h0l2",
+        "pcu_h0l3",
+        "pcu_l1l2",
+        "pcu_l1l3",
+        "pcu_l2l3",
+        "uk_h0",
+        "uk_l1",
+        "uk_l2",
+        "uk_l3",
+        "pcu_h0",
+        "pcu_l1",
+        "pcu_l2",
+        "pcu_l3",
+        "curmag",
+        "cur0mag",
+        "ntapmin_h0",
+        "ntapmin_l1",
+        "ntapmin_l2",
+        "ntapmin_l3",
+        "ntapmax_h0",
+        "ntapmax_l1",
+        "ntapmax_l2",
+        "ntapmax_l3",
+        "ntapneu_h0",
+        "ntapneu_l1",
+        "ntapneu_l2",
+        "ntapneu_l3",
+        "dutap_h0",
+        "dutap_l1",
+        "dutap_l2",
+        "dutap_l3",
+        "phitr_h0",
+        "phitr_l1",
+        "phitr_l2",
+        "phitr_l3",
+        "oltc_h0",
+        "oltc_l1",
+        "oltc_l2",
+        "oltc_l3",
+        "uk0_h0l1",
+        "uk0_h0l2",
+        "uk0_h0l3",
+        "uk0_l1l2",
+        "uk0_l1l3",
+        "uk0_l2l3",
+        "ukr0_h0l1",
+        "ukr0_h0l2",
+        "ukr0_h0l3",
+        "ukr0_l1l2",
+        "ukr0_l1l3",
+        "ukr0_l2l3",
+        "ukr_h0l1",
+        "ukr_h0l2",
+        "ukr_h0l3",
+        "ukr_l1l2",
+        "ukr_l1l3",
+        "ukr_l2l3",
+        "xtor_h0l1",
+        "xtor_h0l2",
+        "xtor_h0l3",
+        "xtor_l1l2",
+        "xtor_l1l3",
+        "xtor_l2l3",
+        "r1pu_h0l1",
+        "r1pu_h0l2",
+        "r1pu_h0l3",
+        "r1pu_l1l2",
+        "r1pu_l1l3",
+        "r1pu_l2l3",
+        "x1pu_h0l1",
+        "x1pu_h0l2",
+        "x1pu_h0l3",
+        "x1pu_l1l2",
+        "x1pu_l1l3",
+        "x1pu_l2l3",
+        "r0pu_h0",
+        "r0pu_l1",
+        "r0pu_l2",
+        "r0pu_l3",
+        "x0pu_h0",
+        "x0pu_l1",
+        "x0pu_l2",
+        "x0pu_l3",
+        "bm1",
+        "gm1",
+        "desc_0",
+        "doc_id",
+    )
     element_type = 'TypTr4'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
@@ -3821,6 +4961,21 @@ def _dgs_get(parts: List[str], header_map: Dict[str, int], key: str) -> str | No
 
 class TypCon(DGSElement):
     """PowerFactory conductor type (TypCon) mapped to VeraGrid Wire."""
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "uline",
+        "sline",
+        "ncsub",
+        "dsubc",
+        "rpha",
+        "diaco",
+        "diatub",
+        "mlei",
+        "iModel",
+    )
 
     element_type = 'TypCon'
 
@@ -3858,6 +5013,52 @@ class TypCon(DGSElement):
 
 class TypCab(DGSElement):
     """PowerFactory geometrical single-core cable type."""
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "uline",
+        "rpha",
+        "diaCon",
+        "diaTube",
+        "diaCab",
+        "thSht",
+        "has_arm",
+        "cHasEl_2",
+        "thIns_SIZEROW",
+        "thIns_0",
+        "thIns_1",
+        "thIns_2",
+        "thIns",
+        "crho_SIZEROW",
+        "crho_0",
+        "crho_1",
+        "crho_2",
+        "crho",
+        "Cf_SIZEROW",
+        "Cf_0",
+        "Cf_1",
+        "Cf_2",
+        "Cf",
+        "cepsr_SIZEROW",
+        "cepsr_0",
+        "cepsr_1",
+        "cepsr_2",
+        "cepsr",
+        "ctand_SIZEROW",
+        "ctand_0",
+        "ctand_1",
+        "ctand_2",
+        "ctand",
+        "my_SIZEROW",
+        "my_0",
+        "my_1",
+        "my_2",
+        "my",
+        "ks",
+        "kp",
+    )
 
     element_type = 'TypCab'
     properties_list = list((
@@ -3971,6 +5172,37 @@ class TypCab(DGSElement):
 
 class TypCabsys(DGSElement):
     """PowerFactory geometrical cable-system type."""
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "systp",
+        "frnom",
+        "iopt_bur",
+        "nlcir",
+        "cnphas",
+        "pcab_c_SIZEROW",
+        "pcab_c_0",
+        "pcab_c",
+        "nphas_SIZEROW",
+        "nphas_0",
+        "nphas",
+        "xy_c_SIZEROW",
+        "xy_c_SIZECOL",
+        "xy_c_0_0",
+        "xy_c_0_1",
+        "xy_c_0_2",
+        "xy_c_0_3",
+        "xy_c_0_4",
+        "xy_c_0_5",
+        "xy_c",
+        "cGearth",
+        "rhoEarth",
+        "dInom_SIZEROW",
+        "dInom_0",
+        "dInom",
+    )
 
     element_type = 'TypCabsys'
     properties_list = list((
@@ -4095,6 +5327,18 @@ class TypCabsys(DGSElement):
 
 
 class TypCt(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "primtaps_SIZEROW",
+        "primtaps_0",
+        "sectaps_SIZEROW",
+        "sectaps_0",
+        "primtaps",
+        "sectaps",
+    )
     element_type = 'TypCt'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier of the current transformer type', py_name='ID'),
@@ -4141,6 +5385,26 @@ class TypCt(DGSElement):
 
 
 class TypGeo(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "nlear",
+        "nlcir",
+        "xy_e_SIZEROW",
+        "xy_e_SIZECOL",
+        "xy_c_SIZEROW",
+        "xy_c_SIZECOL",
+        "xy_c_0_0",
+        "xy_c_0_1",
+        "xy_c_0_2",
+        "xy_c_0_3",
+        "xy_c_0_4",
+        "xy_c_0_5",
+        "xy_c_0_6",
+        "xy_c_row_0",
+    )
     element_type = 'TypGeo'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier of the tower geometry type', py_name='ID'),
@@ -4218,6 +5482,14 @@ class TypGeo(DGSElement):
 
 
 class TypVt(DGSElement):
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "primtaps_SIZEROW",
+        "primtaps",
+    )
     element_type = 'TypVt'
     properties_list = [
         DgsProperty('ID', 'a:40', 'Unique identifier of the voltage transformer type', py_name='ID'),
@@ -4311,6 +5583,55 @@ class TypVt(DGSElement):
 
 class TypTow(DGSElement):
     """PowerFactory tower type (TypTow) mapped to VeraGrid OverheadLineType."""
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "frnom",
+        "nlear",
+        "nlcir",
+        "gearth",
+        "i_mode",
+        "pcond_e_SIZEROW",
+        "pcond_e",
+        "nphas_SIZEROW",
+        "pcond_c",
+        "pcond_c_SIZEROW",
+        "nphas",
+        "ktrto_SIZEROW",
+        "ktrto",
+        "xy_e_SIZEROW",
+        "xy_e_SIZECOL",
+        "xy_e",
+        "xy_c_SIZEROW",
+        "xy_c_SIZECOL",
+        "xy_c",
+        "R_c0_SIZEROW",
+        "R_c0_SIZECOL",
+        "R_c0",
+        "X_c0_SIZEROW",
+        "X_c0_SIZECOL",
+        "X_c0",
+        "R_c1_SIZEROW",
+        "R_c1_SIZECOL",
+        "R_c1",
+        "X_c1_SIZEROW",
+        "X_c1_SIZECOL",
+        "X_c1",
+        "B_c0_SIZEROW",
+        "B_c0_SIZECOL",
+        "B_c0",
+        "B_c1_SIZEROW",
+        "B_c1_SIZECOL",
+        "B_c1",
+        "G_c0_SIZEROW",
+        "G_c0_SIZECOL",
+        "G_c0",
+        "G_c1_SIZEROW",
+        "G_c1_SIZECOL",
+        "G_c1",
+    )
 
     element_type = 'TypTow'
 
@@ -4676,6 +5997,18 @@ class TypTow(DGSElement):
 
 class ElmTow(DGSElement):
     """PowerFactory line coupling (ElmTow) that binds ElmLne circuits to a tower geometry."""
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "fold_id",
+        "outserv",
+        "i_dist",
+        "ngeo",
+        "pGeo",
+        "plines",
+        "dpolar",
+    )
 
     element_type = 'ElmTow'
 
