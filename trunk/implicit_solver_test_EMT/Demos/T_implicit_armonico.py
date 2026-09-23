@@ -87,7 +87,7 @@ def run_test() -> None:
     custom_x0[idx_x] = 1.0
     custom_x0[idx_v] = 0.0
 
-    problem.get_x0 = lambda: custom_x0.copy()
+    problem.set_x0(custom_x0)
 
     # --- CASE 1: Trapezoidal Method (A-Stable) ---
     print("\n[1] Running Implicit Solver (Method: Trapezoidal)...")

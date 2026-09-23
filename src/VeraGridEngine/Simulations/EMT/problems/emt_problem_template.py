@@ -1414,6 +1414,34 @@ class EmtProblemTemplate(ABC):
                 pass
         return dx
 
+    def set_x0(self, x0: Vec) -> None:
+        """
+        Set the initial state vector guess from an array.
+
+        :param x0: Initial state vector.
+        :type x0: Vec
+        :return: None.
+        """
+        for uid, idx in self._uid2idx_vars.items():
+            if idx < len(x0):
+                self.init_guess[uid] = float(x0[idx])
+            else:
+                pass
+
+    def set_dx0(self, dx0: Vec) -> None:
+        """
+        Set the initial differential vector guess from an array.
+
+        :param dx0: Initial differential vector.
+        :type dx0: Vec
+        :return: None.
+        """
+        for uid, idx in self._uid2idx_diff.items():
+            if idx < len(dx0):
+                self.diff_init_guess[uid] = float(dx0[idx])
+            else:
+                pass
+
     def def_event_params_fn(
             self,
             ev_param: Vec,
