@@ -842,6 +842,8 @@ class PseudoTransientInitProblem:
         "_equilibrium_input_update_fn",
         "_n_states",
         "_n_vars",
+        "_uid2idx_params",
+        "_uid2idx_event_params",
     )
 
     def __init__(self,
@@ -1089,6 +1091,9 @@ class PseudoTransientInitProblem:
         self._compile_event_params_function(VARIABLE_PARAMS_NAME, "glob_time")
         self.update_variable_params(0.0)
         self.update_variable_params(0.0)
+
+        self._uid2idx_params: Dict[int, int] = dict()
+        self._uid2idx_event_params: Dict[int, int] = dict()
 
     def _ensure_variable_parameter(self, var: Var) -> int:
         """

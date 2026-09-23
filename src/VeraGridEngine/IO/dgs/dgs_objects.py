@@ -2201,6 +2201,7 @@ class ElmTerm(DGSElement):
         "m_phiu",
         "cpArea",
         "cpZone",
+        "bustp"
     )
     element_type = 'ElmTerm'
     properties_list = [
@@ -2247,6 +2248,7 @@ class ElmTerm(DGSElement):
         self.m_phiu: float = 0.0
         self.cpArea: str = ""
         self.cpZone: str = ""
+        self.bustp = ""
 
 
 class ElmTr2(DGSElement):
@@ -3980,7 +3982,9 @@ class TypLne(DGSElement):
         "frnom",
         "mlei",
         "bline",
+        "gline",
         "bline0",
+        "gline0",
     )
     element_type = 'TypLne'
     properties_list = [
@@ -4021,7 +4025,9 @@ class TypLne(DGSElement):
         DgsProperty('frnom', 'r', 'Nominal Frequency in Hz', py_name='frnom', optional=True),
         DgsProperty('mlei', 'a:2', 'Line Model Type Code', py_name='mlei'),
         DgsProperty('bline', 'r', 'Positive-Sequence Susceptance in uS/km', py_name='bline', optional=True),
+        DgsProperty('gline', 'r', 'Positive-Sequence Conductance in uS/km', py_name='gline', optional=True),
         DgsProperty('bline0', 'r', 'Zero-Sequence Susceptance in uS/km', py_name='bline0'),
+        DgsProperty('gline0', 'r', 'Zero-Sequence Conductance in uS/km', py_name='gline0'),
     ]
 
     def __init__(self) -> None:
@@ -4052,7 +4058,9 @@ class TypLne(DGSElement):
         self.frnom: float | None = None
         self.mlei: str = ""
         self.bline: float | None = None
+        self.gline: float | None = None
         self.bline0: float = 0.0
+        self.gline0: float = 0.0
 
     @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]) -> TypLne:
