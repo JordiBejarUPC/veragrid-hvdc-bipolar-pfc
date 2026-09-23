@@ -2848,28 +2848,13 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
         :param t: Simulation time.
         :return: Updated runtime parameter vector.
         """
-        runtime_continuous_eqs: List[Expr | Const]
-        runtime_mode_slice: slice
-
-        if "_runtime_continuous_eqs" in self.__dict__:
-            runtime_continuous_eqs = self._runtime_continuous_eqs
-        else:
-            if self._event_params_fn is None:
-                return ev_param
-            else:
-                updated = self._event_params_fn(ev_param, t)
-                updated = self._event_params_fn(updated, t)
-                return updated
+        runtime_continuous_eqs: List[Expr | Const] = self._runtime_continuous_eqs
+        runtime_mode_slice: slice = self._runtime_mode_slice
 
         n_continuous = len(runtime_continuous_eqs)
 
         if n_continuous == 0 or self._event_params_fn is None:
             return ev_param
-
-        if "_runtime_mode_slice" in self.__dict__:
-            runtime_mode_slice = self._runtime_mode_slice
-        else:
-            runtime_mode_slice = slice(0, 0)
 
         mode_snapshot: Optional[Vec]= None
         if runtime_mode_slice.start != runtime_mode_slice.stop:
