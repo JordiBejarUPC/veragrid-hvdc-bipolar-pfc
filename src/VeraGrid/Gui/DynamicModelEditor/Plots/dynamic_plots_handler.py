@@ -1543,6 +1543,39 @@ def _build_relative_time_axis(time_array: np.ndarray | pd.DatetimeIndex) -> np.n
     return relative_time_axis
 
 
+def _remove_dynamic_time_axis_margins(plot_dialogue: PlotDialogue,
+                                      time_values: np.ndarray) -> None:
+    """
+    Fit an RMS or EMT time-series plot exactly to its finite time samples.
+
+    :param plot_dialogue: Dynamic-results plot whose horizontal axis is temporal.
+    :param time_values: Elapsed simulation times represented by the plotted curves.
+    :return: None.
+
+    The shared chart deliberately keeps a minimum numeric margin for generic
+    plots. That margin is much wider than a short EMT simulation, so dynamic
+    time-series callers replace only the horizontal range after adding data.
+    """
+    # Ignore invalid time samples so one malformed coordinate cannot discard
+    # an otherwise usable temporal range.
+    finite_time_values: np.ndarray = np.asarray(time_values, dtype=float)
+    finite_time_values = finite_time_values[np.isfinite(finite_time_values)]
+
+    if len(finite_time_values) > 0:
+        minimum_time: float = float(np.min(finite_time_values))
+        maximum_time: float = float(np.max(finite_time_values))
+
+        # A non-degenerate range can be applied without inventing any space
+        # before or after the simulated interval. Single-point traces retain
+        # the chart fallback because a zero-width axis cannot be rendered.
+        if maximum_time > minimum_time:
+            plot_dialogue.chart.axis_x.set_range(minimum_time, maximum_time)
+        else:
+            pass
+    else:
+        pass
+
+
 def collect_dynamic_model_plot_variables(model: Block,
                                          simulation_type: PlotSimulationType | str) -> List[Var]:
     """
@@ -5378,6 +5411,10 @@ class DynamicsResultsHandler:
             y_axis_title="",
         )
         if accepted:
+            _remove_dynamic_time_axis_margins(
+                plot_dialogue=plot_dialogue,
+                time_values=x_values,
+            )
             self._show_plot_dialogue(plot_dialogue=plot_dialogue)
         else:
             plot_dialogue.reject()
@@ -5471,6 +5508,10 @@ class DynamicsResultsHandler:
                 pass
 
         if plotted_anything:
+            _remove_dynamic_time_axis_margins(
+                plot_dialogue=plot_dialogue,
+                time_values=_build_relative_time_axis(time_array=self.results.time_array),
+            )
             chart.setTitle(plot_group_name)
             chart.set_axis_titles('Time [s]', '')
             self._show_plot_dialogue(plot_dialogue=plot_dialogue)
@@ -5569,6 +5610,32 @@ class DynamicsResultsHandler:
                 chart.add_scatter_series(name='', x_values=x_plot, y_values=y_plot, color='#2563eb')
             else:
                 chart.add_line_series(name='', x_values=x_plot, y_values=y_plot, color='#2563eb')
+
+            # Dynamic XY coordinates can occupy a very small numeric interval.
+            # The generic chart keeps a half-unit minimum margin for ordinary
+            # plots, which can leave more empty space than visible data here.
+            # Use a proportional margin so centring the view restores a tight,
+            # symmetric frame around every available XY coordinate.
+            x_minimum: float = float(np.min(x_plot))
+            x_maximum: float = float(np.max(x_plot))
+            x_span: float = x_maximum - x_minimum
+            x_padding: float
+            if x_span > 0.0:
+                x_padding = x_span * 0.05
+            else:
+                x_padding = max(abs(x_minimum), 1.0) * 0.05
+
+            y_minimum: float = float(np.min(y_plot))
+            y_maximum: float = float(np.max(y_plot))
+            y_span: float = y_maximum - y_minimum
+            y_padding: float
+            if y_span > 0.0:
+                y_padding = y_span * 0.05
+            else:
+                y_padding = max(abs(y_minimum), 1.0) * 0.05
+
+            chart.axis_x.set_range(x_minimum - x_padding, x_maximum + x_padding)
+            chart.axis_y.set_range(y_minimum - y_padding, y_maximum + y_padding)
             chart.setTitle(plot_group.get_name())
             chart.set_axis_titles(x_label, y_label)
             self._show_plot_dialogue(plot_dialogue=plot_dialogue)
@@ -6165,6 +6232,10 @@ class DynamicsResultsHandler:
                     y_axis_title='',
                 )
                 if accepted:
+                    _remove_dynamic_time_axis_margins(
+                        plot_dialogue=plot_dialogue,
+                        time_values=time_values,
+                    )
                     self._show_plot_dialogue(plot_dialogue=plot_dialogue)
                     return True
                 else:

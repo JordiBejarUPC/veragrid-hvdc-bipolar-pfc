@@ -9,6 +9,7 @@ import numpy as np
 from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.Plots.dynamic_plots_handler import DynamicsResultsHandler
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DeviceType, DynamicPlotEntryRole, DynamicPlotMode
@@ -102,6 +103,17 @@ def test_dynamic_native_dialogs_survive_repeated_plot_and_close_cycles(
             role=DynamicPlotEntryRole.Y_AXIS,
         )
         assert handler.plot_group(plot_group_name=f'XY {cycle_index}')
+        xy_chart: GraphsWidget = handler._open_plot_dialogues[-1].chart
+        x_minimum: float
+        x_maximum: float
+        x_minimum, x_maximum = xy_chart.axis_x.get_range()
+        y_minimum: float
+        y_maximum: float
+        y_minimum, y_maximum = xy_chart.axis_y.get_range()
+        assert np.isclose(x_minimum, 0.985)
+        assert np.isclose(x_maximum, 1.315)
+        assert np.isclose(y_minimum, 1.94)
+        assert np.isclose(y_maximum, 3.26)
         handler.plot_series(series=first_series)
         application.processEvents()
 
