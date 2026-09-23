@@ -178,6 +178,7 @@ class ChartSeries:
         "_x_data",
         "_y_data",
         "_color",
+        "_dashed",
         "_point_tooltips",
         "_visible",
         "_x_is_monotonic",
@@ -191,7 +192,8 @@ class ChartSeries:
                  color: QtGui.QColor,
                  point_tooltips: Sequence[str] | None = None,
                  copy_buffers: bool = True,
-                 x_is_monotonic: bool | None = None) -> None:
+                 x_is_monotonic: bool | None = None,
+                 dashed: bool = False) -> None:
         """Create a series whose buffers are owned by this Python object.
 
         :param series_type: Rendering primitive for the point buffers.
@@ -202,6 +204,7 @@ class ChartSeries:
         :param point_tooltips: Optional text paired with scatter points.
         :param copy_buffers: Whether data belongs to a caller and must be copied.
         :param x_is_monotonic: Known X ordering, when already established by a batch owner.
+        :param dashed: Whether a line series uses a dashed stroke.
         :return: None.
         """
         self._series_type: ChartSeriesType = series_type
@@ -209,6 +212,7 @@ class ChartSeries:
         self._x_data: np.ndarray = np.zeros(0, dtype=float)
         self._y_data: np.ndarray = np.zeros(0, dtype=float)
         self._color: QtGui.QColor = QtGui.QColor(color)
+        self._dashed: bool = dashed
         self._point_tooltips: list[str] = list()
         self._visible: bool = True
         self._x_is_monotonic: bool = True
@@ -255,6 +259,13 @@ class ChartSeries:
         :return: Series colour.
         """
         return QtGui.QColor(self._color)
+
+    def get_dashed(self) -> bool:
+        """Return whether this line uses a dashed stroke.
+
+        :return: Whether the painter renders this series with dashes.
+        """
+        return self._dashed
 
     def get_visible(self) -> bool:
         """Return whether the painter must draw this series.
@@ -1234,13 +1245,15 @@ class GraphsWidget(QtWidgets.QWidget):
                         name: str,
                         x_values: Sequence[float] | np.ndarray,
                         y_values: Sequence[float] | np.ndarray,
-                        color: str | None = None) -> None:
+                        color: str | None = None,
+                        dashed: bool = False) -> None:
         """Add one line series from paired finite numeric values.
 
         :param name: Series name used by the legend.
         :param x_values: Horizontal data values.
         :param y_values: Vertical data values.
         :param color: Optional line colour in Qt colour syntax.
+        :param dashed: Whether the line uses a dashed stroke.
         :return: None.
         """
         x_data: np.ndarray
@@ -1254,6 +1267,7 @@ class GraphsWidget(QtWidgets.QWidget):
             color=color,
             is_datetime=is_datetime,
             point_tooltips=None,
+            dashed=dashed,
         )
 
     def add_scatter_series(self,
@@ -1280,6 +1294,7 @@ class GraphsWidget(QtWidgets.QWidget):
             color=color,
             is_datetime=False,
             point_tooltips=point_tooltips,
+            dashed=False,
         )
 
     def set_series_point_tooltips(self, series_index: int, point_tooltips: Sequence[str] | None) -> bool:
@@ -1899,7 +1914,8 @@ class GraphsWidget(QtWidgets.QWidget):
             series: ChartSeries
             for series in self._series:
                 if (series.get_visible()
-                        and series.get_series_type() not in (ChartSeriesType.LINE,)):
+                        and (series.get_series_type() not in (ChartSeriesType.LINE,)
+                             or series.get_dashed())):
                     has_visible_non_line = True
                 else:
                     pass
@@ -2210,7 +2226,8 @@ class GraphsWidget(QtWidgets.QWidget):
                        y_values: Sequence[float] | np.ndarray,
                        color: str | None,
                        is_datetime: bool,
-                       point_tooltips: Sequence[str] | None) -> None:
+                       point_tooltips: Sequence[str] | None,
+                       dashed: bool) -> None:
         """Append one validated XY series and expand the shared data range.
 
         :param series_type: Line or scatter primitive.
@@ -2220,6 +2237,7 @@ class GraphsWidget(QtWidgets.QWidget):
         :param color: Optional Qt colour name.
         :param is_datetime: Whether horizontal values represent milliseconds.
         :param point_tooltips: Optional text in source-point order.
+        :param dashed: Whether a line series uses a dashed stroke.
         :return: None.
         """
         points: tuple[np.ndarray, np.ndarray] | None = prepare_chart_points(x_values=x_data, y_values=y_values)
@@ -2238,6 +2256,7 @@ class GraphsWidget(QtWidgets.QWidget):
                 y_data=points[1],
                 color=series_color,
                 point_tooltips=retained_tooltips,
+                dashed=dashed,
             )
             self._series.append(series)
             if len(points[0]) > 0:
@@ -2581,7 +2600,11 @@ class GraphsWidget(QtWidgets.QWidget):
                 for point_index in range(1, len(indices)):
                     path.lineTo(float(x_positions[point_index]), float(y_positions[point_index]))
                 painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-                painter.setPen(QtGui.QPen(series.get_color(), 1.8))
+                if series.get_dashed():
+                    line_style: QtCore.Qt.PenStyle = QtCore.Qt.PenStyle.DashLine
+                else:
+                    line_style = QtCore.Qt.PenStyle.SolidLine
+                painter.setPen(QtGui.QPen(series.get_color(), 1.8, line_style))
                 painter.drawPath(path)
             else:
                 pass

@@ -1140,6 +1140,10 @@ class ResultsMain(SimulationsMain):
             x_matches: np.ndarray = np.where(visible_column_names == x_column_name)[0]
             y_matches = np.where(visible_column_names == selected_y_name)[0]
             if len(x_matches) == 1 and len(y_matches) == 1:
+                selected_y_config_matches: np.ndarray = np.where(y_column_names == selected_y_name)[0]
+                selected_y_scale: float = float(
+                    table.complex_plot_y_scales[int(selected_y_config_matches[0])]
+                )
                 if selected_rows is None:
                     row_indices: np.ndarray = np.arange(table.r, dtype=np.int64)
                 else:
@@ -1168,13 +1172,122 @@ class ResultsMain(SimulationsMain):
                         dialog_title: str = self.tr("Results plot")
                         plot_dialogue: PlotDialogue = PlotDialogue(title=dialog_title, parent=self)
                         chart: GraphsWidget = plot_dialogue.chart
-                        chart.add_scatter_series(
-                            name=self.tr("Modes"),
-                            x_values=finite_real_values,
-                            y_values=finite_imaginary_values,
-                            color="#0f766e",
-                            point_tooltips=tooltip_values,
+                        # Derive the viewport from the modes and the origin so
+                        # reference geometry cannot pull the useful data away.
+                        mode_x_limits: np.ndarray = np.array(
+                            [min(float(np.min(finite_real_values)), 0.0),
+                             max(float(np.max(finite_real_values)), 0.0)],
+                            dtype=float,
                         )
+                        mode_y_limits: np.ndarray = np.array(
+                            [min(float(np.min(finite_imaginary_values)), 0.0),
+                             max(float(np.max(finite_imaginary_values)), 0.0)],
+                            dtype=float,
+                        )
+                        x_span: float = float(mode_x_limits[1] - mode_x_limits[0])
+                        y_span: float = float(mode_y_limits[1] - mode_y_limits[0])
+                        if x_span > 0.0:
+                            x_padding: float = x_span * 0.05
+                        else:
+                            x_padding = 0.05
+                        if y_span > 0.0:
+                            y_padding: float = y_span * 0.05
+                        else:
+                            y_padding = 0.05
+                        plot_x_limits: np.ndarray = np.array(
+                            [mode_x_limits[0] - x_padding, mode_x_limits[1] + x_padding],
+                            dtype=float,
+                        )
+                        plot_y_limits: np.ndarray = np.array(
+                            [mode_y_limits[0] - y_padding, mode_y_limits[1] + y_padding],
+                            dtype=float,
+                        )
+
+                        # Extend both zero axes to the viewport boundary so no
+                        # visual gap remains between an axis and the plot frame.
+                        chart.add_line_series(
+                            name="",
+                            x_values=plot_x_limits,
+                            y_values=np.zeros(2, dtype=float),
+                            color="#64748b",
+                        )
+                        chart.add_line_series(
+                            name="",
+                            x_values=np.zeros(2, dtype=float),
+                            y_values=plot_y_limits,
+                            color="#64748b",
+                        )
+
+                        # A constant damping ratio is a pair of rays in the
+                        # stable half-plane. Clip the 5% rays to the mode-based
+                        # viewport instead of allowing them to affect its size.
+                        configured_damping_ratio: float | None = table.damping_ratio_boundary
+                        if (configured_damping_ratio is not None
+                                and 0.0 < configured_damping_ratio < 1.0):
+                            damping_ratio: float = configured_damping_ratio
+                        else:
+                            damping_ratio = 0.05
+                        damping_slope: float = float(
+                            selected_y_scale
+                            * np.sqrt(1.0 - damping_ratio * damping_ratio)
+                            / damping_ratio
+                        )
+                        upper_ray_x: float = max(
+                            float(plot_x_limits[0]),
+                            -float(plot_y_limits[1]) / damping_slope,
+                        )
+                        lower_ray_x: float = max(
+                            float(plot_x_limits[0]),
+                            float(plot_y_limits[0]) / damping_slope,
+                        )
+                        damping_x_values: np.ndarray = np.array(
+                            [upper_ray_x, 0.0, lower_ray_x],
+                            dtype=float,
+                        )
+                        damping_y_values: np.ndarray = np.array(
+                            [-upper_ray_x * damping_slope, 0.0, lower_ray_x * damping_slope],
+                            dtype=float,
+                        )
+                        chart.add_line_series(
+                            name=self.tr("5% damping ratio"),
+                            x_values=damping_x_values,
+                            y_values=damping_y_values,
+                            color="#94a3b8",
+                            dashed=True,
+                        )
+
+                        # Keep stable modes in the existing colour and make
+                        # positive-real modes visually identify instability.
+                        unstable_values: np.ndarray = finite_real_values > 0.0001
+                        stable_values: np.ndarray = ~unstable_values
+                        tooltip_array: np.ndarray = np.asarray(tooltip_values, dtype=str)
+                        if bool(np.any(stable_values)):
+                            chart.add_scatter_series(
+                                name=self.tr("Modes"),
+                                x_values=finite_real_values[stable_values],
+                                y_values=finite_imaginary_values[stable_values],
+                                color="#0f766e",
+                                point_tooltips=tooltip_array[stable_values],
+                            )
+                        else:
+                            pass
+                        if bool(np.any(unstable_values)):
+                            chart.add_scatter_series(
+                                name=self.tr("Unstable modes"),
+                                x_values=finite_real_values[unstable_values],
+                                y_values=finite_imaginary_values[unstable_values],
+                                color="#dc2626",
+                                point_tooltips=tooltip_array[unstable_values],
+                            )
+                        else:
+                            pass
+                        # Adding reference lines updates generic chart bounds;
+                        # restore the mode-derived viewport after all series.
+                        chart.axis_x.set_range(float(plot_x_limits[0]), float(plot_x_limits[1]))
+                        chart.axis_y.set_range(float(plot_y_limits[0]), float(plot_y_limits[1]))
+                        chart.axis_x.reset_viewport()
+                        chart.axis_y.reset_viewport()
+                        chart.redraw()
                         displayed_title: str = table.title if table.plot_title is None else table.plot_title
                         chart.setTitle(displayed_title)
                         chart.set_axis_titles(x_column_name, selected_y_name)
