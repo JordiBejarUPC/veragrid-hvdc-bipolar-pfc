@@ -15,6 +15,11 @@ from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.SolarPowerWizard.solar_power_wizard_gui import Ui_MainWindow
 from VeraGrid.Gui.pandas_model import PandasModel
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
+from VeraGrid.Gui.profile_wizard_utils import (
+    build_mapped_time_index,
+    get_longitude_time_offset,
+    remap_timestamp_to_base_year,
+)
 
 
 def get_weather_column(data: pd.DataFrame, candidates: List[str]) -> Union[np.ndarray, None]:
@@ -59,20 +64,6 @@ def parse_pv_time_array(time_array: Sequence[Union[str, datetime, pd.Timestamp]]
     else:
         message = "The time profile is empty"
         return False, pd.DatetimeIndex(list()), message
-
-
-def get_longitude_time_offset(longitude: float) -> timedelta:
-    """
-    Get the local solar time offset from longitude.
-
-    :param longitude: Site longitude in degrees.
-    :type longitude: float
-    :return: Offset to add to UTC timestamps to obtain local solar time.
-    :rtype: timedelta
-    """
-    offset_hours: float = float(longitude) / 15.0
-
-    return timedelta(hours=offset_hours)
 
 
 def get_naive_pvgis_time_index(data_index: pd.DatetimeIndex,
@@ -163,35 +154,13 @@ def get_pv_lib_weather_df(time_array: Sequence[Union[str, datetime, pd.Timestamp
             query_offset = timedelta()
 
         base_year: int = 2010 + ((int(ts1.year) - 2010) % 4)
-        s: datetime = datetime(year=base_year,
-                               month=int(ts1.month),
-                               day=int(ts1.day),
-                               hour=int(ts1.hour),
-                               minute=int(ts1.minute),
-                               second=int(ts1.second),
-                               microsecond=int(ts1.microsecond)) - query_offset
-        e: datetime = datetime(year=base_year + year_span,
-                               month=int(ts2.month),
-                               day=int(ts2.day),
-                               hour=int(ts2.hour),
-                               minute=int(ts2.minute),
-                               second=int(ts2.second),
-                               microsecond=int(ts2.microsecond)) - query_offset
+        s: datetime = remap_timestamp_to_base_year(ts=ts1, base_year=base_year) - query_offset
+        e: datetime = remap_timestamp_to_base_year(ts=ts2,
+                                                   base_year=base_year,
+                                                   start_year=int(ts1.year)) - query_offset
 
-        mapped_timestamps: List[datetime] = list()
-
-        for ts in time_index:
-            target_year: int = base_year + int(ts.year - ts1.year)
-            mapped_timestamp: datetime = datetime(year=target_year,
-                                                  month=int(ts.month),
-                                                  day=int(ts.day),
-                                                  hour=int(ts.hour),
-                                                  minute=int(ts.minute),
-                                                  second=int(ts.second),
-                                                  microsecond=int(ts.microsecond))
-            mapped_timestamps.append(mapped_timestamp)
-
-        new_ts: np.ndarray = pd.to_datetime(mapped_timestamps).asi8
+        mapped_time_index: pd.DatetimeIndex = build_mapped_time_index(time_index=time_index, base_year=base_year)
+        new_ts: np.ndarray = mapped_time_index.asi8
 
         try:
 

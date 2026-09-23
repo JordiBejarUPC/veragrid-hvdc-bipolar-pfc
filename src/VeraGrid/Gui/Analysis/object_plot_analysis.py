@@ -191,13 +191,15 @@ class FixableErrorOutOfRange:
         self.upper_limit: float = upper_limit
         self.keep_sign = keep_sign
 
-    def fix(self, logger: Logger = Logger(), fix_ts=False):
+    def fix(self, logger: Union[Logger, None] = None, fix_ts=False):
         """
 
         :param logger:
         :param fix_ts:
         :return:
         """
+        if logger is None:
+            logger = Logger()
         sign = self.value / abs(self.value)
         if self.value < self.lower_limit:
             self.grid_element.set_snapshot_value(
@@ -250,12 +252,14 @@ class FixableErrorRangeFlip:
         self.value_low = value_low
         self.value_high = value_high
 
-    def fix(self, logger: Logger = Logger(), fix_ts=False):
+    def fix(self, logger: Union[Logger, None] = None, fix_ts=False):
         """
 
         :param logger:
         :param fix_ts:
         """
+        if logger is None:
+            logger = Logger()
         if self.value_high < self.value_low:
             # flip the values
             self.grid_element.set_snapshot_value(property_name=self.property_name_low, value=self.value_high)
@@ -282,12 +286,14 @@ class FixableErrorValueCorrection:
         self.value_low = value_low
         self.value_high = value_high
 
-    def fix(self, logger: Logger = Logger(), fix_ts=False):
+    def fix(self, logger: Union[Logger, None] = None, fix_ts=False):
         """
 
         :param logger:
         :param fix_ts:
         """
+        if logger is None:
+            logger = Logger()
 
         self.grid_element.set_snapshot_value(property_name=self.property_name_low, value=self.value_low)
         self.grid_element.set_snapshot_value(property_name=self.property_name_high, value=self.value_high)
@@ -309,13 +315,15 @@ class FixableErrorNegative:
         self.property_name = property_name
         self.value = value
 
-    def fix(self, logger: Logger = Logger(), fix_ts=False):
+    def fix(self, logger: Union[Logger, None] = None, fix_ts=False):
         """
 
         :param logger:
         :param fix_ts:
         :return:
         """
+        if logger is None:
+            logger = Logger()
         # set the same value but positive
         if self.value < 0:
             self.grid_element.set_snapshot_value(property_name=self.property_name, value=-self.value)
@@ -335,13 +343,15 @@ class FixableTransformerVtaps:
         self.grid_element = grid_element
         self.maximum_difference = maximum_difference
 
-    def fix(self, logger: Logger = Logger(), fix_ts=False):
+    def fix(self, logger: Union[Logger, None] = None, fix_ts=False):
         """
 
         :param logger:
         :param fix_ts:
         :return:
         """
+        if logger is None:
+            logger = Logger()
         # set the same value but positive
         self.grid_element.fix_inconsistencies(logger=logger,
                                               maximum_difference=self.maximum_difference)
@@ -1334,7 +1344,7 @@ def grid_analysis(circuit: MultiCircuit,
                   branch_connection_voltage_tolerance: float = 0.1,
                   min_vcc: float = 8,
                   max_vcc: float = 18,
-                  logger: GridErrorLog = GridErrorLog(),
+                  logger: Union[GridErrorLog, None] = None,
                   branch_x_threshold: float = 1e-4,
                   power_flow_options: Union[PowerFlowOptions, None] = None,
                   eps_max: float = 1e20,
@@ -1359,6 +1369,8 @@ def grid_analysis(circuit: MultiCircuit,
     :param eps_min: Min epsylon value for comparison
     :return: list of fixable error objects
     """
+    if logger is None:
+        logger = GridErrorLog()
 
     # check for duplicated uuid's
     duplicates_logger = Logger()

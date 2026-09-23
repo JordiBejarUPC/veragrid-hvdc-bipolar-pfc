@@ -2014,6 +2014,8 @@ class DeviceType(Enum):
     ModellingAuthority = "Modelling Authority"
 
     FacilityDevice = "Facility"
+
+    MarketUnitsGroupDevice = "Market units group"
     MarketUnitDevice = "Market unit"
 
     SimulationOptionsDevice = "SimulationOptionsDevice"

@@ -15,7 +15,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.PlotDialogue.plot_dialogue_ui import Ui_PlotDialogue
 from VeraGrid.Gui.PlotDialogue.plot_export import save_chart_image
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget, PolarAngleUnit
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget, PolarAngleUnit
 
 
 class PlotSeries:
@@ -882,6 +882,7 @@ class PlotDialogue(QtWidgets.QDialog):
             file_dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
             file_dialog.fileSelected.connect(self._save_selected_image)
             file_dialog.finished.connect(self._clear_active_save_dialog)
+            file_dialog.destroyed.connect(self._clear_active_save_dialog)
             self._active_save_dialog = file_dialog
             file_dialog.open()
         else:
@@ -905,10 +906,10 @@ class PlotDialogue(QtWidgets.QDialog):
         else:
             pass
 
-    def _clear_active_save_dialog(self, result: int) -> None:
+    def _clear_active_save_dialog(self, result: object = None) -> None:
         """Drop the reference after the child save dialog has finished.
 
-        :param result: Dialog result code.
+        :param result: Dialog result code or destroyed object.
         :return: None.
         """
         _ = result

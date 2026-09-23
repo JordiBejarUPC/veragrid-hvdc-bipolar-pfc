@@ -14,7 +14,7 @@ from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor_gui import Ui_G
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.WindPowerWizard.wind_power_wizzard import WindFarmWizard
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.messages import info_msg, warning_msg
 from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles
 from VeraGridEngine.Devices.Injections.generator import Generator
@@ -589,6 +589,7 @@ class GeneratorEditor(TemplateDeviceEditor):
             Snom=self.api_object.Snom,
         )
         self.qcurve_tab_layout.addWidget(self.qcurve_editor_widget)
+        self.qcurve_editor_widget.ui.applyButton.clicked.connect(self._sync_qcurve_to_generator)
         qcurve_tab_index: int = self.tab_widget.addTab(self.qcurve_tab, "Q curve editor")
         self.tab_widget.setTabIcon(qcurve_tab_index, QtGui.QIcon(":/Icons/icons/plot.png"))
     def _build_solar_tab(self) -> None:
@@ -800,7 +801,6 @@ class GeneratorEditor(TemplateDeviceEditor):
         :param event: Qt close event.
         """
         _ = event
-        self._sync_qcurve_to_generator()
         self.qcurve_editor_widget.ui.plotter.dispose()
 
 

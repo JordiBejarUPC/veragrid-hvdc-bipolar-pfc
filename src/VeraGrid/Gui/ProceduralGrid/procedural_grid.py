@@ -497,7 +497,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
 
         # Show logger if there are any entries
         if logger.has_logs():
-            logs_dlg = LogsDialogue(self.tr('Procedural grid expansion log'), logger)
+            logs_dlg = LogsDialogue(self.tr('Procedural grid expansion log'), logger, parent=self)
             exec_dialog_safely(dialog=logs_dlg)
         else:
             pass

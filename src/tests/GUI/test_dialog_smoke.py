@@ -90,7 +90,7 @@ from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesign
 from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
 from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely
 from VeraGrid.Gui.dialog_lifecycle import is_dialog_available
 from VeraGrid.Gui.general_dialogues import ArrayEditor

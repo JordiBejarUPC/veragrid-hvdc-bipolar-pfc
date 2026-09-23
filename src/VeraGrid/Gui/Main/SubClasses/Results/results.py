@@ -17,7 +17,7 @@ from VeraGrid.Gui.general_dialogues import fill_tree_from_logs
 from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
 from VeraGrid.Gui.PlotDialogue.result_table_data import get_result_table_series
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget, PolarAngleUnit
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget, PolarAngleUnit
 import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (ResultTypes, SimulationTypes, PlotSimulationType, DynamicPlotEntryKind,
@@ -1027,7 +1027,7 @@ class ResultsMain(SimulationsMain):
                 connect_points=False,
             )
             if accepted:
-                self._open_plot_dialogs.append(plot_dialogue)
+                self.register_open_plot_dialog(plot_dialogue)
                 plot_dialogue.show()
             else:
                 plot_dialogue.reject()
@@ -1087,7 +1087,7 @@ class ResultsMain(SimulationsMain):
                     y_axis_title=table.y_label,
                 )
             if accepted:
-                self._open_plot_dialogs.append(plot_dialogue)
+                self.register_open_plot_dialog(plot_dialogue)
                 plot_dialogue.show()
             else:
                 plot_dialogue.reject()
@@ -1178,7 +1178,7 @@ class ResultsMain(SimulationsMain):
                         displayed_title: str = table.title if table.plot_title is None else table.plot_title
                         chart.setTitle(displayed_title)
                         chart.set_axis_titles(x_column_name, selected_y_name)
-                        self._open_plot_dialogs.append(plot_dialogue)
+                        self.register_open_plot_dialog(plot_dialogue)
                         plot_dialogue.show()
                     else:
                         error_msg(text=self.tr("The selected modes have no finite complex coordinates."),
@@ -1278,7 +1278,7 @@ class ResultsMain(SimulationsMain):
                     pass
                 chart.setTitle(mode_title)
                 chart.set_axis_titles(self.tr("Real"), self.tr("Imaginary"))
-            self._open_plot_dialogs.append(plot_dialogue)
+            self.register_open_plot_dialog(plot_dialogue)
             plot_dialogue.show()
         else:
             error_msg(text=self.tr("Select at least one valid mode column and state row."),

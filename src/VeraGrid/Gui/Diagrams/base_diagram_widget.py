@@ -39,7 +39,7 @@ from VeraGrid.Gui.messages import yes_no_question, info_msg
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
 from VeraGrid.Gui.PlotDialogue.result_table_data import get_result_table_series
-from VeraGrid.Gui.Widgets.qt_chart_widget import GraphsWidget
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import GraphsWidget
 import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Simulations.results_table import ResultsTable
@@ -708,7 +708,7 @@ class BaseDiagramWidget(QSplitter):
         if has_profiles or has_results:
             plot_dialogue.select_default_catalog_series()
             plot_dialogue.set_series_selector_visible(visible=True)
-            self.gui._open_plot_dialogs.append(plot_dialogue)
+            self.gui.register_open_plot_dialog(plot_dialogue)
             plot_dialogue.show()
         else:
             plot_dialogue.reject()
@@ -1164,7 +1164,7 @@ class BaseDiagramWidget(QSplitter):
         """
         pass
 
-    def start_video_recording(self, fname: str, fps: int = 30, logger: Logger = Logger()) -> Tuple[int, int]:
+    def start_video_recording(self, fname: str, fps: int = 30, logger: Logger | None = None) -> Tuple[int, int]:
         """
         Save video
         :param fname: file name
@@ -1172,6 +1172,8 @@ class BaseDiagramWidget(QSplitter):
         :param logger: LOgger
         :returns width, height
         """
+        if logger is None:
+            logger = Logger()
 
         image = self.get_image()
         w = image.width()

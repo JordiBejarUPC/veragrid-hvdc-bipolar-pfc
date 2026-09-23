@@ -1,6 +1,8 @@
 __pycache__
 __pycache_jit__
 .pytest_cache
+.pytest_gui_state
+.pytest_tmp_gui
 *.swp
 
 

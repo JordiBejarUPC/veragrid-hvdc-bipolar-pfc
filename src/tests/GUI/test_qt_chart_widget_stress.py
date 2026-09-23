@@ -18,14 +18,14 @@ import numpy as np
 import pytest
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from VeraGrid.Gui.Widgets.qt_chart_widget import (
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import (
     ChartContentType,
     ChartSeriesType,
     GraphsWidget,
     PolarAngleUnit,
     format_chart_value,
 )
-from VeraGrid.Gui.Widgets.qt_rhi_line_chart_widget import RhiLineChartWidget
+from VeraGrid.Gui.PlotDialogue.qt_rhi_line_chart_widget import RhiLineChartWidget
 
 
 class ObjectDestructionProbe:

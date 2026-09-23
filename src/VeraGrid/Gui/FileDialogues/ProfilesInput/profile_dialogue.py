@@ -704,7 +704,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
 
         else:
             if logger.has_logs():
-                dlg: LogsDialogue = LogsDialogue(self.tr("Import issues"), logger)
+                dlg: LogsDialogue = LogsDialogue(self.tr("Import issues"), logger, parent=self)
                 dlg.setModal(True)
                 exec_dialog_safely(dialog=dlg)
 
@@ -973,38 +973,45 @@ class ProfileInputGUI(QtWidgets.QDialog):
             self.associations.clear_at(obj_idx)
         self.display_associations()
 
-    def transform_names(self):
+    def transform_names(self) -> None:
         """
-        Transform the names of the inputs
-        :return:
+        Transform the names of the inputs according to the selected substitution mode.
         """
         if self.original_data_frame is not None:
-            mode = self.ui.nameTransformationComboBox.currentData()
+            mode: StringSubstitutions | None = self.ui.nameTransformationComboBox.currentData()
 
             if mode == StringSubstitutions.PSSeBranchName:
-
                 for i, name in enumerate(self.profile_names):
-                    if '_':
-                        vals = name.split('_')
-                        if len(vals) < 7:
-                            pass
+                    if '_' in name:
+                        vals: List[str] = name.split('_')
+                        if len(vals) >= 7:
+                            self.profile_names[i] = f"{vals[0]}_{vals[3]}_{vals[6]}"
                         else:
-                            self.profile_names[i] = vals[0] + '_' + vals[3] + '_' + vals[6]
+                            pass
+                    else:
+                        pass
                 self.original_data_frame.columns = self.profile_names
 
-            if mode == StringSubstitutions.PSSeBusGenerator:
-
+            elif mode == StringSubstitutions.PSSeBusGenerator:
                 for i, name in enumerate(self.profile_names):
-                    if '_':
-                        vals = name.split('_')
+                    if '_' in name:
+                        vals: List[str] = name.split('_')
                         if len(vals) == 3:
-                            self.profile_names[i] = vals[0] + '_1'
+                            self.profile_names[i] = f"{vals[0]}_1"
+                        else:
+                            pass
+                    else:
+                        pass
                 self.original_data_frame.columns = self.profile_names
 
             elif mode == StringSubstitutions.PSSeBusLoad:
                 for i, name in enumerate(self.profile_names):
-                    self.profile_names[i] = name + '_1'
+                    self.profile_names[i] = f"{name}_1"
                 self.original_data_frame.columns = self.profile_names
+            else:
+                pass
+        else:
+            pass
 
     def has_profile(self, i: int) -> bool:
         """

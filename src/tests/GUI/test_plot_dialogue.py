@@ -7,7 +7,7 @@ from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.Main.SubClasses.Results.results import ResultsMain
 from VeraGrid.Gui.PlotDialogue.plot_dialogue import PlotDialogue
-from VeraGrid.Gui.Widgets.qt_chart_widget import ChartContentType, PolarAngleUnit
+from VeraGrid.Gui.PlotDialogue.qt_chart_widget import ChartContentType, PolarAngleUnit
 from VeraGrid.Gui.results_model import ResultsModel
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Simulations.results_table import ResultsTable
@@ -25,6 +25,19 @@ class ResultsPlotOwner(QtWidgets.QWidget):
         """
         super().__init__()
         self._open_plot_dialogs: list[PlotDialogue] = list()
+
+    def register_open_plot_dialog(self, dialog: QtWidgets.QDialog) -> None:
+        """
+        Track one open plot dialog in the owner.
+
+        :param dialog: Plot dialog to track.
+        :return: None.
+        """
+        if dialog in self._open_plot_dialogs:
+            pass
+        else:
+            self._open_plot_dialogs.append(dialog)
+
 
 
 def close_plot_dialogue(dialog: PlotDialogue, app: QtWidgets.QApplication) -> None:

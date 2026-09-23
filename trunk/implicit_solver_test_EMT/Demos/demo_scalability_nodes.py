@@ -120,8 +120,7 @@ def setup_initial_condition(problem: GenericEmtProblem, block: Block, n_nodes: i
         else:
             pass
 
-    # Override method safety
-    problem.get_x0 = lambda: x0.copy()
+    problem.set_x0(x0)
 
 
 # -----------------------------------------------------------------------------
