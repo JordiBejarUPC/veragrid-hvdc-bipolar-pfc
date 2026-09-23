@@ -5791,10 +5791,16 @@ class TypTow(DGSElement):
             if idx is None and prop.name == 'FID':
                 idx = header_map.get('ID')
 
+            # Indexed vector and matrix members are reconstructed below into
+            # their aggregate slotted fields, so they are not standalone attrs.
+            is_dynamic_member: bool = any(part.isdigit() for part in prop.name.split(':'))
             if idx is not None and 0 <= idx < len(parts):
-                raw = parts[idx]
-                val = prop.parse(raw)
-                setattr(obj, prop.py_name, val)
+                if is_dynamic_member:
+                    pass
+                else:
+                    raw = parts[idx]
+                    val = prop.parse(raw)
+                    setattr(obj, prop.py_name, val)
 
         # Variable-size vectors
         # Conductor types for earth wires
