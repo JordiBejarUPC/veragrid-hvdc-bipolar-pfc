@@ -1309,7 +1309,7 @@ class ResultsMain(SimulationsMain):
                                          mdl: ResultsModel,
                                          selected_columns: np.ndarray | None,
                                          selected_rows: np.ndarray | None) -> None:
-        """Open one labelled complex-mode scatter plot per tab.
+        """Open one labelled complex-mode vector plot per tab.
 
         :param mdl: Filtered table model currently displayed in the results view.
         :param selected_columns: Optional selected visible mode columns.
@@ -1345,7 +1345,10 @@ class ResultsMain(SimulationsMain):
             mode_position: int
             for mode_position in range(len(mode_indices)):
                 mode_index: int = int(mode_indices[mode_position])
-                mode_title: str = str(table.cols_c[mode_index])
+                # Results tables may use line breaks to make narrow column
+                # headers readable, but plot titles and tabs are single-line.
+                raw_mode_title: str = str(table.cols_c[mode_index])
+                mode_title: str = " ".join(raw_mode_title.split())
                 chart: GraphsWidget
                 if mode_position == 0:
                     chart = plot_dialogue.chart
@@ -1355,6 +1358,7 @@ class ResultsMain(SimulationsMain):
                 mode_values: np.ndarray = np.asarray(table.data_c[state_indices, mode_index], dtype=complex)
                 finite_values: np.ndarray = np.isfinite(mode_values.real) & np.isfinite(mode_values.imag)
                 chart.clear()
+                chart.set_equal_axis_scale(enabled=True)
                 chart.add_line_series(
                     name=self.tr("Unit circle"),
                     x_values=circle_x,
@@ -1372,23 +1376,55 @@ class ResultsMain(SimulationsMain):
                     else:
                         aligned_values = np.zeros_like(visible_values)
                     visible_states: np.ndarray = state_names[state_indices][finite_values]
-                    tooltip_values: list[str] = list()
                     state_position: int
                     for state_position in range(len(visible_states)):
-                        tooltip_values.append(
-                            f"{visible_states[state_position]}\n"
-                            f"Re={aligned_values[state_position].real:.6g}, "
-                            f"Im={aligned_values[state_position].imag:.6g}"
-                        )
-                    chart.add_scatter_series(
-                        name=self.tr("Components"),
-                        x_values=aligned_values.real,
-                        y_values=aligned_values.imag,
-                        color="#7c3aed",
-                        point_tooltips=tooltip_values,
-                    )
+                        # Give every state its own colour and legend entry so
+                        # the modal component can be identified directly.
+                        state_name: str = str(visible_states[state_position])
+                        aligned_value: complex = complex(aligned_values[state_position])
+                        magnitude: float = float(abs(aligned_value))
+                        state_hue: float = (0.60 + float(state_position) / float(len(visible_states))) % 1.0
+                        state_color: str = QtGui.QColor.fromHsvF(state_hue, 0.72, 0.90).name()
+                        if magnitude > 0.0:
+                            # Draw the shaft from the origin and finish it with
+                            # a small arrow head expressed in normalized units.
+                            unit_real: float = aligned_value.real / magnitude
+                            unit_imaginary: float = aligned_value.imag / magnitude
+                            arrow_length: float = min(0.04, magnitude * 0.35)
+                            arrow_half_width: float = arrow_length * 0.5
+                            arrow_left: complex = aligned_value + complex(
+                                -arrow_length * unit_real - arrow_half_width * unit_imaginary,
+                                -arrow_length * unit_imaginary + arrow_half_width * unit_real,
+                            )
+                            arrow_right: complex = aligned_value + complex(
+                                -arrow_length * unit_real + arrow_half_width * unit_imaginary,
+                                -arrow_length * unit_imaginary - arrow_half_width * unit_real,
+                            )
+                            arrow_points: np.ndarray = np.array(
+                                [0.0j, aligned_value, arrow_left, aligned_value, arrow_right],
+                                dtype=complex,
+                            )
+                            chart.add_line_series(
+                                name=state_name,
+                                x_values=arrow_points.real,
+                                y_values=arrow_points.imag,
+                                color=state_color,
+                            )
+                        else:
+                            chart.add_scatter_series(
+                                name=state_name,
+                                x_values=np.zeros(1, dtype=float),
+                                y_values=np.zeros(1, dtype=float),
+                                color=state_color,
+                            )
                 else:
                     pass
+                # The normalized eigenvector and its unit circle share an
+                # identical range on both square axes.
+                chart.axis_x.set_range(-1.05, 1.05)
+                chart.axis_y.set_range(-1.05, 1.05)
+                chart.axis_x.reset_viewport()
+                chart.axis_y.reset_viewport()
                 chart.setTitle(mode_title)
                 chart.set_axis_titles(self.tr("Real"), self.tr("Imaginary"))
             self.register_open_plot_dialog(plot_dialogue)

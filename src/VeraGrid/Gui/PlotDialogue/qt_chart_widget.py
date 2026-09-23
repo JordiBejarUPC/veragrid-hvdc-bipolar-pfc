@@ -536,6 +536,7 @@ class GraphsWidget(QtWidgets.QWidget):
         "_grid_color",
         "_legend_visible",
         "_legend_overlay",
+        "_equal_axis_scale",
         "_rhi_line_widget",
         "_rhi_selection_overlay",
         "_rhi_line_enabled",
@@ -587,6 +588,7 @@ class GraphsWidget(QtWidgets.QWidget):
         self._grid_color: QtGui.QColor = QtGui.QColor("#cbd5e1")
         self._legend_visible: bool = True
         self._legend_overlay: bool = False
+        self._equal_axis_scale: bool = False
         self._rhi_line_widget: RhiLineChartWidget | None = None
         self._rhi_selection_overlay: ChartSelectionOverlay | None = None
         self._rhi_line_enabled: bool = False
@@ -675,6 +677,18 @@ class GraphsWidget(QtWidgets.QWidget):
         if self._can_mutate():
             self.axis_x.set_title(x_title)
             self.axis_y.set_title(y_title)
+            self.update()
+        else:
+            pass
+
+    def set_equal_axis_scale(self, enabled: bool) -> None:
+        """Keep horizontal and vertical data units at the same visual scale.
+
+        :param enabled: Whether the XY plot area must be square.
+        :return: None.
+        """
+        if self._can_mutate() and self._equal_axis_scale != enabled:
+            self._equal_axis_scale = enabled
             self.update()
         else:
             pass
@@ -1177,6 +1191,7 @@ class GraphsWidget(QtWidgets.QWidget):
             self._y_max = 1.0
             self._x_is_datetime = False
             self._legend_visible = True
+            self._equal_axis_scale = False
             self.axis_x.reset_viewport()
             self.axis_y.reset_viewport()
             self._set_axis_ranges()
@@ -2379,9 +2394,25 @@ class GraphsWidget(QtWidgets.QWidget):
             20.0 if self._legend_visible and not self._legend_overlay
             and len(self._visible_legend_series()) > 0 else 0.0
         )
-        return QtCore.QRectF(self.rect()).adjusted(
+        plot_rect: QtCore.QRectF = QtCore.QRectF(self.rect()).adjusted(
             74.0, title_space + legend_space + 4.0, -20.0, -58.0
         )
+        if self._equal_axis_scale:
+            # Equal numeric axis ranges require a square viewport for one unit
+            # to occupy the same number of pixels in both directions. Center
+            # that square within the full area left after chart decorations.
+            plot_side: float = min(plot_rect.width(), plot_rect.height())
+            horizontal_offset: float = (plot_rect.width() - plot_side) * 0.5
+            vertical_offset: float = (plot_rect.height() - plot_side) * 0.5
+            plot_rect.setRect(
+                plot_rect.left() + horizontal_offset,
+                plot_rect.top() + vertical_offset,
+                plot_side,
+                plot_side,
+            )
+        else:
+            pass
+        return plot_rect
 
     def _visible_legend_series(self) -> list[ChartSeries]:
         """Return named series to be painted in the legend.
@@ -2503,8 +2534,12 @@ class GraphsWidget(QtWidgets.QWidget):
         painter.drawText(QtCore.QRectF(plot_rect.left(), plot_rect.bottom() + 36.0, plot_rect.width(), 20.0),
                          QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignTop,
                          self.axis_x.get_title())
+        # Preserve the standard distance to the Y axis when a square plot is
+        # horizontally centered inside a wider chart widget.
+        y_title_distance_from_plot: float = 59.0
+        y_title_x: float = max(15.0, plot_rect.left() - y_title_distance_from_plot)
         painter.save()
-        painter.translate(15.0, plot_rect.center().y())
+        painter.translate(y_title_x, plot_rect.center().y())
         painter.rotate(-90.0)
         painter.drawText(QtCore.QRectF(-plot_rect.height() * 0.5, -10.0, plot_rect.height(), 20.0),
                          QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter,
