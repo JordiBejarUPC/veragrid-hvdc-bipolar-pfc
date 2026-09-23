@@ -8066,8 +8066,9 @@ class Assets:
 
 
         elif device_type == DeviceType.TransformerNwDevice:
-            for d in devices:
-                d.set_var_factory(self._var_factory)
+            # TODO: TransformerNwDevice is not a DynamicDevice (for now). We must inspect how to model it dynamically
+            # for d in devices:
+            #     d.set_var_factory(self._var_factory)
             self._transformers_nw = devices
 
 
