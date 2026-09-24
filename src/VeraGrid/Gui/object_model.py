@@ -344,7 +344,7 @@ class ObjectsModel(WrappableTableModel):
                     delegate = BoolCheckboxDelegate(self.parent)
                     F(i, delegate)
 
-                elif tpe is str:
+                elif tpe is str and not (self.is_pointer_object and self.attributes[i] == "device"):
                     delegate = TextDelegate(self.parent)
                     F(i, delegate)
 
@@ -470,9 +470,49 @@ class ObjectsModel(WrappableTableModel):
 
         if self.is_pointer_object and prop_name == "device":
             tpes = self.objects[0].pointer_dev_tpes
-            return False, {
-                dtpe: self.dictionary_of_lists[dtpe] for dtpe in tpes
-            }
+            devices_by_type: Dict[DeviceType, List[ALL_DEV_TYPES]] = dict()
+            for device_type in tpes:
+                if device_type == DeviceType.PhysicalDeviceType:
+                    # PhysicalDeviceType is the broad-pointer sentinel, so expose
+                    # only physical network lists and not unrelated dependencies.
+                    physical_device_types: List[DeviceType] = [
+                        DeviceType.BusDevice,
+                        DeviceType.LineDevice,
+                        DeviceType.DCLineDevice,
+                        DeviceType.Transformer2WDevice,
+                        DeviceType.Transformer3WDevice,
+                        DeviceType.TransformerNwDevice,
+                        DeviceType.WindingDevice,
+                        DeviceType.HVDCLineDevice,
+                        DeviceType.VscDevice,
+                        DeviceType.UpfcDevice,
+                        DeviceType.SeriesReactanceDevice,
+                        DeviceType.SwitchDevice,
+                    ]
+                    physical_device_types.extend([
+                        DeviceType.GeneratorDevice,
+                        DeviceType.BatteryDevice,
+                        DeviceType.LoadDevice,
+                        DeviceType.ExternalGridDevice,
+                        DeviceType.StaticGeneratorDevice,
+                        DeviceType.ShuntDevice,
+                        DeviceType.ControllableShuntDevice,
+                        DeviceType.CurrentInjectionDevice,
+                    ])
+
+                    for available_type, devices in self.dictionary_of_lists.items():
+                        if available_type in physical_device_types:
+                            devices_by_type[available_type] = devices
+                        else:
+                            pass
+                else:
+                    devices: List[ALL_DEV_TYPES] | None = self.dictionary_of_lists.get(device_type, None)
+                    if devices is not None:
+                        devices_by_type[device_type] = devices
+                    else:
+                        pass
+
+            return False, devices_by_type
 
         else:
 
@@ -480,15 +520,15 @@ class ObjectsModel(WrappableTableModel):
                 return False, {specific_key: self.dictionary_of_lists[specific_key]}
             else:
                 if prop_name in self.dictionary_of_lists:
-                    return self.dictionary_of_lists[prop_name]
+                    return False, {prop_name: self.dictionary_of_lists[prop_name]}
                 else:
                     if tpe in self.dictionary_of_lists:
-                        return self.dictionary_of_lists[tpe]
+                        return False, {tpe: self.dictionary_of_lists[tpe]}
                     else:
                         if self._is_bus_property_type(tpe=tpe) and DeviceType.BusDevice in self.dictionary_of_lists:
-                            return self.dictionary_of_lists[DeviceType.BusDevice]
+                            return False, {DeviceType.BusDevice: self.dictionary_of_lists[DeviceType.BusDevice]}
                         else:
-                            return None
+                            return True, dict()
 
     def update(self):
         """

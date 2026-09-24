@@ -115,7 +115,7 @@ class EmtEvent(PointerDeviceParent):
                                      device_type=DeviceType.EmtEventDevice,
                                      comment=comment,
                                      pointer_dev_tpes=[
-                                         DeviceType.NoDevice  # Signifies all devices
+                                         DeviceType.PhysicalDeviceType  # Signifies all physical devices
                                      ])
 
 

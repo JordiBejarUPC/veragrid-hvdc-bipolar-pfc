@@ -1909,6 +1909,8 @@ class DeviceType(Enum):
     Device types
     """
     NoDevice = 'NoDevice'
+    PhysicalDeviceType = 'PhysicalDeviceType'
+
     TimeDevice = 'Time'
     CircuitDevice = 'Circuit'
     BusDevice = 'Bus'

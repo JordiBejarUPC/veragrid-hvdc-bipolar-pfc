@@ -114,7 +114,7 @@ class RmsEvent(PointerDeviceParent):
                                      device_type=DeviceType.RmsEventDevice,
                                      comment=comment,
                                      pointer_dev_tpes=[
-                                         DeviceType.NoDevice  # Signifies all devices
+                                         DeviceType.PhysicalDeviceType  # Signifies all physical devices
                                      ])
 
 

@@ -37,7 +37,7 @@ class PseudoMeasurement(MeasurementTemplate):
             idtag=idtag,
             device_type=DeviceType.NoDevice,
             pointer_dev_tpes=[
-                DeviceType.NoDevice  # Signifies all devices
+                DeviceType.PhysicalDeviceType  # Signifies all physical devices
             ]
         )
         self.value = value

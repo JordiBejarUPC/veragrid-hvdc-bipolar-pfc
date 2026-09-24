@@ -45,7 +45,7 @@ class RmsModelTemplate(PointerDeviceParent):
                          comment="",
                          device_type=DeviceType.RmsModelTemplateDevice,
                          pointer_dev_tpes=[
-                             DeviceType.NoDevice  # Signifies all devices
+                             DeviceType.PhysicalDeviceType  # Signifies all physical devices
                          ])
 
         self.tpe: DeviceType = DeviceType.NoDevice

@@ -112,7 +112,7 @@ class Investment(PointerDeviceParent):
                                      device_type=DeviceType.InvestmentDevice,
                                      comment=comment,
                                      pointer_dev_tpes=[
-                                         DeviceType.NoDevice  # Signifies all devices
+                                         DeviceType.PhysicalDeviceType  # Signifies all physical devices
                                      ])
 
         self.CAPEX: float = CAPEX

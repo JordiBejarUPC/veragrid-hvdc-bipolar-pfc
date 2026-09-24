@@ -58,7 +58,7 @@ class PointerDeviceParent(EditableDevice):
         GCProp(
             prop_name='device',
             units='',
-            tpe=str,
+            tpe=DeviceType.PhysicalDeviceType,
             definition='Device name',
             editable=True,
             display=True,
