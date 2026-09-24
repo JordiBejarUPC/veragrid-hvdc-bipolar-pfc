@@ -91,6 +91,9 @@ class FmuTemplate(PointerDeviceParent):
             device=None,
             comment="",
             device_type=DeviceType.FmuTemplateDevice,
+            pointer_dev_tpes=[
+                DeviceType.NoDevice  # Signifies all devices
+            ]
         )
         self.tpe: DeviceType = DeviceType.NoDevice
         self._domain: FmuTemplateDomain = FmuTemplateDomain.RMS

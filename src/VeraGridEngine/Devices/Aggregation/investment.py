@@ -110,7 +110,10 @@ class Investment(PointerDeviceParent):
                                      code=code,
                                      name=name,
                                      device_type=DeviceType.InvestmentDevice,
-                                     comment=comment)
+                                     comment=comment,
+                                     pointer_dev_tpes=[
+                                         DeviceType.NoDevice  # Signifies all devices
+                                     ])
 
         self.CAPEX: float = CAPEX
         self._group: InvestmentsGroup | None = group
