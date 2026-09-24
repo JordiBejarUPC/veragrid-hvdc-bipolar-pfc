@@ -130,6 +130,8 @@ if __name__ == "__main__":
         'from trunk',
         'import trunk',
         'from tests',
+        'from matplotlib',
+        'import matplotlib',
         'import tests',
     ]
 
