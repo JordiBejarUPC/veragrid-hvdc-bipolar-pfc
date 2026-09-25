@@ -2017,6 +2017,110 @@ def test_ntc_ts_does_not_mutate_pmode3_vsc_controls() -> None:
     _assert_vsc_time_series_controls_match_snapshot(grid)
 
 
+def _assert_ntc_contingency_limit(corrective: bool,
+                                  initial_transfer: float,
+                                  contingency_factor: float,
+                                  reverse_line: bool) -> None:
+    """Initial overloads must retain N-1 limits and report any necessary slack.
+
+    Two buses exchange power over a 40 MW line and a 100 MW PST. With a 100 MW
+    initial transfer the line starts at 50 MW, above its contingency rating.
+    The PST can relieve it in N, but its outage puts all 100 MW onto the line.
+    Since transfer cannot decrease below its initial value, N-1 requires slack.
+    With a 20 MW initial transfer, NTC can instead stop at the contingency limit.
+    """
+    grid = gce.MultiCircuit()
+    sending = gce.Area("Sending")
+    receiving = gce.Area("Receiving")
+    grid.add_area(sending)
+    grid.add_area(receiving)
+    bus_a = gce.Bus("A", Vnom=400, area=sending, is_slack=True)
+    bus_b = gce.Bus("B", Vnom=400, area=receiving)
+    grid.add_bus(bus_a)
+    grid.add_bus(bus_b)
+    grid.add_generator(bus_a, gce.Generator(name="Send", P=initial_transfer, Pmax=1000))
+    grid.add_generator(bus_b, gce.Generator(name="Receive", P=100, Pmax=1000))
+    grid.add_load(bus_b, gce.Load(name="Load", P=initial_transfer + 100))
+
+    line = gce.Line(bus_b if reverse_line else bus_a,
+                    bus_a if reverse_line else bus_b,
+                    name="40 MW line", x=0.1, rate=40,
+                    contingency_factor=contingency_factor)
+    pst = gce.Transformer2W(bus_a, bus_b, name="100 MW PST", x=0.1, rate=100,
+                            contingency_factor=1.0,
+                            tap_phase_control_mode=gce.TapPhaseControl.Pf,
+                            tap_phase_min=-0.5, tap_phase_max=0.5)
+    grid.add_line(line)
+    grid.add_transformer2w(pst)
+    for branch in (line, pst):
+        group = gce.ContingencyGroup(name=branch.name + " outage")
+        grid.add_contingency_group(group)
+        grid.add_contingency(gce.Contingency(device=branch, group=group))
+
+    info = grid.get_inter_aggregation_info(objects_from=[sending], objects_to=[receiving])
+    options = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        use_branch_exchange_sensitivity=False,
+        consider_contingencies=True,
+        corrective_contingencies=corrective,
+        opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid.contingency_groups),
+    )
+    driver = gce.OptimalNetTransferCapacityDriver(grid, options)
+    driver.run()
+    result = driver.results
+
+    contingency_rate = line.rate * contingency_factor
+    expected_transfer = max(initial_transfer, contingency_rate)
+    expected_slack = max(initial_transfer - contingency_rate, 0.0)
+    assert result.converged
+    assert np.isclose(result.inter_area_flows, expected_transfer, atol=1e-6)
+    assert np.isclose(result.get_total_slack_mw(), expected_slack, atol=1e-6)
+    expected_state = SolutionState.Relaxed if expected_slack > 0 else SolutionState.Optimal
+    assert result.get_solution_state() == expected_state
+
+    # The base operating point is within both normal ratings, even in the stressed case.
+    assert np.all(np.abs(result.Sf.real) <= np.array([line.rate, pst.rate]) + 1e-6)
+
+    # Every excess MW in the reported worst contingency must be accounted for in its LP row.
+    rows = [row for row in result.contingency_flows_list if row[1] == 0 and row[2] == 1]
+    assert len(rows) == 1
+    _, _, _, flow, negative_slack, positive_slack = rows[0]
+    assert np.isclose(flow, result.worst_contingency_flow[0], atol=1e-6)
+    assert np.isclose(abs(flow), expected_transfer, atol=1e-6)
+    assert flow <= contingency_rate + positive_slack + 1e-6
+    assert flow >= -contingency_rate - negative_slack - 1e-6
+    assert np.isclose(negative_slack if reverse_line else positive_slack, expected_slack, atol=1e-6)
+
+
+def test_ntc_initial_overload_keeps_contingency_limit() -> None:
+    """An initially overloaded line retains its N-1 limit and reports the required slack."""
+    for corrective in (False, True):
+        for contingency_factor in (1.0, 1.2):
+            _assert_ntc_contingency_limit(corrective=corrective,
+                                          initial_transfer=100.0,
+                                          contingency_factor=contingency_factor,
+                                          reverse_line=False)
+            _assert_ntc_contingency_limit(corrective=corrective,
+                                          initial_transfer=100.0,
+                                          contingency_factor=contingency_factor,
+                                          reverse_line=True)
+
+
+def test_ntc_contingency_limit_without_initial_overload() -> None:
+    """A feasible initial transfer grows to the N-1 rating without requiring slack."""
+    for corrective in (False, True):
+        for contingency_factor in (1.0, 1.2):
+            _assert_ntc_contingency_limit(corrective=corrective,
+                                          initial_transfer=20.0,
+                                          contingency_factor=contingency_factor,
+                                          reverse_line=False)
+            _assert_ntc_contingency_limit(corrective=corrective,
+                                          initial_transfer=20.0,
+                                          contingency_factor=contingency_factor,
+                                          reverse_line=True)
+
+
 def test_ntc_structural_n1_overload_is_relaxed_not_infeasible() -> None:
     """
     A structurally unavoidable N-1 overload must relax the limit (penalized slack, reported)
