@@ -631,7 +631,8 @@ class LinearAnalysis:
                  distributed_slack: bool = False,
                  correct_values: bool = False,
                  converters_as_setpoint: bool = False,
-                 logger: Logger = Logger()):
+                 logger: Logger = Logger(),
+                 use_jacobian_ptdf: bool = False):
         """
         Linear Analysis constructor
         :param nc: numerical circuit instance
@@ -639,6 +640,7 @@ class LinearAnalysis:
         :param correct_values: boolean to fix out layer values
         :param converters_as_setpoint: build the AC-DC PTDF with every converter treated
             as a set-point device regardless of its control mode
+        :param use_jacobian_ptdf: use the AC Jacobian PTDF for AC islands
         """
 
         self.logger: Logger = logger
@@ -689,18 +691,32 @@ class LinearAnalysis:
                             )
 
                         else:
-                            adml = island.get_linear_admittance_matrices(indices=indices)
+                            if use_jacobian_ptdf:
+                                # Use the nonlinear operating-point derivatives only when explicitly requested.
+                                adm = island.get_admittance_matrices()
+                                ptdf_island = make_jacobian_ptdf(
+                                    Ybus=adm.Ybus,
+                                    Yf=adm.Yf,
+                                    F=island.passive_branch_data.F,
+                                    T=island.passive_branch_data.T,
+                                    V=island.bus_data.Vbus,
+                                    pq=indices.pq,
+                                    pv=indices.pv,
+                                    bus_types=island.bus_data.bus_types,
+                                    distribute_slack=distributed_slack
+                                )
+                            else:
+                                adml = island.get_linear_admittance_matrices(indices=indices)
+                                Bpqpv = adml.get_Bred(pqpv=indices.no_slack)
 
-                            Bpqpv = adml.get_Bred(pqpv=indices.no_slack)
-
-                            # compute the PTDF of the island
-                            ptdf_island = make_ptdf(
-                                Bpqpv=Bpqpv,
-                                Bf=adml.Bf,
-                                no_slack=indices.no_slack,
-                                bus_types=island.bus_data.bus_types,
-                                distribute_slack=distributed_slack
-                            )
+                                # Keep the established DC PTDF implementation as the default path.
+                                ptdf_island = make_ptdf(
+                                    Bpqpv=Bpqpv,
+                                    Bf=adml.Bf,
+                                    no_slack=indices.no_slack,
+                                    bus_types=island.bus_data.bus_types,
+                                    distribute_slack=distributed_slack
+                                )
 
                         # store maybe for later
                         self.PTDF_by_island.append(ptdf_island)
@@ -1480,7 +1496,8 @@ class LinearAnalysisTs:
                  contingency_groups_used: List[ContingencyGroup] | None = None,
                  ptdf_threshold: float = 1e-4,
                  lodf_threshold: float = 1e-4,
-                 compute_multi_contingencies: bool = True):
+                 compute_multi_contingencies: bool = True,
+                 use_jacobian_ptdf: bool = False):
         """
         Constructor
         :param grid: MultiCircuit instance
@@ -1491,6 +1508,7 @@ class LinearAnalysisTs:
         :param ptdf_threshold: threshold for PTDF's to be converted to sparse
         :param lodf_threshold: threshold for LODF's to be converted to sparse
         :param compute_multi_contingencies: also pre-compute the LinearMultiContingencies
+        :param use_jacobian_ptdf: use the AC Jacobian PTDF implementation?
         """
 
         if not grid.has_time_series:
@@ -1517,7 +1535,8 @@ class LinearAnalysisTs:
             # Linear analysis (PTDF & LODF)
             lin = LinearAnalysis(nc=nc,
                                  distributed_slack=distributed_slack,
-                                 correct_values=correct_values)
+                                 correct_values=correct_values,
+                                 use_jacobian_ptdf=use_jacobian_ptdf)
 
             self._linear_analysis[t_idx] = lin
 

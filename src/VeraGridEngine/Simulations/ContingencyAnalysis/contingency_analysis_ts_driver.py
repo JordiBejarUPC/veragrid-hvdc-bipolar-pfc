@@ -268,6 +268,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             grid=self.grid,
             distributed_slack=self.options.lin_options.distribute_slack,
             correct_values=self.options.lin_options.correct_values,
+            use_jacobian_ptdf=self.options.lin_options.use_jacobian_ptdf,
             time_indices=self.time_indices,
             contingency_groups_used=contingency_groups_used,
             ptdf_threshold=self.options.lin_options.ptdf_threshold,
@@ -392,6 +393,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             grid=self.grid,
             distributed_slack=self.options.lin_options.distribute_slack,
             correct_values=self.options.lin_options.correct_values,
+            use_jacobian_ptdf=self.options.lin_options.use_jacobian_ptdf,
             time_indices=self.time_indices,
             compute_multi_contingencies=False
         )
