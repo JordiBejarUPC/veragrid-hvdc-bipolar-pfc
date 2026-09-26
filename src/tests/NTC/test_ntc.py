@@ -2284,6 +2284,104 @@ def test_ntc_pmode3_screening_exceeds_former_pass_limit() -> None:
         assert flow >= -radial_line.rate - negative_slack - 1e-6
 
 
+def test_ntc_strict_pmode3_snapshot_report() -> None:
+    """Read status and contingency reports from a solved strict Pmode3 snapshot.
+
+    :return: None.
+    """
+    grid: gce.MultiCircuit = gce.open_file(get_grid_path("NTC_8_bus_2pmode3_dc_bottleneck.veragrid"))
+    info: gce.InterAggregationInfo = grid.get_inter_aggregation_info(
+        objects_from=list((grid.areas[0],)), objects_to=list((grid.areas[1],)))
+    options: gce.OptimalNetTransferCapacityOptions = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        skip_generation_limits=True,
+        use_branch_exchange_sensitivity=False,
+        strict_formulation=True,
+        consider_contingencies=True,
+        corrective_contingencies=True,
+        opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid.contingency_groups),
+    )
+    driver: gce.OptimalNetTransferCapacityDriver = gce.OptimalNetTransferCapacityDriver(grid, options)
+    driver.run()
+    result: gce.OptimalNetTransferCapacityResults = driver.results
+
+    # Require actual strict contingency rows so an empty report cannot hide the failure.
+    assert np.all(result.converged)
+    assert len(result.contingency_flows_list) > 0
+    assert result.get_total_slack_mw() == 0.0
+    assert result.get_solution_state() == SolutionState.Optimal
+
+    # The user facing report must also show zero slack for the solved hard limits.
+    report: gce.ResultsTable = result.mdl(ResultTypes.ContingencyFlowsReport)
+    slack_column: int = list(report.cols_c).index('Total slack (MW)')
+    assert report.r > 0
+    assert np.all(report.data_c[:, slack_column] == 0.0)
+
+
+def test_ntc_reports_ttc_and_ntc() -> None:
+    """Apply the configured TRM in snapshot and hourly capacity reports.
+
+    :return: None.
+    """
+    grid: gce.MultiCircuit = gce.open_file(get_grid_path("NTC_8_bus_2pmode3_dc_bottleneck.veragrid"))
+    grid.create_profiles(1, step_length=1.0, step_unit='h')
+    info: gce.InterAggregationInfo = grid.get_inter_aggregation_info(
+        objects_from=list((grid.areas[0],)), objects_to=list((grid.areas[1],)))
+    strict: bool
+    margin: float
+    for strict in (False, True):
+        for margin in (0.0, 125.0):
+            options: gce.OptimalNetTransferCapacityOptions = gce.OptimalNetTransferCapacityOptions(
+                sending_bus_idx=info.idx_bus_from,
+                receiving_bus_idx=info.idx_bus_to,
+                transmission_reliability_margin=margin,
+                skip_generation_limits=True,
+                use_branch_exchange_sensitivity=False,
+                strict_formulation=strict,
+                consider_contingencies=True,
+                corrective_contingencies=True,
+                opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid.contingency_groups),
+            )
+            snapshot: gce.OptimalNetTransferCapacityDriver = gce.OptimalNetTransferCapacityDriver(grid, options)
+            hourly: gce.OptimalNetTransferCapacityTimeSeriesDriver = gce.OptimalNetTransferCapacityTimeSeriesDriver(
+                grid, options, time_indices=np.array((0,), dtype=int))
+            snapshot.run()
+            hourly.run()
+            assert np.all(snapshot.results.converged)
+            assert np.all(hourly.results.converged)
+            assert snapshot.results.transmission_reliability_margin == margin
+            assert hourly.results.transmission_reliability_margin == margin
+            assert np.allclose(hourly.results.inter_area_flows, snapshot.results.inter_area_flows)
+
+            # Both report paths must retain solved TTC and apply the margin exactly once
+            result: gce.OptimalNetTransferCapacityResults | OptimalNetTransferCapacityTimeSeriesResults
+            for result in (snapshot.results, hourly.results):
+                report: gce.ResultsTable = result.mdl(ResultTypes.ContingencyFlowsReport)
+                columns: List[str] = list(report.cols_c)
+                ttc_column: int = columns.index('TTC (MW)')
+                ntc_column: int = columns.index('NTC (MW)')
+                assert report.r > 0
+                assert ntc_column == ttc_column + 1
+                assert np.allclose(report.data_c[:, ttc_column].astype(float), snapshot.results.inter_area_flows)
+                assert np.allclose(report.data_c[:, ntc_column].astype(float), snapshot.results.inter_area_flows - margin)
+                # Appending the capacity column must preserve the converter report alignment
+                vsc_column: int = columns.index(f'VSC {grid.vsc_devices[0].name}: P N (MW)')
+                assert np.allclose(report.data_c[:, vsc_column].astype(float), snapshot.results.vsc_Pf[0], atol=1e-4)
+                result.parse_saved_data(
+                    grid=grid,
+                    data_dict=dict(transmission_reliability_margin=np.array(((margin,),), dtype=float)),
+                    logger=gce.Logger())
+                restored_report: gce.ResultsTable = result.mdl(ResultTypes.ContingencyFlowsReport)
+                assert np.isscalar(restored_report.data_c[0, ntc_column])
+                assert np.array_equal(restored_report.data_c, report.data_c)
+
+            capacity: gce.ResultsTable = hourly.results.mdl(ResultTypes.NetTransferCapacity)
+            assert list(capacity.cols_c) == list(('TTC (MW)', 'NTC (MW)'))
+            assert np.allclose(capacity.data_c[:, 0], hourly.results.inter_area_flows)
+            assert np.allclose(capacity.data_c[:, 1], hourly.results.inter_area_flows - margin)
+
+
 def test_ntc_ts_solution_status_column() -> None:
     """
     The net-transfer-capacity time-series table reports Optimal, Relaxed, or
@@ -2315,9 +2413,10 @@ def test_ntc_ts_solution_status_column() -> None:
     assert states[2] == SolutionState.NotOptimal
 
     ntc_table = res.mdl(ResultTypes.NetTransferCapacity)
-    assert list(ntc_table.cols_c) == ['NTC (MW)']
+    assert list(ntc_table.cols_c) == list(('TTC (MW)', 'NTC (MW)'))
     assert ntc_table.data_c.dtype == float
     assert ntc_table.data_c[0, 0] == 100.0
+    assert np.array_equal(ntc_table.data_c[:, 1], ntc_table.data_c[:, 0])
 
     slack_table = res.mdl(ResultTypes.NetTransferCapacitySlack)
     assert list(slack_table.cols_c) == ['Total slack (MW)']
@@ -2417,6 +2516,7 @@ def test_ntc_ts_worst_contingency_report_expands_with_clustering() -> None:
         time_array=time_all[time_indices],
         time_indices=time_indices,
         clustering_results=clustering,
+        transmission_reliability_margin=10.0,
     )
     res.contingency_group_device_names[0] = "line A"
     res.inter_area_flows[:] = np.array([100.0, 90.0, 0.0])
@@ -2430,7 +2530,17 @@ def test_ntc_ts_worst_contingency_report_expands_with_clustering() -> None:
     res.contingency_rates[0] = 50.0
     res.loading_threshold_to_report = 0.0
 
+    # The representative view must agree before and after calendar expansion.
+    representative: gce.ResultsTable = res.mdl(ResultTypes.ContingencyFlowsRepresentativeReport)
+    representative_columns: List[str] = list(representative.cols_c)
+    representative_ttc: int = representative_columns.index('TTC (MW)')
+    representative_ntc: int = representative_columns.index('NTC (MW)')
+    assert np.array_equal(representative.data_c[:, representative_ttc], np.array((100.0, 90.0, 0.0)))
+    assert np.array_equal(representative.data_c[:, representative_ntc], np.array((90.0, 80.0, -10.0)))
+
     res.expand_clustered_results()
+    expanded_representative: gce.ResultsTable = res.mdl(ResultTypes.ContingencyFlowsRepresentativeReport)
+    assert np.array_equal(expanded_representative.data_c, representative.data_c)
 
     table = res.mdl(ResultTypes.ContingencyFlowsReport)
     # 10 original hours times 1 branch
@@ -2440,14 +2550,18 @@ def test_ntc_ts_worst_contingency_report_expands_with_clustering() -> None:
     time_col: int = columns.index('Time')
     t_idx_col: int = columns.index('Time index')
     ntc_col: int = columns.index('NTC (MW)')
+    ttc_col: int = columns.index('TTC (MW)')
     flow_n1_col: int = columns.index('Flow N-1 (MW)')
     last_time: str = str(table.data_c[full_nt - 1, time_col])
     assert '2020-01-01T09' in last_time.replace(' ', 'T')
     assert table.data_c[0, t_idx_col] == 0
     assert table.data_c[full_nt - 1, t_idx_col] == full_nt - 1
-    assert table.data_c[0, ntc_col] == 100.0
-    assert table.data_c[4, ntc_col] == 90.0
-    assert table.data_c[8, ntc_col] == 0.0
+    assert table.data_c[0, ttc_col] == 100.0
+    assert table.data_c[4, ttc_col] == 90.0
+    assert table.data_c[8, ttc_col] == 0.0
+    assert table.data_c[0, ntc_col] == 90.0
+    assert table.data_c[4, ntc_col] == 80.0
+    assert table.data_c[8, ntc_col] == -10.0
     assert table.data_c[0, flow_n1_col] == 12.0
     assert table.data_c[4, flow_n1_col] == 25.0
     # cluster 2 has no worse N-1, so the table reports the N flow

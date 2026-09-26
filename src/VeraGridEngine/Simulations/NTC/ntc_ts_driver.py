@@ -78,6 +78,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             time_array=self.grid.time_profile[self.time_indices],
             time_indices=self.time_indices,
             clustering_results=self.clustering_results,
+            transmission_reliability_margin=self.options.transmission_reliability_margin,
         )
         self.results.phase_shifter_indices = collect_phase_shifter_indices(self.grid, self.time_indices)
         self.results.strict_formulation = self.options.strict_formulation

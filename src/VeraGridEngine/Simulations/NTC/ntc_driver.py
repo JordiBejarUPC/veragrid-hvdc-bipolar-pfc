@@ -196,7 +196,8 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             hvdc_names=self.grid.get_hvdc_names(),
             vsc_names=self.grid.get_vsc_names(),
-            contingency_group_names=self.grid.get_contingency_group_names()
+            contingency_group_names=self.grid.get_contingency_group_names(),
+            transmission_reliability_margin=self.options.transmission_reliability_margin,
         )
 
         self.results.phase_shifter_indices = collect_phase_shifter_indices(self.grid)
