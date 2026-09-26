@@ -1184,6 +1184,46 @@ def test_ntc_contingency_group_active_status():
     assert res_ac_only.inter_area_flows > res_all.inter_area_flows + 1.0
 
 
+def test_ntc_snapshot_and_time_series_select_the_same_active_groups() -> None:
+    """Snapshot and time-series results use the same active contingency selection."""
+    grid = build_two_pmode3_link_grid(set_reference_bus_on_both=True)
+    for index in range(3):
+        line = gce.Line(name=f"parallel_{index}", bus_from=grid.buses[0], bus_to=grid.buses[1],
+                        x=0.01, rate=1000.0)
+        grid.add_line(line)
+        group = gce.ContingencyGroup(name=f"outage_{index}", active=index != 0)
+        grid.add_contingency_group(group)
+        grid.add_contingency(gce.Contingency(device=line, group=group))
+    grid.create_profiles(2, step_length=1.0, step_unit='h')
+    inactive, first, second = grid.contingency_groups
+    info = grid.get_inter_aggregation_info(objects_from=[grid.areas[0]], objects_to=[grid.areas[1]])
+
+    for strict in (False, True):
+        for selected, expected in (([], [first, second]),
+                                   ([second, inactive, first], [second, first]),
+                                   ([second], [second]),
+                                   ([inactive], [])):
+            options = gce.OptimalNetTransferCapacityOptions(
+                sending_bus_idx=info.idx_bus_from, receiving_bus_idx=info.idx_bus_to,
+                skip_generation_limits=True, use_branch_exchange_sensitivity=False,
+                strict_formulation=strict, consider_contingencies=True, corrective_contingencies=True,
+                opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=selected),
+            )
+            snapshot = gce.OptimalNetTransferCapacityDriver(grid, options)
+            time_series = gce.OptimalNetTransferCapacityTimeSeriesDriver(
+                grid, options, time_indices=np.array([0, 1]))
+            for driver in (snapshot, time_series):
+                driver.run()
+                assert np.all(driver.results.converged)
+                reported = set(np.asarray(driver.results.worst_contingency_idx).ravel()) - {-1}
+                assert reported <= {grid.contingency_groups.index(group) for group in expected}
+                if expected:
+                    assert reported
+            assert np.allclose(time_series.results.inter_area_flows, snapshot.results.inter_area_flows)
+            assert options.opf_options.contingency_groups_used == selected
+            assert grid.contingency_groups == [inactive, first, second]
+
+
 def test_2_node_several_conditions_ntc():
     """
     2-Bus example with some behaviors
@@ -2172,6 +2212,76 @@ def test_ntc_structural_n1_overload_is_relaxed_not_infeasible() -> None:
     # the base flows are the physical 80/40 split, untouched by the relaxation
     assert np.isclose(float(res.Sf[1].real), 80.0, atol=1.0)
     assert np.isclose(float(res.Sf[2].real), 40.0, atol=1.0)
+
+
+def test_ntc_pmode3_screening_exceeds_former_pass_limit() -> None:
+    """Certify every outage on a generated five bus grid beyond the old pass limit.
+
+    The existing two area Pmode3 fixture has four buses. A fifth bus carries a
+    fixed radial load above its line rating, so every added parallel line outage
+    needs its own thermal slack. This forces admission of every group instead
+    of letting numerical witnesses bypass the screening loop regression.
+    """
+    # These describe the removed algorithm, not limits used by the current solver.
+    former_pass_limit = 50
+    former_groups_per_pass = 8
+    contingency_count = former_pass_limit * former_groups_per_pass + 1
+
+    grid = build_two_pmode3_link_grid(set_reference_bus_on_both=True)
+    for bus in grid.buses:
+        if not bus.is_dc:
+            # Keep the nonzero droop linear so this tests screening, not MIP cost.
+            bus.angle_min = -0.04
+            bus.angle_max = 0.04
+
+    radial_bus = gce.Bus(name="radial_load", Vnom=400.0, area=grid.areas[0])
+    radial_load = gce.Load(name="radial_load", P=50.0)
+    radial_line = gce.Line(name="radial", bus_from=grid.buses[0], bus_to=radial_bus,
+                           x=0.01, rate=10.0)
+    grid.add_bus(radial_bus)
+    grid.add_load(radial_bus, radial_load)
+    grid.get_generators()[0].P += radial_load.P
+    grid.add_line(radial_line)
+
+    # Each group outages a distinct parallel AC line. The radial stays connected.
+    for index in range(contingency_count):
+        line = gce.Line(name=f"parallel_{index}", bus_from=grid.buses[0], bus_to=grid.buses[1],
+                        x=0.01, rate=1000.0)
+        grid.add_line(line)
+        group = gce.ContingencyGroup(name=f"outage_{index}")
+        grid.add_contingency_group(group)
+        grid.add_contingency(gce.Contingency(device=line, group=group))
+
+    info = grid.get_inter_aggregation_info(objects_from=[grid.areas[0]], objects_to=[grid.areas[1]])
+    options = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        skip_generation_limits=True,
+        use_branch_exchange_sensitivity=False,
+        consider_contingencies=True,
+        corrective_contingencies=True,
+        opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid.contingency_groups),
+    )
+    driver = gce.OptimalNetTransferCapacityDriver(grid, options)
+    driver.run()
+    result = driver.results
+    assert result.converged
+    assert np.isclose(result.inter_area_flows, 500.0, atol=1e-6)
+    assert np.all(np.abs(result.nodal_balance) < 1e-6)
+    assert result.get_solution_state() == SolutionState.Relaxed
+    slack_per_state = radial_load.P - radial_line.rate
+    assert np.isclose(result.get_total_slack_mw(), slack_per_state * (contingency_count + 1), atol=1e-6)
+
+    radial_index = int(np.flatnonzero(result.branch_names == radial_line.name)[0])
+    rows = [row for row in result.contingency_flows_list if row[1] == radial_index]
+    assert len(rows) == contingency_count
+    assert {row[2] for row in rows} == set(range(contingency_count))
+    for _, _, _, flow, negative_slack, positive_slack in rows:
+        assert np.isclose(flow, radial_load.P, atol=1e-6)
+        assert np.isclose(positive_slack, slack_per_state, atol=1e-6)
+        assert np.isclose(negative_slack, 0.0, atol=1e-6)
+        assert flow <= radial_line.rate + positive_slack + 1e-6
+        assert flow >= -radial_line.rate - negative_slack - 1e-6
 
 
 def test_ntc_ts_solution_status_column() -> None:

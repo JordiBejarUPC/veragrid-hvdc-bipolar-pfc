@@ -1877,8 +1877,12 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     # solve the model
     status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
     if controlled_states is not None:
+        # The shared screening loop certifies the strict physical states. Its
+        # strict=True formulation admits hard limits and never adds thermal slacks.
         status = controlled_states.solve(f_obj, status, robust=robust, show_logs=verbose > 0,
                                          progress=SolverProgress(progress_text))
+    else:
+        pass  # Other control modes already have their contingency constraints.
 
     # gather the results
     logger.add_info(msg="Status", value=lp_model.status2string(status))

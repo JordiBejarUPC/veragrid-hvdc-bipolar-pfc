@@ -133,6 +133,8 @@ class PulpLpModel(AbstractLpModel):
     __slots__ = ("model",)
 
     OPTIMAL = pulp.LpStatusOptimal
+    INFEASIBLE: int = pulp.LpStatusInfeasible
+    NOT_SOLVED: int = pulp.LpStatusNotSolved
     INFINITY = 1e20
 
     def __init__(self, solver_type: MIPSolvers):

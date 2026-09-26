@@ -26,7 +26,7 @@ from VeraGridEngine.DataStructures.hvdc_data import HvdcData
 from VeraGridEngine.DataStructures.vsc_data import VscData
 from VeraGridEngine.DataStructures.bus_data import BusData
 from VeraGridEngine.basic_structures import Logger, Vec, IntVec, BoolVec, CxMat, Mat, ObjVec
-from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, LpModel, join, get_model_instance
+from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, LpModel, join, get_model_instance, is_infeasible
 from VeraGridEngine.enumerations import TapPhaseControl, HvdcControlType, AvailableTransferMode, ConverterControlType
 from scipy.sparse import csc_matrix, coo_matrix
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import (LinearAnalysis, LinearMultiContingencies,
@@ -3112,10 +3112,10 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     else:
         pass  # no lazy formulation was used
 
-    if status != lp_model.OPTIMAL and not slack_all_limits:
+    if is_infeasible(model=lp_model, status=status) and not slack_all_limits:
         # Feasibility retry. Rebuild once with the penalized slack for every 
         # monitored limit so the answer is reported as slack instead of a failure. 
-        logger.add_warning("Not optimal with hard branch limits, retrying with all "
+        logger.add_warning("Infeasible with hard branch limits, retrying with all "
                            "monitored limits slacked",
                            value=lp_model.status2string(status))
         return run_linear_ntc_opf(grid=grid, t=t, solver_type=solver_type,
