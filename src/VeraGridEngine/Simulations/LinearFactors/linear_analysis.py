@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
 
-@nb.njit()
+@nb.jit()
 def make_contingency_flows(base_flow: Vec,
                            lodf_factors: sp.csc_matrix,
                            ptdf_factors: sp.csc_matrix,
@@ -142,7 +142,7 @@ def make_jacobian_ptdf(Ybus: sp.csc_matrix,
     return PTDF
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def make_dP_from_bus_types(bus_types: IntVec, distribute_slack: bool) -> Mat:
     """
     Build the dP / Dij matrix used to modify the PTDF.
@@ -201,7 +201,7 @@ def make_dP_from_bus_types(bus_types: IntVec, distribute_slack: bool) -> Mat:
     return dP
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def make_corrected_injections(P: Vec, bus_types: IntVec, distribute_slack: bool) -> Vec:
     """
     Compute the effective active-power injection vector used for KCL checks.
@@ -252,7 +252,7 @@ def make_corrected_injections(P: Vec, bus_types: IntVec, distribute_slack: bool)
     return P_eff
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def make_corrected_injections_2d(P: Mat, bus_types: IntVec, distribute_slack: bool) -> Mat:
     """
     Compute the effective active-power injection vector used for KCL checks.
@@ -517,7 +517,7 @@ def make_lodf(Cf: sp.csc_matrix,
     return LODF
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def make_transfer_limits(ptdf: Mat,
                          flows: Vec,
                          rates: Vec) -> Vec:
@@ -545,7 +545,7 @@ def make_transfer_limits(ptdf: Mat,
     return tmc
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def create_M_numba(lodf: Mat, branch_contingency_indices) -> Mat:
     """
 

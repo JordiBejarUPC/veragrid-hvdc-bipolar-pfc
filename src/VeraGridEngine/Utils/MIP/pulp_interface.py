@@ -338,9 +338,19 @@ class PulpLpModel(AbstractLpModel):
             return solver
 
         elif self.solver_type == MIPSolvers.CBC:
-            # PuLP 4 removed PULP_CBC_CMD. COIN_CMD is the CBC command wrapper
-            # in PuLP 3.3+ and 4.x, but CBC itself must be installed separately.
-            return COIN_CMD(mip=self.model.isMIP(), msg=show_logs)
+            bundled_cbc = getattr(pulp, "PULP_CBC_CMD", None)
+            if bundled_cbc is not None:
+                solver = bundled_cbc(mip=self.model.isMIP(), msg=show_logs)
+                if solver.available() is not None:
+                    return solver
+                else:
+                    pass
+
+            solver = COIN_CMD(mip=self.model.isMIP(), msg=show_logs)
+            if solver.available() is not None:
+                return solver
+            else:
+                raise pulp.PulpSolverError("CBC was selected, but no CBC executable is available")
 
         elif self.solver_type == MIPSolvers.CUOPT:
             return CUOPT(mip=self.model.isMIP(), msg=show_logs)
@@ -398,20 +408,16 @@ class PulpLpModel(AbstractLpModel):
 
         # solve the model
         try:
-            status = normalize_solve_status(self.model.solve(solver=self.get_solver(show_logs=show_logs)))
+            solver = self.get_solver(show_logs=show_logs)
+            self.logger.add_info(msg="PuLP solver", value=solver.__class__.__name__)
+            status = normalize_solve_status(self.model.solve(solver=solver))
         except pulp.PulpSolverError as e:
             self.logger.add_error(msg=str(e), )
-            # Retry with Highs
-            status = normalize_solve_status(
-                self.model.solve(solver=make_highs_solver(mip=self.model.isMIP(), show_logs=show_logs))
-            )
+            status = self.NOT_SOLVED
 
         except subprocess.CalledProcessError as e:
             self.logger.add_error(msg=str(e), )
-            # Retry with Highs
-            status = normalize_solve_status(
-                self.model.solve(solver=make_highs_solver(mip=self.model.isMIP(), show_logs=show_logs))
-            )
+            status = self.NOT_SOLVED
         except IndexError as e:
             print("Index error:")
             print(e)
