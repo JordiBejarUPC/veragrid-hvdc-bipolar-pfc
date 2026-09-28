@@ -296,7 +296,7 @@ def plot_pvd1_and_bus_results(grid: vge.MultiCircuit, results, file_name: str = 
         ax.set_xlim([t_plot[0], t_plot[-1]])
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
     plt.close(fig)
 
 

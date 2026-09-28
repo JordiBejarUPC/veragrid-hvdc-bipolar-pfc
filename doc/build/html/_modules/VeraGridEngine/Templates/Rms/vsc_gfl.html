@@ -5,16 +5,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Templates.Rms.vsc_gfl &mdash; VeraGrid 6.4.4 documentation</title>
+  <title>VeraGridEngine.Templates.Rms.vsc_gfl &mdash; VeraGrid 6.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
-      <link rel="stylesheet" type="text/css" href="../../../../_static/style.css?v=b3745da1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/style.css?v=ba3a54df" />
 
   
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../../_static/documentation_options.js?v=f2c0b4ab"></script>
+      <script src="../../../../_static/documentation_options.js?v=9cce70e7"></script>
       <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -59,6 +60,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/short_circuit.html">⚡ Short-Circuit</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/stochastic_power_flow.html">🎲 Stochastic power flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/continuation_power_flow.html">➿ Continuation power flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/sigma_analysis.html">🌘 Sigma analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/solar_wizard.html">☀️ Solar power wizard</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/contingency_analysis.html">💥 Contingency analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/investment_optimization.html">🏦 Investment optimization</a></li>
@@ -68,13 +70,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/reliability.html">🚧 Reliability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/state_estimation.html">🌀 State estimation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/dynamic_simulations.html">🧲 Dynamic simulations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/rms_simulations.html">📝 RMS simulations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/small_signal_stability.html">Small-Signal Stability Analysis</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/emt_simulations.html">🔬 EMT simulations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/development.html">💻 Development</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/plugins.html">🧩 Plugins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/license.html">📜 License</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../rst_source/change_log.html">Change log</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/data_models.html">Data Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../rst_source/api/auto/modules.html">VeraGrid</a></li>
 </ul>
@@ -112,6 +110,8 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Templates.template_definition</span><span class="w"> </span><span class="kn">import</span> <span class="n">TemplateDefinition</span><span class="p">,</span> <span class="n">TemplateProp</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.enumerations</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeviceType</span><span class="p">,</span> <span class="n">VarPowerFlowReferenceType</span><span class="p">,</span> <span class="n">ParamPowerFlowReferenceType</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Devices.Dynamic.rms_template</span><span class="w"> </span><span class="kn">import</span> <span class="n">RmsModelTemplate</span>
@@ -125,6 +125,7 @@
 <div class="viewcode-block" id="VscGflRmsTemplate">
 <a class="viewcode-back" href="../../../../rst_source/api/auto/VeraGridEngine.Templates.Rms.html#VeraGridEngine.Templates.Rms.vsc_gfl.VscGflRmsTemplate">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">VscGflRmsTemplate</span><span class="p">(</span><span class="n">TemplateDefinition</span><span class="p">):</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vf</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">vf</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">[</span>
@@ -144,6 +145,7 @@
 <div class="viewcode-block" id="TrafoGflRmsTemplate">
 <a class="viewcode-back" href="../../../../rst_source/api/auto/VeraGridEngine.Templates.Rms.html#VeraGridEngine.Templates.Rms.vsc_gfl.TrafoGflRmsTemplate">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrafoGflRmsTemplate</span><span class="p">(</span><span class="n">TemplateDefinition</span><span class="p">):</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vf</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">vf</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">[</span>
@@ -322,6 +324,7 @@
     <span class="n">templ</span><span class="o">.</span><span class="n">block</span> <span class="o">=</span> <span class="n">block</span>
 
 
+    <span class="n">templ</span><span class="o">.</span><span class="n">comment</span> <span class="o">=</span> <span class="s1">&#39;VSC phase-locked-loop RMS control block&#39;</span>
     <span class="k">return</span> <span class="n">templ</span></div>
 
 
@@ -409,7 +412,8 @@
 
 <div class="viewcode-block" id="build_gfl_converter_model">
 <a class="viewcode-back" href="../../../../rst_source/api/auto/VeraGridEngine.Templates.Rms.html#VeraGridEngine.Templates.Rms.vsc_gfl.build_gfl_converter_model">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">build_gfl_converter_model</span><span class="p">(</span><span class="n">vfactory</span><span class="p">:</span> <span class="n">VarFactory</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> 
+<span class="k">def</span><span class="w"> </span><span class="nf">build_gfl_converter_model</span><span class="p">(</span><span class="n">vfactory</span><span class="p">:</span> <span class="n">VarFactory</span><span class="p">,</span>
+                              <span class="n">inputs</span><span class="p">:</span> <span class="n">List</span><span class="p">,</span>
                               <span class="n">control1</span><span class="p">:</span> <span class="n">ConverterControlType</span> <span class="o">=</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Pac</span><span class="p">,</span> 
                               <span class="n">control2</span><span class="p">:</span> <span class="n">ConverterControlType</span> <span class="o">=</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Qac</span><span class="p">,</span>
                               <span class="n">multilinear</span><span class="p">:</span><span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
@@ -495,10 +499,10 @@
         <span class="n">Ki_vac</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span>
         <span class="n">R</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">0.01</span><span class="p">),</span>
         <span class="n">L</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">0.05</span><span class="p">),</span>
-        <span class="n">P_ref</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
-        <span class="n">Q_ref</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
-        <span class="n">Vdc_ref</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
-        <span class="n">Vm_ac_ref</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
+        <span class="n">P_ref</span><span class="p">:</span> <span class="n">P</span><span class="p">,</span>
+        <span class="n">Q_ref</span><span class="p">:</span> <span class="n">Q</span><span class="p">,</span>
+        <span class="n">Vdc_ref</span><span class="p">:</span> <span class="n">v_dc</span><span class="p">,</span>
+        <span class="n">Vm_ac_ref</span><span class="p">:</span> <span class="n">Vm</span><span class="p">,</span>
     <span class="p">}</span>
 
     <span class="c1"># P and Q at the point of common coupling</span>
@@ -659,26 +663,7 @@
         <span class="n">v_q_c</span><span class="p">:</span> <span class="n">v_q_g</span> <span class="o">-</span> <span class="p">(</span><span class="o">-</span><span class="n">R</span> <span class="o">*</span> <span class="n">i_q</span> <span class="o">-</span> <span class="n">omega</span> <span class="o">*</span> <span class="n">L</span> <span class="o">*</span> <span class="n">i_d</span><span class="p">),</span>
         <span class="n">vd_hat</span><span class="p">:</span> <span class="n">v_d_c</span> <span class="o">-</span> <span class="p">(</span><span class="n">v_d_g</span> <span class="o">-</span> <span class="n">L</span> <span class="o">*</span> <span class="n">omega</span> <span class="o">*</span> <span class="n">i_q</span><span class="p">),</span>
         <span class="n">vq_hat</span><span class="p">:</span> <span class="n">v_q_c</span> <span class="o">-</span> <span class="p">(</span><span class="n">v_q_g</span> <span class="o">+</span> <span class="n">L</span> <span class="o">*</span> <span class="n">omega</span> <span class="o">*</span> <span class="n">i_d</span><span class="p">),</span>
-        <span class="n">Vdc_ref</span><span class="p">:</span> <span class="n">v_dc</span><span class="p">,</span>
-        <span class="n">Vm_ac_ref</span><span class="p">:</span> <span class="n">Vm</span><span class="p">,</span>
-        <span class="n">Q_ref</span><span class="p">:</span> <span class="n">Q</span><span class="p">,</span>
-        <span class="n">P_ref</span><span class="p">:</span> <span class="n">P</span><span class="p">,</span>
     <span class="p">}</span>
-    
-    <span class="c1"># Add control-specific initialization</span>
-    <span class="k">if</span> <span class="n">control1</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Pac</span><span class="p">,</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Pdc</span><span class="p">]:</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">P_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">P</span>
-    <span class="k">elif</span> <span class="n">control1</span> <span class="o">==</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Vm_dc</span><span class="p">:</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">Vdc_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">v_dc</span>
-        <span class="c1"># For DC voltage control, initialize i_q_ref based on initial power flow</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">i_q_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">P</span> <span class="o">/</span> <span class="n">v_q_g</span>
-    
-    <span class="k">if</span> <span class="n">control2</span> <span class="o">==</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Qac</span><span class="p">:</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">Q_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">Q</span>
-    <span class="k">elif</span> <span class="n">control2</span> <span class="o">==</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Vm_ac</span><span class="p">:</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">Vm_ac_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">Vm</span>
-        <span class="c1"># For AC voltage control, initialize i_d_ref based on initial reactive power</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">i_d_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">/</span> <span class="n">v_q_g</span>
 
     <span class="n">gfl_block_aux</span> <span class="o">=</span> <span class="n">Block</span><span class="p">(</span>
         <span class="n">algebraic_eqs</span><span class="o">=</span><span class="n">algebraic_eqs</span><span class="p">,</span>
@@ -765,7 +750,7 @@
 
 <div class="viewcode-block" id="VscGflBuild">
 <a class="viewcode-back" href="../../../../rst_source/api/auto/VeraGridEngine.Templates.Rms.html#VeraGridEngine.Templates.Rms.vsc_gfl.VscGflBuild">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">VscGflBuild</span><span class="p">(</span><span class="n">vfactory</span><span class="p">:</span> <span class="n">VarFactory</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">VscGflBuild</span><span class="p">(</span><span class="n">vfactory</span><span class="p">:</span> <span class="n">VarFactory</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Grid-following VSC RMS template&quot;</span><span class="p">,</span>
                 <span class="n">control1</span><span class="p">:</span> <span class="n">ConverterControlType</span> <span class="o">=</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Pac</span><span class="p">,</span>
                 <span class="n">control2</span><span class="p">:</span> <span class="n">ConverterControlType</span> <span class="o">=</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Qac</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RmsModelTemplate</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -786,6 +771,7 @@
 <span class="sd">        - Vm_dc + Vm_ac: DC voltage and AC voltage control</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">templ</span> <span class="o">=</span> <span class="n">RmsModelTemplate</span><span class="p">()</span>
+    <span class="n">templ</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
     <span class="n">templ</span><span class="o">.</span><span class="n">tpe</span> <span class="o">=</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">VscDevice</span>
     <span class="c1"># Inputs: Vm, Va, Vdc (Pt_vsc and Qt_vsc come from power flow initialization)</span>
     <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">vfactory</span><span class="o">.</span><span class="n">add_var</span><span class="p">(</span><span class="s2">&quot;Vm_&quot;</span><span class="p">),</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_var</span><span class="p">(</span><span class="s2">&quot;Va_&quot;</span><span class="p">),</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_var</span><span class="p">(</span><span class="s2">&quot;Vdc_&quot;</span><span class="p">)]</span>
@@ -865,13 +851,14 @@
     <span class="n">vsc_block</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;gfl_block&#39;</span>
 
     <span class="n">templ</span><span class="o">.</span><span class="n">_block</span> <span class="o">=</span> <span class="n">vsc_block</span>
+    <span class="n">templ</span><span class="o">.</span><span class="n">comment</span> <span class="o">=</span> <span class="s1">&#39;VSC grid-following RMS model&#39;</span>
     <span class="k">return</span> <span class="n">templ</span></div>
 
 
 
 <div class="viewcode-block" id="TrafoGflBuild">
 <a class="viewcode-back" href="../../../../rst_source/api/auto/VeraGridEngine.Templates.Rms.html#VeraGridEngine.Templates.Rms.vsc_gfl.TrafoGflBuild">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">TrafoGflBuild</span><span class="p">(</span><span class="n">vfactory</span><span class="p">:</span> <span class="n">VarFactory</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">TrafoGflBuild</span><span class="p">(</span><span class="n">vfactory</span><span class="p">:</span> <span class="n">VarFactory</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Grid-following transformer RMS template&quot;</span><span class="p">,</span>
                   <span class="n">control1</span><span class="p">:</span> <span class="n">ConverterControlType</span> <span class="o">=</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Pac</span><span class="p">,</span>
                   <span class="n">control2</span><span class="p">:</span> <span class="n">ConverterControlType</span> <span class="o">=</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Qac</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RmsModelTemplate</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -879,6 +866,7 @@
 <span class="sd">    and AC-to side is grid bus.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">templ</span> <span class="o">=</span> <span class="n">RmsModelTemplate</span><span class="p">()</span>
+    <span class="n">templ</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
     <span class="n">templ</span><span class="o">.</span><span class="n">tpe</span> <span class="o">=</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">VscDevice</span>
 
     <span class="n">Vm_f</span> <span class="o">=</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_var</span><span class="p">(</span><span class="s2">&quot;Vmf_&quot;</span><span class="p">)</span>
@@ -959,6 +947,7 @@
     <span class="n">vsc_block</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;trafo_gfl_block&#39;</span>
 
     <span class="n">templ</span><span class="o">.</span><span class="n">_block</span> <span class="o">=</span> <span class="n">vsc_block</span>
+    <span class="n">templ</span><span class="o">.</span><span class="n">comment</span> <span class="o">=</span> <span class="s1">&#39;Grid-following converter transformer RMS block&#39;</span>
     <span class="k">return</span> <span class="n">templ</span></div>
 
 </pre></div>

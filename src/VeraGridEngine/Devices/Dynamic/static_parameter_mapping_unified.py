@@ -1167,6 +1167,14 @@ def resolve_direct_dyn_ref_value(
     :param raw_value: Static property value read from the device.
     :return: Direct numerical value or ``None`` when explicit logic must handle it.
     """
+    # Optional physical properties use ``None`` to declare absent evidence.
+    # They must not become a synthetic zero or enter a numeric conversion; the
+    # device-specific fallback remains responsible for the reduced model.
+    if raw_value is None:
+        return None
+    else:
+        pass
+
     if key == ParamPowerFlowReferenceType.g or key == ParamPowerFlowReferenceType.b:
         # Branch-like devices may expose scalar g/b template keys whose meaning
         # depends on the target dynamic model contract. For RMS phasor line
@@ -1323,6 +1331,7 @@ def resolve_direct_dyn_ref_value(
                                                     ParamPowerFlowReferenceType.vsc_kdp_pu,
                                                     ParamPowerFlowReferenceType.vsc_min_ac_voltage_pu,
                                                     ParamPowerFlowReferenceType.dc_line_r_pu,
+                                                    ParamPowerFlowReferenceType.dc_line_l_pu_seconds,
                                                     ParamPowerFlowReferenceType.dc_line_length_km,
                                                     ParamPowerFlowReferenceType.transformer_rated_power_mva,
                                                     ParamPowerFlowReferenceType.transformer_winding1_rated_voltage_ll_kv,
@@ -1560,6 +1569,7 @@ def assign_static_api_object_mapping_for_device(
             elif device_type == DeviceType.DCLineDevice:
                 if isinstance(device, DcLine):
                     assign_dc_line_static_api_mapping(
+                        grid=grid,
                         dc_line=device,
                         mdl=mdl,
                         problem_mapping=problem_mapping,
@@ -2460,7 +2470,9 @@ def assign_load_static_api_mapping(
         assign_api_mapping_value_if_present(
             mdl=mdl,
             key=ParamPowerFlowReferenceType.Pl0,
-            value=float(load.P) / sbase,
+            # RMS network injections use generation-positive signs, whereas
+            # the static Load API stores consumed P/Q as positive values.
+            value=-float(load.P) / sbase,
             logger=logger,
             device_name=device_name,
             problem_mapping=problem_mapping,
@@ -2468,7 +2480,7 @@ def assign_load_static_api_mapping(
         assign_api_mapping_value_if_present(
             mdl=mdl,
             key=ParamPowerFlowReferenceType.Ql0,
-            value=float(load.Q) / sbase,
+            value=-float(load.Q) / sbase,
             logger=logger,
             device_name=device_name,
             problem_mapping=problem_mapping,
@@ -2641,10 +2653,38 @@ def assign_shunt_static_api_mapping(
     :param logger: Optional logger.
     :return: None.
     """
-    if direct_assigned_keys is None:
-        pass
-    else:
-        pass
+    _ = direct_assigned_keys
+
+    # The generic direct mapper deliberately leaves the historical ``g`` and
+    # ``b`` keys unresolved because they mean series admittance for branches.
+    # For a shunt their meaning is unambiguous: the static MW/MVAr-at-1-pu
+    # values become system-per-unit conductance and susceptance.
+    device_name: str = str(shunt.name)
+    for key, value in (
+            (ParamPowerFlowReferenceType.g, float(shunt.G) / float(grid.Sbase)),
+            (ParamPowerFlowReferenceType.b, float(shunt.B) / float(grid.Sbase)),
+    ):
+        target: Var | None = mdl.api_obj_mapping.get(key, None)
+        if target is not None:
+            problem_mapping[target] = Const(value)
+
+    # Also support templates using the unambiguous shunt-specific references.
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.shunt_g_pu,
+        value=float(shunt.G) / float(grid.Sbase),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.shunt_b_pu,
+        value=float(shunt.B) / float(grid.Sbase),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
 
 
 def assign_controllable_shunt_static_api_mapping(
@@ -3026,15 +3066,15 @@ def assign_vsc_static_api_mapping(
     """
     Assign static VSC parameters exposed by ``mdl.api_obj_mapping``.
 
-    PF-derived quantities such as converter initial active power or converter
-    losses are intentionally not assigned here. They are initialization data, not
-    static API-object data.
+    Loss coefficients are static device data, unlike the operating-point losses
+    and terminal powers that must be obtained from power-flow initialization.
 
-    :param problem_mapping:
+    :param problem_mapping: Destination for resolved constant parameters.
     :param grid: Static network model.
     :param vsc: VSC device.
-    :param mdl: VSC EMT block.
+    :param mdl: VSC RMS or EMT block exposing the requested static mappings.
     :param logger: Optional logger.
+    :param direct_assigned_keys: Keys already handled by the direct property mapper.
     :return: None.
     """
     device_name: str = str(vsc.name)
@@ -3057,8 +3097,37 @@ def assign_vsc_static_api_mapping(
         problem_mapping=problem_mapping,
     )
 
+    # The direct mapper deliberately delegates these coefficients to the VSC
+    # handler. Resolve the actual device values, including zero, without adding
+    # template fallbacks or changing the dynamic event parameters.
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.alpha1,
+        value=float(vsc.alpha1),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.alpha2,
+        value=float(vsc.alpha2),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.alpha3,
+        value=float(vsc.alpha3),
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+
 
 def assign_dc_line_static_api_mapping(
+        grid: MultiCircuit,
         dc_line: DcLine,
         mdl: Block,
         problem_mapping: Dict[Var, Const],
@@ -3068,6 +3137,7 @@ def assign_dc_line_static_api_mapping(
     """
     Assign static DC-line parameters exposed by ``mdl.api_obj_mapping``.
 
+    :param grid: Circuit providing the system power base.
     :param dc_line: DC line device.
     :param mdl: DC line EMT block.
     :param logger: Optional logger.
@@ -3077,6 +3147,10 @@ def assign_dc_line_static_api_mapping(
     eps_value: float = 1.0e-12
     resistance_value: float = float(dc_line.R_corrected)
     conductance_value: float = 1.0 / max(abs(resistance_value), eps_value)
+    dynamic_values: Tuple[float, float] = dc_line.get_dynamic_values_pu_seconds(
+        Sbase=float(grid.Sbase),
+        logger=logger if logger is not None else Logger(),
+    )
 
     assign_common_branch_static_api_mapping(
         device=dc_line,
@@ -3113,6 +3187,14 @@ def assign_dc_line_static_api_mapping(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.dc_line_r_pu,
         value=resistance_value,
+        logger=logger,
+        device_name=device_name,
+        problem_mapping=problem_mapping,
+    )
+    assign_api_mapping_value_if_present(
+        mdl=mdl,
+        key=ParamPowerFlowReferenceType.dc_line_l_pu_seconds,
+        value=float(dynamic_values[0]),
         logger=logger,
         device_name=device_name,
         problem_mapping=problem_mapping,
@@ -3156,20 +3238,56 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowReferenceType.g,
-        value=float(transformer.R / (transformer.R ** 2 + transformer.X ** 2)),
+        key=ParamPowerFlowReferenceType.r,
+        value=float(transformer.R),
         logger=logger,
         device_name=transformer.name,
         problem_mapping=problem_mapping,
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowReferenceType.b,
-        value=float(-transformer.X / (transformer.R ** 2 + transformer.X ** 2)),
+        key=ParamPowerFlowReferenceType.x,
+        value=float(transformer.X),
         logger=logger,
         device_name=transformer.name,
         problem_mapping=problem_mapping,
     )
+    needs_series_admittance: bool = (
+        ParamPowerFlowReferenceType.g in mdl.api_obj_mapping
+        or ParamPowerFlowReferenceType.b in mdl.api_obj_mapping
+    )
+    if needs_series_admittance:
+        series_impedance_square: float = float(
+            transformer.R ** 2 + transformer.X ** 2
+        )
+        if series_impedance_square > 1.0e-24:
+            assign_api_mapping_value_if_present(
+                mdl=mdl,
+                key=ParamPowerFlowReferenceType.g,
+                value=float(transformer.R / series_impedance_square),
+                logger=logger,
+                device_name=transformer.name,
+                problem_mapping=problem_mapping,
+            )
+            assign_api_mapping_value_if_present(
+                mdl=mdl,
+                key=ParamPowerFlowReferenceType.b,
+                value=float(-transformer.X / series_impedance_square),
+                logger=logger,
+                device_name=transformer.name,
+                problem_mapping=problem_mapping,
+            )
+        else:
+            add_static_mapping_warning(
+                logger=logger,
+                device_name=str(transformer.name),
+                message="Transformer series admittance requires non-zero impedance.",
+                value=series_impedance_square,
+                expected_value="R squared plus X squared greater than 1e-24",
+                device_property="R/X",
+            )
+    else:
+        pass
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.bsh,
@@ -3214,7 +3332,7 @@ def assign_transformer2w_static_api_mapping(
     )
     assign_api_mapping_value_if_present(
         mdl=mdl,
-        key=ParamPowerFlowReferenceType.transformer_tap_ratio,
+        key=ParamPowerFlowReferenceType.tap_phase,
         value=float(transformer.tap_phase),
         logger=logger,
         device_name=transformer.name,

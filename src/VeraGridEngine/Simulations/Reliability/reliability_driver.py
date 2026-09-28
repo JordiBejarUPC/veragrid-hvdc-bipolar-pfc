@@ -17,7 +17,7 @@ from VeraGridEngine.Simulations.Reliability.reliability_results import Reliabili
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 
 
-@nb.njit()
+@nb.jit()
 def get_gen_pmax(nt: int, k: int, Snom: float, P_array: Vec, active_array: BoolVec, dispatchable_array: BoolVec):
     """
     Get a generator array of Pmax given the active and dispatchable conditions
@@ -42,7 +42,7 @@ def get_gen_pmax(nt: int, k: int, Snom: float, P_array: Vec, active_array: BoolV
     return gen_pmax
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def count_device_incidences(active_states: Mat) -> int:
     """
     Count device incidence starts in an active-state matrix.
@@ -135,6 +135,7 @@ class ReliabilityStudyDriver(DriverTemplate):
         """
         self.report_text("Running reliability study...")
         self.tic()
+        self.report_text("Compiling and configuring...")
 
         if self.reliability_mode == ReliabilityMode.GenerationAdequacy:
             self.run_adequacy_reliability()
@@ -143,8 +144,7 @@ class ReliabilityStudyDriver(DriverTemplate):
             self.run_grid_reliability()
 
         self.toc()
-        self.report_text("Done!")
-        self.done_signal.emit()
+        self.report_done()
 
     def run_adequacy_reliability(self):
         """

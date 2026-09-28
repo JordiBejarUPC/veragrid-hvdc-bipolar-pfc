@@ -73,7 +73,7 @@ def Andes_vs_Veragrid_stability(eigV, eigA):
     plt.axvline(0, color='black', linewidth=1)
     plt.legend(loc='upper left', ncol=2)
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 Andes_vs_Veragrid_stability("Eigenvalues_results.csv", "Eigenvalues_results_Andes.csv")
 

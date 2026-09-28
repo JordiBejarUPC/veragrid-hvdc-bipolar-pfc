@@ -39,6 +39,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
     EmtProblemTemplate,
     get_solver_forced_event_time,
+    resolve_solver_boundary_step,
     resolve_solver_boundary_updater,
 )
 from VeraGridEngine.Simulations.driver_template import DummySignal
@@ -830,7 +831,7 @@ def _greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[Int32
         degrees[col_index] = len(adjacency[col_index])
         col_index += 1
 
-    order = np.argsort(-degrees).astype(np.int32)
+    order = np.argsort(-degrees, kind="stable").astype(np.int32)
     colors = -np.ones(n_cols, dtype=np.int32)
     used = np.zeros(n_cols, dtype=np.bool_)
     max_color: int = -1
@@ -875,7 +876,7 @@ def _greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[Int32
     return colors, int(max_color + 1), color_groups
 
 
-@nb.njit(_build_scatter_color_signature(), cache=True, fastmath=True)
+@nb.jit(_build_scatter_color_signature(), cache=True, fastmath=True)
 def _scatter_color_jvp_to_csc_data(
         jvp: Float64Vector,
         data: Float64Vector,
@@ -921,7 +922,7 @@ def _scatter_color_jvp_to_csc_data(
         k += 1
 
 
-@nb.njit(_build_max_abs_signature(), cache=True, fastmath=True)
+@nb.jit(_build_max_abs_signature(), cache=True, fastmath=True)
 def _max_abs_value(values: Float64Vector) -> float:
     """
     Compute the infinity norm without allocating temporary arrays.
@@ -953,7 +954,7 @@ def _max_abs_value(values: Float64Vector) -> float:
     return max_value
 
 
-@nb.njit(_build_copy_negated_signature(), cache=True, fastmath=True)
+@nb.jit(_build_copy_negated_signature(), cache=True, fastmath=True)
 def _copy_negated_vector(values: Float64Vector, out: Float64Vector) -> None:
     """
     Write the negated vector into a preallocated buffer.
@@ -972,7 +973,7 @@ def _copy_negated_vector(values: Float64Vector, out: Float64Vector) -> None:
         index += 1
 
 
-@nb.njit(_build_fill_full_parameter_signature(), cache=True, fastmath=True)
+@nb.jit(_build_fill_full_parameter_signature(), cache=True, fastmath=True)
 def _fill_full_parameter_buffer(
         runtime_params: Float64Vector,
         static_params: Float64Vector,
@@ -1004,7 +1005,7 @@ def _fill_full_parameter_buffer(
         index += 1
 
 
-@nb.njit(cache=True, fastmath=True)
+@nb.jit(cache=True, fastmath=True)
 def _max_abs_diff_vectors(left_values: Float64Vector, right_values: Float64Vector) -> float:
     """
     Return the maximum absolute difference between two vectors.
@@ -1039,7 +1040,7 @@ def _max_abs_diff_vectors(left_values: Float64Vector, right_values: Float64Vecto
 
 
 
-@nb.njit(_build_permute_csc_signature(), cache=True, fastmath=True)
+@nb.jit(_build_permute_csc_signature(), cache=True, fastmath=True)
 def _permute_csc_data_by_columns(
         source_data: Float64Vector,
         source_indptr: Int32Vector,
@@ -1079,7 +1080,7 @@ def _permute_csc_data_by_columns(
         dst_col += 1
 
 
-@nb.njit(_build_scatter_permuted_solution_signature(), cache=True, fastmath=True)
+@nb.jit(_build_scatter_permuted_solution_signature(), cache=True, fastmath=True)
 def _scatter_permuted_solution_to_original_order(
         permuted_solution: Float64Vector,
         inverse_column_perm: Int32Vector,
@@ -3085,9 +3086,13 @@ class StructuralCompiledSolver:
                 _fill_full_parameter_buffer(runtime_params, self._static_parameter_buffer, full_params)
 
                 if active_boundary_updater is None:
-                    pass
+                    state_event_retry_time: float | None = None
                 else:
-                    active_boundary_updater.update(float(t_curr), x_prev, full_params)
+                    state_event_retry_time = active_boundary_updater.update(
+                        float(t_curr),
+                        x_prev,
+                        full_params,
+                    )
 
                 if self._n_event_parameters > 0:
                     runtime_params[:] = full_params[:self._n_event_parameters]
@@ -3126,9 +3131,12 @@ class StructuralCompiledSolver:
                 else:
                     pass
 
-                substep_converged: bool = False
+                substep_converged: bool = state_event_retry_time is not None
                 newton_index: int = 0
-                while newton_index < self._newton_max_iter:
+                while (
+                    state_event_retry_time is None
+                    and newton_index < self._newton_max_iter
+                ):
                     ctx: NewtonSolveContext | None = None
                     # Residual assembly is fully in-place and reuses the grouped work buffers.
                     self._residual_assembler.evaluate(
@@ -3267,34 +3275,49 @@ class StructuralCompiledSolver:
                     if step_index == 0 and is_first_local_step:
                         well_initialized = False
 
-                # Differential history is updated according to the selected integration rule.
-                self._last_macro_newton_iterations = int(newton_index)
-
-                if self._method == DynamicIntegrationMethod.DaeTrapezoidal:
-                    dx_prev[:self._n_state] = (
-                        (2.0 / h_eff) * (x_iter[:self._n_state] - x_prev[:self._n_state])
-                        - dx_prev[:self._n_state]
+                if state_event_retry_time is None:
+                    state_event_retry_time = resolve_solver_boundary_step(
+                        boundary_updater=active_boundary_updater,
+                        accepted=substep_converged,
+                        params=full_params,
                     )
-                elif self._method == DynamicIntegrationMethod.DaeBDF2:
-                    x_prev2[:] = x_prev
-                    dx_prev[:self._n_state] = (
-                        1.5 * x_iter[:self._n_state]
-                        - 2.0 * x_prev[:self._n_state]
-                        + 0.5 * x_prev2[:self._n_state]
-                    ) / h_eff
                 else:
-                    dx_prev[:self._n_state] = (
-                        x_iter[:self._n_state] - x_prev[:self._n_state]
-                    ) / h_eff
-
-                if self._method == DynamicIntegrationMethod.DaeBDF2:
                     pass
-                else:
-                    x_prev2[:] = x_prev
 
-                x_prev[:] = x_iter
-                t_local_prev = t_curr
-                is_first_local_step = False
+                if state_event_retry_time is not None:
+                    # Do not advance differential history beyond a newly found
+                    # event; the next loop targets its global earliest time.
+                    x_iter[:] = x_prev
+                else:
+                    # Differential history is updated only for an accepted
+                    # continuous interval or its post-event re-solve.
+                    self._last_macro_newton_iterations = int(newton_index)
+
+                    if self._method == DynamicIntegrationMethod.DaeTrapezoidal:
+                        dx_prev[:self._n_state] = (
+                            (2.0 / h_eff) * (x_iter[:self._n_state] - x_prev[:self._n_state])
+                            - dx_prev[:self._n_state]
+                        )
+                    elif self._method == DynamicIntegrationMethod.DaeBDF2:
+                        x_prev2[:] = x_prev
+                        dx_prev[:self._n_state] = (
+                            1.5 * x_iter[:self._n_state]
+                            - 2.0 * x_prev[:self._n_state]
+                            + 0.5 * x_prev2[:self._n_state]
+                        ) / h_eff
+                    else:
+                        dx_prev[:self._n_state] = (
+                            x_iter[:self._n_state] - x_prev[:self._n_state]
+                        ) / h_eff
+
+                    if self._method == DynamicIntegrationMethod.DaeBDF2:
+                        pass
+                    else:
+                        x_prev2[:] = x_prev
+
+                    x_prev[:] = x_iter
+                    t_local_prev = t_curr
+                    is_first_local_step = False
 
 
             y[step_index + 1, :] = x_prev

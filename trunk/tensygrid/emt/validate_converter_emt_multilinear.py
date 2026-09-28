@@ -249,7 +249,7 @@ def plot_results(std_case: CaseResults, ml_case: CaseResults) -> None:
     output_path = Path(__file__).resolve().parent / "converter_emt_multilinear_compare.png"
     fig.savefig(output_path, dpi=170)
     print(f"Plot saved to: {output_path}")
-    plt.show()
+    plt.show(block=False)
 
 
 def main() -> None:

@@ -74,8 +74,8 @@ def build_script_emt_options() -> EmtOptions:
         solver_type=EmtSolverTypes.Symbolic,
         initialization_method=EmtInitializationMethod.Explicit,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
-        time_step=1.0e-5,
-        simulation_time=1.2e-3,
+        time_step=2.0e-5,
+        simulation_time=2.5e-2,
         newton_max_iter=20,
     )
     return options
@@ -103,6 +103,7 @@ def run_switched_vsc_case(
         open_saved_plot=open_saved_plot,
         plot_file_name="switched_converter_handover_scripting.png",
         emt_options=resolved_emt_options,
+        t_enable_s=5.0e-3,
         r_eq_pu=SCRIPT_FILTER_R_EQ_PU,
         l_eq_pu=SCRIPT_FILTER_L_EQ_PU,
     )

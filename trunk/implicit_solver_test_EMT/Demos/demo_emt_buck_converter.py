@@ -216,7 +216,7 @@ def main() -> None:
     plt.grid(True)
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 if __name__ == "__main__":

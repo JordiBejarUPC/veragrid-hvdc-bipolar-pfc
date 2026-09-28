@@ -554,7 +554,7 @@ plt.legend()
 plt.grid(True)
 
 plt.tight_layout()
-plt.show()  
+plt.show(block=False)
 
 # Verify simulation completed
 print('\n=== SIMULATION COMPLETED SUCCESSFULLY ===')

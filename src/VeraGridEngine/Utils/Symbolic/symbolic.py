@@ -633,6 +633,18 @@ class Var(Expr):
     def ref(self) -> VarPowerFlowReferenceType | None:
         return self._ref
 
+    @ref.setter
+    def ref(self, val: VarPowerFlowReferenceType) -> None:
+        """Set the typed physical-network reference of this variable.
+
+        :param val: Physical-network reference to assign.
+        :return: None.
+        """
+        if isinstance(val, VarPowerFlowReferenceType):
+            self._ref = val
+        else:
+            raise ValueError(f"Symbolic variable cannot accept reference {val}")
+
     def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         """
         differentiation
@@ -1127,7 +1139,7 @@ class UnOp(Expr):
 # ----------------------------------------------------------------------------------------------------------------------
 # Functional nodes
 # ----------------------------------------------------------------------------------------------------------------------
-@nb.njit
+@nb.jit
 def heaviside_num(x):
     return (x > 0) * 1.0
 
@@ -1472,7 +1484,23 @@ def sqrt(x: Expr) -> Expr:
 
 
 def sqrt_diff(u: Expr, du: Expr) -> Expr:
-    return du / (Const(2) * sqrt(u))
+    """Differentiate a square root with a finite boundary convention.
+
+    The analytical derivative is retained for strictly positive arguments.
+    At zero, where the derivative is not finite, the symbolic runtime uses a
+    zero slope. This is the deterministic boundary convention required by
+    limited expressions such as ``sqrt(max(x, 0))``.
+
+    :param u: Square-root argument.
+    :param du: Derivative of the argument.
+    :return: Symbolic derivative that remains finite at zero.
+    """
+    protected_derivative: Expr = safe_divide(
+        numerator=du,
+        denominator=Const(2) * sqrt(u),
+        zero_denominator_value=Const(1.0),
+    )
+    return protected_derivative * heaviside(u)
 
 
 def asin(x: Expr) -> Expr:
@@ -1623,6 +1651,45 @@ def atan2(x: Expr, y: Expr) -> Expr:
     return Func2("atan2", _to_expr(x), _to_expr(y))
 
 
+def safe_divide(
+        numerator: Expr | NUMBER,
+        denominator: Expr | NUMBER,
+        zero_denominator_value: Expr | NUMBER,
+) -> Expr:
+    """Build a division that remains defined for an exact zero denominator.
+
+    Non-zero denominators retain ordinary division. The caller must state the
+    value that replaces an exact zero denominator so the complete numerical
+    rule remains visible at every equation site.
+
+    :param numerator: Dividend expression.
+    :param denominator: Divisor expression.
+    :param zero_denominator_value: Explicit replacement for an exact zero.
+    :return: Symbolic division with an explicit zero-denominator branch.
+    """
+    numerator_expression: Expr = _to_expr(numerator)
+    denominator_expression: Expr = _to_expr(denominator)
+    zero_denominator_expression: Expr = _to_expr(zero_denominator_value)
+    if (
+            isinstance(zero_denominator_expression, Const)
+            and zero_denominator_expression.value == 0
+    ):
+        raise ValueError("zero_denominator_value must be non-zero")
+    else:
+        pass
+
+    denominator_is_nonzero: Expr = (
+        heaviside(denominator_expression)
+        + heaviside(-denominator_expression)
+    )
+    effective_denominator: Expr = (
+        denominator_is_nonzero * denominator_expression
+        + (Const(1.0) - denominator_is_nonzero)
+        * zero_denominator_expression
+    )
+    return numerator_expression / effective_denominator
+
+
 def hard_sat(x: Expr, x_min: Expr | NUMBER, x_max: Expr | NUMBER) -> Expr:
     """
     Apply a symbolic hard saturation to an expression.
@@ -1754,7 +1821,6 @@ class Func2(Expr):
             return heaviside(y - x) * dx + heaviside(x - y) * dy
         if self.name == "max":
             return heaviside(x - y) * dx + heaviside(y - x) * dy
-
         raise ValueError(f"Unknown binary function '{self.name}'")
 
     # --- simplification ------------------------------------------------------
@@ -1846,6 +1912,13 @@ def _expr_to_dict(expr: Expr | Comparison) -> Dict[str, Any]:
                 "name": expr.name,
                 "uid": expr.uid,
                 "non_mutable_uid": expr.non_mutable_uid,
+                "reference": expr.ref.name if expr.ref is not None else None,
+                "network_conn": expr.network_conn,
+                "shared_reference": (
+                    None
+                    if expr.shared_ref is None
+                    else {"name": expr.shared_ref.name, "uid": expr.shared_ref.uid}
+                ),
                 "base_var": "None"
             }
         else:
@@ -1854,6 +1927,13 @@ def _expr_to_dict(expr: Expr | Comparison) -> Dict[str, Any]:
                 "name": expr.name,
                 "uid": expr.uid,
                 "non_mutable_uid": expr.non_mutable_uid,
+                "reference": expr.ref.name if expr.ref is not None else None,
+                "network_conn": expr.network_conn,
+                "shared_reference": (
+                    None
+                    if expr.shared_ref is None
+                    else {"name": expr.shared_ref.name, "uid": expr.shared_ref.uid}
+                ),
                 "base_var": _expr_to_dict(expr.base_var),
             }
 
@@ -1932,8 +2012,57 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const | Comparison:
             # time that value was also the physical variable identity.
             non_mutable_uid = data["uid"]
 
+        # Preserve the optional physical-network meaning of every variable.
+        # Missing fields keep legacy dictionaries readable.
+        reference_name_data: object = data.get("reference", None)
+        if reference_name_data is None:
+            reference: VarPowerFlowReferenceType | None = None
+        elif (
+                isinstance(reference_name_data, str)
+                and reference_name_data in VarPowerFlowReferenceType.__members__
+        ):
+            reference = VarPowerFlowReferenceType.__members__[reference_name_data]
+        else:
+            raise ValueError(
+                f"Unknown power-flow variable reference '{reference_name_data}'"
+            )
+
+        network_conn_data: object = data.get("network_conn", False)
+        if isinstance(network_conn_data, bool):
+            network_conn: bool = network_conn_data
+        else:
+            raise TypeError("Variable network_conn must be a boolean")
+
+        shared_reference_data: object = data.get("shared_reference", None)
+        if shared_reference_data is None:
+            shared_reference: SharedVarReferenceType | None = None
+        elif isinstance(shared_reference_data, dict):
+            shared_reference_name: object = shared_reference_data.get("name", None)
+            shared_reference_uid: object = shared_reference_data.get("uid", None)
+            if (
+                    isinstance(shared_reference_name, str)
+                    and isinstance(shared_reference_uid, int)
+                    and not isinstance(shared_reference_uid, bool)
+            ):
+                shared_reference = SharedVarReferenceType(
+                    name=shared_reference_name,
+                    uid=shared_reference_uid,
+                )
+            else:
+                raise TypeError(
+                    "Variable shared_reference must contain a string name and integer uid"
+                )
+        else:
+            raise TypeError("Variable shared_reference must be a dictionary or None")
+
         if data["base_var"] == "None":
-            obj = Var(name=data["name"], non_mutable_uid=non_mutable_uid)
+            obj = Var(
+                name=data["name"],
+                reference=reference,
+                network_conn=network_conn,
+                shared_reference=shared_reference,
+                non_mutable_uid=non_mutable_uid,
+            )
         else:
             # reconstruct base_var
             base_data = data["base_var"]
@@ -1942,6 +2071,9 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const | Comparison:
                 raise TypeError("base_var must be a Var")
 
             obj = Var(name=data["name"],
+                      reference=reference,
+                      network_conn=network_conn,
+                      shared_reference=shared_reference,
                       non_mutable_uid=non_mutable_uid,
                       base_var=base_var)
 
@@ -2347,6 +2479,8 @@ def _call_symbolic_parser_function(function_name: str, arg_expr: Expr) -> Expr:
         return exp(arg_expr)
     elif function_name == "log":
         return log(arg_expr)
+    elif function_name == "log10":
+        return log10(arg_expr)
     elif function_name == "sqrt":
         return sqrt(arg_expr)
     elif function_name == "asin":
@@ -2359,6 +2493,8 @@ def _call_symbolic_parser_function(function_name: str, arg_expr: Expr) -> Expr:
         return sinh(arg_expr)
     elif function_name == "cosh":
         return cosh(arg_expr)
+    elif function_name == "tanh":
+        return tanh(arg_expr)
     elif function_name == "abs":
         return abs(arg_expr)
     elif function_name == "real":
@@ -2383,24 +2519,26 @@ def _call_symbolic_parser_function(function_name: str, arg_expr: Expr) -> Expr:
         raise ValueError(f"Unknown function '{function_name}'")
 
 
-def _get_symbolic_parser_function_names_internal() -> List[str]:
+def _get_symbolic_parser_unary_function_names_internal() -> List[str]:
     """
-    Return the list of public unary functions accepted by the parser.
+    Return the public unary functions accepted by the symbolic parser.
 
     :return: Supported unary parser function names.
     """
-    return [
+    return list((
         "sin",
         "cos",
         "tan",
         "exp",
         "log",
+        "log10",
         "sqrt",
         "asin",
         "acos",
         "atan",
         "sinh",
         "cosh",
+        "tanh",
         "abs",
         "real",
         "imag",
@@ -2411,16 +2549,28 @@ def _get_symbolic_parser_function_names_internal() -> List[str]:
         "floor",
         "ceil",
         "round",
-    ]
+    ))
+
+
+def _get_symbolic_parser_binary_function_names_internal() -> List[str]:
+    """Return the public binary functions accepted by the symbolic parser.
+
+    :return: Supported two-argument parser function names.
+    """
+    return list((
+        "atan2",
+        "min",
+        "max",
+    ))
 
 
 def _ast_to_symbolic(node: ast.AST, symbol_namespace: Mapping[str, Expr | NUMBER]) -> Expr | Comparison:
-    """
-    Convert a restricted Python AST into a symbolic expression tree.
+    """Convert one restricted Python AST node into a symbolic expression.
 
-    :param node:
-    :param symbol_namespace:
-    :return:
+    :param node: Python syntax node belonging to the parsed expression.
+    :param symbol_namespace: Explicit symbolic identities accepted by name.
+    :return: Symbolic expression or comparison represented by ``node``.
+    :raises ValueError: If the node uses unsupported syntax or identities.
     """
     left_expr: Expr | Comparison
     right_expr: Expr | Comparison
@@ -2472,8 +2622,27 @@ def _ast_to_symbolic(node: ast.AST, symbol_namespace: Mapping[str, Expr | NUMBER
                     return _call_symbolic_parser_function(function_name, right_expr)
                 else:
                     raise ValueError("Function calls require a symbolic argument")
+            elif len(node.args) == 2 and len(node.keywords) == 0:
+                function_name = node.func.id
+                left_expr = _ast_to_symbolic(node.args[0], symbol_namespace)
+                right_expr = _ast_to_symbolic(node.args[1], symbol_namespace)
+
+                # Binary parser functions are kept in the same symbolic
+                # catalogue as unary functions so every editor and importer
+                # observes one authoritative language definition.
+                binary_function_names: List[str] = (
+                    _get_symbolic_parser_binary_function_names_internal()
+                )
+                if (function_name in binary_function_names
+                        and isinstance(left_expr, Expr)
+                        and isinstance(right_expr, Expr)):
+                    return Func2(function_name, left_expr, right_expr)
+                else:
+                    raise ValueError(
+                        f"Unknown two-argument function '{function_name}'"
+                    )
             else:
-                raise ValueError("Only single-argument function calls are supported")
+                raise ValueError("Only supported one- or two-argument functions are allowed")
         else:
             raise ValueError("Only named functions are supported")
     elif isinstance(node, ast.Compare):
@@ -2503,12 +2672,13 @@ def _ast_to_symbolic(node: ast.AST, symbol_namespace: Mapping[str, Expr | NUMBER
 
 
 def string_to_symbolic(expression_text: str, symbol_namespace: Mapping[str, Expr | NUMBER]) -> Expr | Comparison:
-    """
-    Parse a textual symbolic expression into a symbolic tree using a safe AST walk.
+    """Parse restricted source text into a symbolic expression tree.
 
-    :param expression_text:
-    :param symbol_namespace:
-    :return:
+    :param expression_text: Python-like symbolic expression without assignments.
+    :param symbol_namespace: Explicit symbolic identities accepted by name.
+    :return: Parsed symbolic expression or comparison.
+    :raises SyntaxError: If ``expression_text`` is not valid Python expression syntax.
+    :raises ValueError: If the expression uses unsupported syntax or identities.
     """
     expression_tree: ast.Expression = ast.parse(expression_text, mode="eval")
     return _ast_to_symbolic(expression_tree, symbol_namespace)
@@ -2516,12 +2686,30 @@ def string_to_symbolic(expression_text: str, symbol_namespace: Mapping[str, Expr
 
 def get_symbolic_parser_function_names() -> List[str]:
     """
-    Return the public function names accepted by :func:`string_to_symbolic`.
+    Return every public function accepted by :func:`string_to_symbolic`.
 
-    :return:
+    :return: Detached ordered list of unary and binary function names.
     """
-    function_names: List[str] = _get_symbolic_parser_function_names_internal()
+    function_names: List[str] = _get_symbolic_parser_unary_function_names_internal()
+    function_names.extend(_get_symbolic_parser_binary_function_names_internal())
     return function_names
+
+
+def get_symbolic_parser_function_arity(function_name: str) -> int | None:
+    """Return the positional arity of one public symbolic parser function.
+
+    :param function_name: Function name obtained from symbolic source text.
+    :return: Required positional argument count, or ``None`` when unsupported.
+    """
+    unary_function_names: List[str] = _get_symbolic_parser_unary_function_names_internal()
+    binary_function_names: List[str] = _get_symbolic_parser_binary_function_names_internal()
+    if function_name in unary_function_names:
+        result: int | None = 1
+    elif function_name in binary_function_names:
+        result = 2
+    else:
+        result = None
+    return result
 
 
 def symbolic_to_string(expr: Expr) -> str:
@@ -2565,10 +2753,12 @@ __all__ = [
     "heaviside",
     "rand",
     "atan2",
+    "safe_divide",
     "piecewise",
     "symbolic_to_string",
     "string_to_symbolic",
     "get_symbolic_parser_function_names",
+    "get_symbolic_parser_function_arity",
     "hard_sat",
     "f_exc",
     'expression2numba',

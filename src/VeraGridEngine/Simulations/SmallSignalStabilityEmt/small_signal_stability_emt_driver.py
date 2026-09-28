@@ -22,8 +22,7 @@ from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_e
     SmallSignalStabilityEmtOptions
 from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_results import \
     SmallSignalStabilityEmtResults
-from VeraGridEngine.Simulations.SmallSignalStabilityEmt.emt_floquet_numba_kernels import NUMBA_AVAILABLE, \
-    bmgs_twice_numba
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt.emt_floquet_numba_kernels import bmgs_twice_numba
 from VeraGridEngine.basic_structures import Vec, CxVec, Mat, CxMat
 from VeraGridEngine.enumerations import SmallSignalEmtBuildTypes
 
@@ -127,7 +126,7 @@ class RobustBlockArnoldiEngine:
             return W, np.zeros((0, self.p_active), dtype=np.float64)
 
         # Numba path (real-valued, cache-friendly)
-        if NUMBA_AVAILABLE and bmgs_twice_numba is not None:
+        if bmgs_twice_numba is not None:
             starts = np.asarray(self.block_indices[:j + 1], dtype=np.int64)
             ends = np.asarray(self.block_indices[1:j + 2], dtype=np.int64)
             V_prev = np.ascontiguousarray(self.V[:, :end_j], dtype=np.float64)
@@ -392,11 +391,11 @@ class SmallSignalStabilityEmtDriver(DriverTemplate):
             distances = np.minimum(np.abs(mu - sigma), np.abs(mu - np.conj(sigma)))
 
             # Sort by distance and truncate to the requested k modes
-            sort_indices = np.argsort(distances)[:self.sss_options.k]
+            sort_indices = np.argsort(distances, kind="stable")[:self.sss_options.k]
             mu = mu[sort_indices]
             v = v[:, sort_indices]
         else:
-            sort_indices = np.argsort(-np.abs(mu))[:self.sss_options.k]
+            sort_indices = np.argsort(-np.abs(mu), kind="stable")[:self.sss_options.k]
             mu = mu[sort_indices]
             v = v[:, sort_indices]
 
@@ -486,7 +485,7 @@ class SmallSignalStabilityEmtDriver(DriverTemplate):
         :return: Tuple containing (selected_multipliers, selected_vectors, relative_residuals).
         """
         mu_sub, Y_sub = la.eig(H_sub)
-        sort_idx = np.argsort(-np.abs(mu_sub))
+        sort_idx = np.argsort(-np.abs(mu_sub), kind="stable")
         keep = min(len(sort_idx), max(k_target + 2, p_seed))
         sel = sort_idx[:keep]
         mu_sel = mu_sub[sel]
@@ -563,8 +562,7 @@ class SmallSignalStabilityEmtDriver(DriverTemplate):
             # self.report_progress2()
             print(
                 f'Executing Hybrid Block-Arnoldi (Block Size: {p_seed}, Iters: {m_iters}, Restarts: {max_restarts})...')
-            if NUMBA_AVAILABLE and bmgs_twice_numba is not None:
-                print('   [BIRAM] Numba BMGS kernel: ON')
+            print('   [BIRAM] Numba BMGS kernel: ON')
 
         rng = np.random.default_rng(42)
         V_seed, _ = np.linalg.qr(rng.standard_normal((n_states, p_seed)))
@@ -595,7 +593,7 @@ class SmallSignalStabilityEmtDriver(DriverTemplate):
             )
 
             # Track best result seen so far
-            sort_now = np.argsort(-np.abs(mu_sel))
+            sort_now = np.argsort(-np.abs(mu_sel), kind="stable")
             topk = sort_now[:min(k_target, len(sort_now))]
             max_rr = float(np.max(rel[topk])) if len(topk) > 0 else np.inf
             residual_history.append(max_rr)
@@ -653,7 +651,7 @@ class SmallSignalStabilityEmtDriver(DriverTemplate):
 
         mu_sel = best_pack.mu_sel
         U_sel = best_pack.U_sel
-        sort_idx = np.argsort(-np.abs(mu_sel))[:k_target]
+        sort_idx = np.argsort(-np.abs(mu_sel), kind="stable")[:k_target]
         mu: CxVec = mu_sel[sort_idx]
         v: CxVec = U_sel[:, sort_idx]
 

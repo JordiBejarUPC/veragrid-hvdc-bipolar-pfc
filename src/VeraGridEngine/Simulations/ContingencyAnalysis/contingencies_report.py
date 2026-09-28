@@ -15,7 +15,7 @@ from VeraGridEngine.Simulations.ContingencyAnalysis.Methods.srap import BusesFor
 from VeraGridEngine.Utils.Sparse.csc_numba import get_sparse_array_numba
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def get_ptdf_comp_numba(data: Vec, indices: IntVec, indptr: IntVec, PTDF: Mat, m: int, bd_indices: IntVec):
     """
     This computes the compensatd PTDF for a single branch
@@ -71,6 +71,30 @@ class ContingencyTableEntry:
     """
     Entry of a contingency report
     """
+
+    __slots__ = (
+        "time_index",
+        "t_prob",
+        "mon_idx",
+        "con_group_idx",
+        "area_from",
+        "area_to",
+        "base_name",
+        "contingency_name",
+        "base_rating",
+        "contingency_rating",
+        "srap_rating",
+        "base_flow",
+        "post_contingency_flow",
+        "post_srap_flow",
+        "base_loading",
+        "post_contingency_loading",
+        "post_srap_loading",
+        "msg_ov",
+        "msg_srap",
+        "srap_power",
+        "solved_by_srap",
+    )
 
     __hdr__ = ["Time idx",
                "Time",
@@ -215,6 +239,8 @@ class ContingencyResultsReport:
     """
     Contingency results report table
     """
+
+    __slots__ = ("entries",)
 
     def __init__(self) -> None:
         """

@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor &mdash; VeraGrid 6.5.5 documentation</title>
+  <title>VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor &mdash; VeraGrid 6.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../../../_static/documentation_options.js?v=276d7aeb"></script>
+      <script src="../../../../../_static/documentation_options.js?v=9cce70e7"></script>
       <script src="../../../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -124,24 +125,32 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Simulations.Rms.rms_options</span><span class="w"> </span><span class="kn">import</span> <span class="n">RmsOptions</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Simulations.Rms.initialization</span><span class="w"> </span><span class="kn">import</span> <span class="n">init_explicit</span><span class="p">,</span> <span class="n">init_pseudo_transient</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Simulations.Rms.problems.rms_problem_template</span><span class="w"> </span><span class="kn">import</span> <span class="n">RmsProblemTemplate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Simulations.Rms.problems.rms_terminal_power_assembly</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">assemble_rms_terminal_power_contributions</span><span class="p">,</span>
+    <span class="n">convert_rms_ac_power_balance_to_current_balance</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Devices.Events.rms_events_group</span><span class="w"> </span><span class="kn">import</span> <span class="n">RmsEventsGroup</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Devices.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ALL_DEV_TYPES</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Devices.Substation.bus</span><span class="w"> </span><span class="kn">import</span> <span class="n">Bus</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Utils.Symbolic.jit_compiler</span><span class="w"> </span><span class="kn">import</span> <span class="n">RMSCompiler</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Devices.Branches.transformer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Transformer2W</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Simulations.driver_template</span><span class="w"> </span><span class="kn">import</span> <span class="n">DummySignal</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.IO.fmu.importer.experimental_cs</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.IO.fmu.importer.co_simulation</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">advance_rms_fmu_cs_devices</span><span class="p">,</span>
     <span class="n">close_rms_fmu_cs_devices</span><span class="p">,</span>
     <span class="n">initialize_rms_fmu_cs_devices</span><span class="p">,</span>
     <span class="n">register_rms_fmu_cs_device</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.IO.fmu.importer.experimental_me</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.IO.fmu.importer.model_exchange</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">advance_rms_fmu_me_devices</span><span class="p">,</span>
     <span class="n">close_rms_fmu_me_devices</span><span class="p">,</span>
+    <span class="n">get_next_rms_fmu_me_event_time</span><span class="p">,</span>
     <span class="n">initialize_rms_fmu_me_devices</span><span class="p">,</span>
+    <span class="n">_prepare_rms_fmu_me_state_event_retry</span><span class="p">,</span>
     <span class="n">register_rms_fmu_me_device</span><span class="p">,</span>
+    <span class="n">resolve_rms_fmu_me_devices</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.IO.fmu.importer.runtime_profile</span><span class="w"> </span><span class="kn">import</span> <span class="n">FmuMeEvaluationBudget</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_tic</span><span class="p">():</span>
@@ -213,10 +222,10 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">RmsProblemPhasor</span><span class="p">(</span><span class="n">RmsProblemTemplate</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Phasor-based DAE (Differential-Algebraic Equation) class.</span>
-<span class="sd">    </span>
+
 <span class="sd">    This class uses phasor representation (Vr, Vi) for voltages instead of polar coordinates (Vm, Va).</span>
 <span class="sd">    The phasor representation makes current equations linear and is more suitable for certain analysis.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Responsibilities:</span>
 <span class="sd">        - Store state and algebraic variables (x, y) using phasor representation</span>
 <span class="sd">        - Store Jacobian matrices</span>
@@ -230,6 +239,60 @@
     <span class="n">DIFF_NAME</span> <span class="o">=</span> <span class="s2">&quot;diff&quot;</span>
     <span class="n">TIME_NAME</span> <span class="o">=</span> <span class="s2">&quot;glob_time&quot;</span>
 
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;options&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;logger&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;sys_block&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;sys_vars&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;init_guess&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Sf&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;St&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_dt&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_delta&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_state_vars&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_algebraic_vars&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_diff_vars&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_state_algeb_vars&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_variable_parameters&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_constant_parameters&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_state_eqs&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_algebraic_eqs&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_event_parameters_eqs&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_event_parameters_eqs0&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_uid2idx_vars&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_uid2idx_diff&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_uid2idx_params&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_uid2idx_event_params&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_uid2idx_t&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_vars_glob_name2uid&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_compiler_names_dict&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_alias_names_dict&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_n_state&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_n_alg&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_n_algebraic&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_n_diff&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_n_params&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_n_event_params&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_n_vars&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_constant_params&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_parameters_values&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_variable_parameters_values&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_glob_time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_event_params_fn&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_rhs_state_fn&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_rhs_algeb_fn&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_derivative_fn&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_j11_fn&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_j12_fn&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_j21_fn&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_j22_fn&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_vars_info&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_fmu_cs_adapters&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_fmu_cs_initialized&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_fmu_me_adapters&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_fmu_me_initialized&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_fmu_me_evaluation_budget&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">grid</span><span class="p">:</span> <span class="n">MultiCircuit</span><span class="p">,</span>
@@ -269,6 +332,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_fmu_cs_initialized</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_fmu_me_adapters</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_fmu_me_initialized</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fmu_me_evaluation_budget</span><span class="p">:</span> <span class="n">FmuMeEvaluationBudget</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># --------------------------------------------------------------------------------------------------------------</span>
         <span class="c1"># Initialize the RMS problem</span>
@@ -429,23 +493,23 @@
                 <span class="c1"># I = (P - jQ) / (Vr - jVi) = (P*Vr + Q*Vi) / |V|^2 + j*(P*Vi - Q*Vr) / |V|^2</span>
                 <span class="n">f_idx</span> <span class="o">=</span> <span class="n">bus_dict</span><span class="p">[</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_from</span><span class="p">]</span>
                 <span class="n">t_idx</span> <span class="o">=</span> <span class="n">bus_dict</span><span class="p">[</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_to</span><span class="p">]</span>
-                
+
                 <span class="n">Vf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_flow_results</span><span class="o">.</span><span class="n">voltage</span><span class="p">[</span><span class="n">f_idx</span><span class="p">]</span>
                 <span class="n">Vt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_flow_results</span><span class="o">.</span><span class="n">voltage</span><span class="p">[</span><span class="n">t_idx</span><span class="p">]</span>
-                
+
                 <span class="n">Sf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Sf</span><span class="p">[</span><span class="n">branch_num</span><span class="p">]</span>
                 <span class="n">St</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">St</span><span class="p">[</span><span class="n">branch_num</span><span class="p">]</span>
-                
+
                 <span class="c1"># From end current</span>
                 <span class="n">Vf_mag_sq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">Vf</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
                 <span class="n">Irf</span> <span class="o">=</span> <span class="p">(</span><span class="n">Sf</span><span class="o">.</span><span class="n">real</span> <span class="o">*</span> <span class="n">Vf</span><span class="o">.</span><span class="n">real</span> <span class="o">+</span> <span class="n">Sf</span><span class="o">.</span><span class="n">imag</span> <span class="o">*</span> <span class="n">Vf</span><span class="o">.</span><span class="n">imag</span><span class="p">)</span> <span class="o">/</span> <span class="n">Vf_mag_sq</span>
                 <span class="n">Iif</span> <span class="o">=</span> <span class="p">(</span><span class="n">Sf</span><span class="o">.</span><span class="n">real</span> <span class="o">*</span> <span class="n">Vf</span><span class="o">.</span><span class="n">imag</span> <span class="o">-</span> <span class="n">Sf</span><span class="o">.</span><span class="n">imag</span> <span class="o">*</span> <span class="n">Vf</span><span class="o">.</span><span class="n">real</span><span class="p">)</span> <span class="o">/</span> <span class="n">Vf_mag_sq</span>
-                
+
                 <span class="c1"># To end current</span>
                 <span class="n">Vt_mag_sq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">Vt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
                 <span class="n">Irt</span> <span class="o">=</span> <span class="p">(</span><span class="n">St</span><span class="o">.</span><span class="n">real</span> <span class="o">*</span> <span class="n">Vt</span><span class="o">.</span><span class="n">real</span> <span class="o">+</span> <span class="n">St</span><span class="o">.</span><span class="n">imag</span> <span class="o">*</span> <span class="n">Vt</span><span class="o">.</span><span class="n">imag</span><span class="p">)</span> <span class="o">/</span> <span class="n">Vt_mag_sq</span>
                 <span class="n">Iit</span> <span class="o">=</span> <span class="p">(</span><span class="n">St</span><span class="o">.</span><span class="n">real</span> <span class="o">*</span> <span class="n">Vt</span><span class="o">.</span><span class="n">imag</span> <span class="o">-</span> <span class="n">St</span><span class="o">.</span><span class="n">imag</span> <span class="o">*</span> <span class="n">Vt</span><span class="o">.</span><span class="n">real</span><span class="p">)</span> <span class="o">/</span> <span class="n">Vt_mag_sq</span>
-                
+
                 <span class="c1"># add init values from powerflow to initial guess</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">set_init_guess</span><span class="p">(</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span> <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Irf</span><span class="p">,</span> <span class="n">Irf</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">set_init_guess</span><span class="p">(</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span> <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Iif</span><span class="p">,</span> <span class="n">Iif</span><span class="p">)</span>
@@ -486,11 +550,27 @@
                 <span class="n">f</span> <span class="o">=</span> <span class="n">bus_dict</span><span class="p">[</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_from</span><span class="p">]</span>
                 <span class="n">t</span> <span class="o">=</span> <span class="n">bus_dict</span><span class="p">[</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_to</span><span class="p">]</span>
 
-                <span class="c1"># Phasor formulation: use current balance instead of power balance</span>
-                <span class="n">setIr</span><span class="p">(</span><span class="n">Ir</span><span class="p">,</span> <span class="n">Ir_used</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">-</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Irf</span><span class="p">))</span>
-                <span class="n">setIr</span><span class="p">(</span><span class="n">Ir</span><span class="p">,</span> <span class="n">Ir_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Irt</span><span class="p">))</span>
-                <span class="n">setIi</span><span class="p">(</span><span class="n">Ii</span><span class="p">,</span> <span class="n">Ii_used</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">-</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Iif</span><span class="p">))</span>
-                <span class="n">setIi</span><span class="p">(</span><span class="n">Ii</span><span class="p">,</span> <span class="n">Ii_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Iit</span><span class="p">))</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">dynamic_model_contract</span><span class="o">.</span><span class="n">rms_terminal_power_contributions</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c1"># A declared equipment power interface is converted to KCL</span>
+                    <span class="c1"># only after every physical device has been assembled.</span>
+                    <span class="n">assemble_rms_terminal_power_contributions</span><span class="p">(</span>
+                        <span class="n">model</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span>
+                        <span class="n">bus_from_index</span><span class="o">=</span><span class="n">f</span><span class="p">,</span>
+                        <span class="n">bus_to_index</span><span class="o">=</span><span class="n">t</span><span class="p">,</span>
+                        <span class="n">bus_from_is_dc</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_from</span><span class="o">.</span><span class="n">is_dc</span><span class="p">,</span>
+                        <span class="n">bus_to_is_dc</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_to</span><span class="o">.</span><span class="n">is_dc</span><span class="p">,</span>
+                        <span class="n">active_power_balance</span><span class="o">=</span><span class="n">P</span><span class="p">,</span>
+                        <span class="n">active_power_balance_used</span><span class="o">=</span><span class="n">P_used</span><span class="p">,</span>
+                        <span class="n">reactive_power_balance</span><span class="o">=</span><span class="n">Q</span><span class="p">,</span>
+                        <span class="n">reactive_power_balance_used</span><span class="o">=</span><span class="n">Q_used</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Preserve native phasor-current templates that have not</span>
+                    <span class="c1"># migrated to the hidden terminal-power contract.</span>
+                    <span class="n">setIr</span><span class="p">(</span><span class="n">Ir</span><span class="p">,</span> <span class="n">Ir_used</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">-</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Irf</span><span class="p">))</span>
+                    <span class="n">setIr</span><span class="p">(</span><span class="n">Ir</span><span class="p">,</span> <span class="n">Ir_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Irt</span><span class="p">))</span>
+                    <span class="n">setIi</span><span class="p">(</span><span class="n">Ii</span><span class="p">,</span> <span class="n">Ii_used</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">-</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Iif</span><span class="p">))</span>
+                    <span class="n">setIi</span><span class="p">(</span><span class="n">Ii</span><span class="p">,</span> <span class="n">Ii_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Iit</span><span class="p">))</span>
 
         <span class="c1"># Populating VSCs init guess</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">elm</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_vsc</span><span class="p">()):</span>
@@ -515,9 +595,40 @@
 
                 <span class="n">f</span> <span class="o">=</span> <span class="n">bus_dict</span><span class="p">[</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_from</span><span class="p">]</span>
                 <span class="n">t</span> <span class="o">=</span> <span class="n">bus_dict</span><span class="p">[</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_to</span><span class="p">]</span>
-                <span class="n">setP</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">P_used</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Pf</span><span class="p">))</span>
-                <span class="n">setP</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">P_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Pt</span><span class="p">))</span>
-                <span class="n">setQ</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">Q_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Qt</span><span class="p">))</span>
+                <span class="n">dc_voltage_init</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">power_flow_results</span><span class="o">.</span><span class="n">voltage</span><span class="p">[</span><span class="n">f</span><span class="p">])</span>
+                <span class="p">)</span>
+                <span class="n">dc_current_init</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">power_flow_results</span><span class="o">.</span><span class="n">If_vsc</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_init_guess</span><span class="p">(</span>
+                    <span class="n">mdl</span><span class="p">,</span>
+                    <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Vf_dc</span><span class="p">,</span>
+                    <span class="n">dc_voltage_init</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_init_guess</span><span class="p">(</span>
+                    <span class="n">mdl</span><span class="p">,</span>
+                    <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Idc</span><span class="p">,</span>
+                    <span class="n">dc_current_init</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">dynamic_model_contract</span><span class="o">.</span><span class="n">rms_terminal_power_contributions</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c1"># New templates declare their physical terminal powers</span>
+                    <span class="c1"># independently from selectable signal ports.</span>
+                    <span class="n">assemble_rms_terminal_power_contributions</span><span class="p">(</span>
+                        <span class="n">model</span><span class="o">=</span><span class="n">mdl</span><span class="p">,</span>
+                        <span class="n">bus_from_index</span><span class="o">=</span><span class="n">f</span><span class="p">,</span>
+                        <span class="n">bus_to_index</span><span class="o">=</span><span class="n">t</span><span class="p">,</span>
+                        <span class="n">bus_from_is_dc</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_from</span><span class="o">.</span><span class="n">is_dc</span><span class="p">,</span>
+                        <span class="n">bus_to_is_dc</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_to</span><span class="o">.</span><span class="n">is_dc</span><span class="p">,</span>
+                        <span class="n">active_power_balance</span><span class="o">=</span><span class="n">P</span><span class="p">,</span>
+                        <span class="n">active_power_balance_used</span><span class="o">=</span><span class="n">P_used</span><span class="p">,</span>
+                        <span class="n">reactive_power_balance</span><span class="o">=</span><span class="n">Q</span><span class="p">,</span>
+                        <span class="n">reactive_power_balance_used</span><span class="o">=</span><span class="n">Q_used</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Version-one and custom legacy VSC models retain their</span>
+                    <span class="c1"># historical power-reference coupling during migration.</span>
+                    <span class="n">setP</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">P_used</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Pf</span><span class="p">))</span>
+                    <span class="n">setP</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">P_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Pt</span><span class="p">))</span>
+                    <span class="n">setQ</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">Q_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Qt</span><span class="p">))</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">sys_block</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mdl</span><span class="p">)</span>
 
         <span class="c1"># Populating HVDC init guess (similar to VSCs)</span>
@@ -541,10 +652,23 @@
 
                 <span class="n">f</span> <span class="o">=</span> <span class="n">bus_dict</span><span class="p">[</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_from</span><span class="p">]</span>
                 <span class="n">t</span> <span class="o">=</span> <span class="n">bus_dict</span><span class="p">[</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_to</span><span class="p">]</span>
-                <span class="n">setP</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">P_used</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Pf</span><span class="p">))</span>
-                <span class="n">setP</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">P_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Pt</span><span class="p">))</span>
-                <span class="n">setQ</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">Q_used</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Qf</span><span class="p">))</span>
-                <span class="n">setQ</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">Q_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Qt</span><span class="p">))</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">dynamic_model_contract</span><span class="o">.</span><span class="n">rms_terminal_power_contributions</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">assemble_rms_terminal_power_contributions</span><span class="p">(</span>
+                        <span class="n">model</span><span class="o">=</span><span class="n">mdl</span><span class="p">,</span>
+                        <span class="n">bus_from_index</span><span class="o">=</span><span class="n">f</span><span class="p">,</span>
+                        <span class="n">bus_to_index</span><span class="o">=</span><span class="n">t</span><span class="p">,</span>
+                        <span class="n">bus_from_is_dc</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_from</span><span class="o">.</span><span class="n">is_dc</span><span class="p">,</span>
+                        <span class="n">bus_to_is_dc</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">bus_to</span><span class="o">.</span><span class="n">is_dc</span><span class="p">,</span>
+                        <span class="n">active_power_balance</span><span class="o">=</span><span class="n">P</span><span class="p">,</span>
+                        <span class="n">active_power_balance_used</span><span class="o">=</span><span class="n">P_used</span><span class="p">,</span>
+                        <span class="n">reactive_power_balance</span><span class="o">=</span><span class="n">Q</span><span class="p">,</span>
+                        <span class="n">reactive_power_balance_used</span><span class="o">=</span><span class="n">Q_used</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">setP</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">P_used</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Pf</span><span class="p">))</span>
+                    <span class="n">setP</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">P_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Pt</span><span class="p">))</span>
+                    <span class="n">setQ</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">Q_used</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Qf</span><span class="p">))</span>
+                    <span class="n">setQ</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">Q_used</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="o">-</span><span class="n">mdl</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Qt</span><span class="p">))</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">sys_block</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mdl</span><span class="p">)</span>
 
         <span class="c1"># initialize injections</span>
@@ -713,11 +837,31 @@
                         <span class="bp">self</span><span class="o">.</span><span class="n">set_init_guess</span><span class="p">(</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span> <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">Sdev</span><span class="o">.</span><span class="n">imag</span><span class="p">)</span>
 
                 <span class="n">k</span> <span class="o">=</span> <span class="n">bus_dict</span><span class="p">[</span><span class="n">elm</span><span class="o">.</span><span class="n">bus</span><span class="p">]</span>
-                <span class="c1"># Phasor formulation: use current balance</span>
-                <span class="k">if</span> <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Ir</span> <span class="ow">in</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">external_mapping</span><span class="p">:</span>
-                    <span class="n">setIr</span><span class="p">(</span><span class="n">Ir</span><span class="p">,</span> <span class="n">Ir_used</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Ir</span><span class="p">))</span>
-                <span class="k">if</span> <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Ii</span> <span class="ow">in</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">external_mapping</span><span class="p">:</span>
-                    <span class="n">setIi</span><span class="p">(</span><span class="n">Ii</span><span class="p">,</span> <span class="n">Ii_used</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Ii</span><span class="p">))</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">dynamic_model_contract</span><span class="o">.</span><span class="n">rms_terminal_power_contributions</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">assemble_rms_terminal_power_contributions</span><span class="p">(</span>
+                        <span class="n">model</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span>
+                        <span class="n">bus_from_index</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">bus_to_index</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">bus_from_is_dc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">bus_to_is_dc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">active_power_balance</span><span class="o">=</span><span class="n">P</span><span class="p">,</span>
+                        <span class="n">active_power_balance_used</span><span class="o">=</span><span class="n">P_used</span><span class="p">,</span>
+                        <span class="n">reactive_power_balance</span><span class="o">=</span><span class="n">Q</span><span class="p">,</span>
+                        <span class="n">reactive_power_balance_used</span><span class="o">=</span><span class="n">Q_used</span><span class="p">,</span>
+                        <span class="n">bus_index</span><span class="o">=</span><span class="n">k</span><span class="p">,</span>
+                        <span class="n">bus_is_dc</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">is_dc</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Legacy phasor models contribute their selected current</span>
+                    <span class="c1"># outputs directly until they declare a power terminal.</span>
+                    <span class="k">if</span> <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Ir</span> <span class="ow">in</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">external_mapping</span><span class="p">:</span>
+                        <span class="n">setIr</span><span class="p">(</span><span class="n">Ir</span><span class="p">,</span> <span class="n">Ir_used</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Ir</span><span class="p">))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">pass</span>
+                    <span class="k">if</span> <span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Ii</span> <span class="ow">in</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">external_mapping</span><span class="p">:</span>
+                        <span class="n">setIi</span><span class="p">(</span><span class="n">Ii</span><span class="p">,</span> <span class="n">Ii_used</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Ii</span><span class="p">))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">pass</span>
 
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">initialization_method</span> <span class="o">==</span> <span class="n">RmsInitializationMethod</span><span class="o">.</span><span class="n">Explicit</span><span class="p">:</span>
 
@@ -777,12 +921,40 @@
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">elm</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">buses</span><span class="p">):</span>
             <span class="n">mdl</span> <span class="o">=</span> <span class="n">block_deep_copy</span><span class="p">(</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="p">,</span> <span class="n">grid</span><span class="o">.</span><span class="n">var_factory</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">algebraic_eqs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">Ir_used</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">Ii_used</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">add_error</span><span class="p">(</span><span class="s2">&quot;Isolated bus&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">elm</span><span class="o">.</span><span class="n">is_dc</span><span class="p">:</span>
+                    <span class="c1"># DC buses have one voltage coordinate, so their physical</span>
+                    <span class="c1"># terminal-power contract produces one active-power balance.</span>
+                    <span class="k">if</span> <span class="n">Q_used</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Reactive-power balance found on a DC bus&quot;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">P_used</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_algebraic_eqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">P</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">add_error</span><span class="p">(</span><span class="s2">&quot;Isolated bus&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># Phasor formulation uses current balance equations</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_algebraic_eqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Ir</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_algebraic_eqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Ii</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                    <span class="c1"># Convert device terminal powers before emitting the two</span>
+                    <span class="c1"># real-valued Kirchhoff current equations of an AC bus.</span>
+                    <span class="n">convert_rms_ac_power_balance_to_current_balance</span><span class="p">(</span>
+                        <span class="n">bus_index</span><span class="o">=</span><span class="n">i</span><span class="p">,</span>
+                        <span class="n">voltage_real</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Vr</span><span class="p">),</span>
+                        <span class="n">voltage_imaginary</span><span class="o">=</span><span class="n">elm</span><span class="o">.</span><span class="n">rms_model</span><span class="o">.</span><span class="n">E</span><span class="p">(</span><span class="n">VarPowerFlowReferenceType</span><span class="o">.</span><span class="n">Vi</span><span class="p">),</span>
+                        <span class="n">active_power_balance</span><span class="o">=</span><span class="n">P</span><span class="p">,</span>
+                        <span class="n">active_power_balance_used</span><span class="o">=</span><span class="n">P_used</span><span class="p">,</span>
+                        <span class="n">reactive_power_balance</span><span class="o">=</span><span class="n">Q</span><span class="p">,</span>
+                        <span class="n">reactive_power_balance_used</span><span class="o">=</span><span class="n">Q_used</span><span class="p">,</span>
+                        <span class="n">real_current_balance</span><span class="o">=</span><span class="n">Ir</span><span class="p">,</span>
+                        <span class="n">real_current_balance_used</span><span class="o">=</span><span class="n">Ir_used</span><span class="p">,</span>
+                        <span class="n">imaginary_current_balance</span><span class="o">=</span><span class="n">Ii</span><span class="p">,</span>
+                        <span class="n">imaginary_current_balance_used</span><span class="o">=</span><span class="n">Ii_used</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">Ir_used</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">Ii_used</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">add_error</span><span class="p">(</span><span class="s2">&quot;Isolated bus&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># Phasor AC buses own real and imaginary KCL residuals.</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_algebraic_eqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Ir</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_algebraic_eqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Ii</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
 
         <span class="c1"># self._variable_parameters: List[Var] = list()</span>
         <span class="c1"># self._event_parameters_eqs: List[Expr | Const] = list()</span>
@@ -816,7 +988,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_alias_names_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_delta</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">VARIABLE_PARAMS_NAME</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_event_params</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_uid2idx_event_params</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_delta</span><span class="o">.</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_event_params</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_n_event_params</span> <span class="o">+=</span> <span class="mi">1</span>
-        
+
         <span class="c1">##################### To be removed when order is preserved in the first part #############################</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_state_algeb_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sys_vars</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
 
@@ -1098,8 +1270,8 @@
 <div class="viewcode-block" id="RmsProblemPhasor.get_E_matrix">
 <a class="viewcode-back" href="../../../../../rst_source/api/auto/VeraGridEngine.Simulations.Rms.problems.html#VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor.RmsProblemPhasor.get_E_matrix">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_E_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span><span class="n">Vec</span><span class="p">,</span> <span class="n">dx</span><span class="p">:</span><span class="n">Vec</span><span class="p">):</span>
-        <span class="c1">#We first find all diff_vars </span>
-        <span class="n">xdot</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span> 
+        <span class="c1">#We first find all diff_vars</span>
+        <span class="n">xdot</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
         <span class="c1"># for var in self._state_vars:</span>
         <span class="c1">#     if var.diff_var is None:</span>
         <span class="c1">#         diff_var = self.grid.var_factory.add_diff_var(name = &#39;&#39;, base_var=var)</span>
@@ -1130,8 +1302,8 @@
         <span class="n">n_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_vars</span>
         <span class="n">E_value</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">lil_matrix</span><span class="p">((</span><span class="n">n_vars</span><span class="p">,</span> <span class="n">n_vars</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
         <span class="n">E_partial</span> <span class="o">=</span> <span class="n">E_call</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">vp</span><span class="p">,</span> <span class="n">cp</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">tocsc</span><span class="p">()</span>
-    
-        
+
+
         <span class="c1"># Map each d(eq)/d(diff_var_j) column to the column of the diff_var base</span>
         <span class="c1"># variable in the global [state_vars + algebraic_vars] ordering.</span>
         <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">dvar</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xdot</span><span class="p">):</span>
@@ -1139,13 +1311,13 @@
             <span class="n">col_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uid2idx_vars</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">base_var</span><span class="o">.</span><span class="n">uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">col_idx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">E_value</span><span class="p">[:,</span> <span class="n">col_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">E_partial</span><span class="p">[:,</span> <span class="n">j</span><span class="p">]</span>
-            <span class="k">else</span><span class="p">:</span>    
+            <span class="k">else</span><span class="p">:</span>
                 <span class="k">pass</span>
         <span class="n">E_value</span><span class="p">[:</span><span class="n">n_states</span><span class="p">,</span> <span class="p">:</span><span class="n">n_states</span><span class="p">]</span> <span class="o">-=</span> <span class="n">sp</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n_states</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">E_value</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;lil&quot;</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">E_value</span><span class="o">.</span><span class="n">tocsc</span><span class="p">()</span></div>
 
-    
+
 <div class="viewcode-block" id="RmsProblemPhasor.get_static_state_matrix">
 <a class="viewcode-back" href="../../../../../rst_source/api/auto/VeraGridEngine.Simulations.Rms.problems.html#VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor.RmsProblemPhasor.get_static_state_matrix">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_static_state_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span><span class="n">Vec</span><span class="p">,</span> <span class="n">dx</span><span class="p">:</span><span class="n">Vec</span><span class="p">):</span>
@@ -1284,9 +1456,23 @@
 
 <div class="viewcode-block" id="RmsProblemPhasor.get_next_forced_event_time">
 <a class="viewcode-back" href="../../../../../rst_source/api/auto/VeraGridEngine.Simulations.Rms.problems.html#VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor.RmsProblemPhasor.get_next_forced_event_time">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_next_forced_event_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t_prev</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">t_target</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Phasor RMS currently has no forced sub-step events.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="kc">None</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_next_forced_event_time</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">t_prev</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">t_target</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the earliest imported FMI ME time event in one interval.</span>
+
+<span class="sd">        :param t_prev: Previous accepted RMS time.</span>
+<span class="sd">        :param t_target: Candidate RMS target time.</span>
+<span class="sd">        :return: Earliest FMI event in ``(t_prev, t_target]`` or ``None``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">get_next_rms_fmu_me_event_time</span><span class="p">(</span>
+            <span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">t_prev</span><span class="o">=</span><span class="n">t_prev</span><span class="p">,</span>
+            <span class="n">t_target</span><span class="o">=</span><span class="n">t_target</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="RmsProblemPhasor.update_variable_params">
@@ -1334,17 +1520,27 @@
 
 <div class="viewcode-block" id="RmsProblemPhasor.advance_fmu_cs_devices">
 <a class="viewcode-back" href="../../../../../rst_source/api/auto/VeraGridEngine.Simulations.Rms.problems.html#VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor.RmsProblemPhasor.advance_fmu_cs_devices">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">advance_fmu_cs_devices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x_snapshot</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">advance_fmu_cs_devices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x_snapshot</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Advance imported FMU Co-Simulation devices for one RMS communication step.</span>
 
 <span class="sd">        :param t: Current simulation time.</span>
 <span class="sd">        :param x_snapshot: Current accepted state vector.</span>
 <span class="sd">        :param h: RMS communication step.</span>
-<span class="sd">        :return: None.</span>
+<span class="sd">        :return: Whether at least one registered CS adapter advanced.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">co_simulation_advanced</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fmu_cs_adapters</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">advance_rms_fmu_cs_devices</span><span class="p">(</span><span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_value</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="n">x_snapshot</span><span class="o">=</span><span class="n">x_snapshot</span><span class="p">,</span> <span class="n">step_size</span><span class="o">=</span><span class="n">h</span><span class="p">)</span></div>
+            <span class="n">co_simulation_advanced</span> <span class="o">=</span> <span class="n">advance_rms_fmu_cs_devices</span><span class="p">(</span>
+                <span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">time_value</span><span class="o">=</span><span class="n">t</span><span class="p">,</span>
+                <span class="n">x_snapshot</span><span class="o">=</span><span class="n">x_snapshot</span><span class="p">,</span>
+                <span class="n">step_size</span><span class="o">=</span><span class="n">h</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">co_simulation_advanced</span></div>
 
 
 <div class="viewcode-block" id="RmsProblemPhasor.close_fmu_cs_devices">
@@ -1388,6 +1584,42 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fmu_me_adapters</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">advance_rms_fmu_me_devices</span><span class="p">(</span><span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_value</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="n">x_snapshot</span><span class="o">=</span><span class="n">x_snapshot</span><span class="p">,</span> <span class="n">step_size</span><span class="o">=</span><span class="n">h</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RmsProblemPhasor.resolve_fmu_me_devices">
+<a class="viewcode-back" href="../../../../../rst_source/api/auto/VeraGridEngine.Simulations.Rms.problems.html#VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor.RmsProblemPhasor.resolve_fmu_me_devices">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">resolve_fmu_me_devices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">accepted</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve all prepared FMI ME candidates after one RMS step.</span>
+
+<span class="sd">        :param accepted: Whether the RMS numerical step converged.</span>
+<span class="sd">        :return: Earlier state-event retry time, or ``None``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fmu_me_adapters</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">resolve_rms_fmu_me_devices</span><span class="p">(</span>
+                <span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">accepted</span><span class="o">=</span><span class="n">accepted</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="RmsProblemPhasor.prepare_fmu_me_state_event_retry">
+<a class="viewcode-back" href="../../../../../rst_source/api/auto/VeraGridEngine.Simulations.Rms.problems.html#VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor.RmsProblemPhasor.prepare_fmu_me_state_event_retry">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">prepare_fmu_me_state_event_retry</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Localize an ME state event before any CS device advances.</span>
+
+<span class="sd">        :return: Global shortened target time, or ``None``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fmu_me_adapters</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_prepare_rms_fmu_me_state_event_retry</span><span class="p">(</span>
+                <span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">state_event_time_tolerance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">fmi_state_event_time_tolerance</span><span class="p">,</span>
+                <span class="n">state_event_max_iterations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">fmi_state_event_max_iterations</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
 
 
 <div class="viewcode-block" id="RmsProblemPhasor.close_fmu_me_devices">

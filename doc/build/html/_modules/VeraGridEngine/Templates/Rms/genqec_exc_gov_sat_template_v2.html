@@ -5,16 +5,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template_v2 &mdash; VeraGrid 6.4.4 documentation</title>
+  <title>VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template_v2 &mdash; VeraGrid 6.5.26 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
-      <link rel="stylesheet" type="text/css" href="../../../../_static/style.css?v=b3745da1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/style.css?v=ba3a54df" />
 
   
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../../_static/documentation_options.js?v=f2c0b4ab"></script>
+      <script src="../../../../_static/documentation_options.js?v=c62e3d9e"></script>
       <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -59,6 +60,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/short_circuit.html">⚡ Short-Circuit</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/stochastic_power_flow.html">🎲 Stochastic power flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/continuation_power_flow.html">➿ Continuation power flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/sigma_analysis.html">🌘 Sigma analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/solar_wizard.html">☀️ Solar power wizard</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/contingency_analysis.html">💥 Contingency analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/investment_optimization.html">🏦 Investment optimization</a></li>
@@ -68,13 +70,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/reliability.html">🚧 Reliability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/state_estimation.html">🌀 State estimation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/dynamic_simulations.html">🧲 Dynamic simulations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/rms_simulations.html">📝 RMS simulations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/small_signal_stability.html">Small-Signal Stability Analysis</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/emt_simulations.html">🔬 EMT simulations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/development.html">💻 Development</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/plugins.html">🧩 Plugins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/license.html">📜 License</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../rst_source/change_log.html">Change log</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/data_models.html">Data Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../rst_source/api/auto/modules.html">VeraGrid</a></li>
 </ul>
@@ -401,6 +399,7 @@
     <span class="n">templ</span><span class="o">.</span><span class="n">block</span><span class="o">.</span><span class="n">in_vars</span> <span class="o">=</span> <span class="n">inputs</span>
     <span class="n">templ</span><span class="o">.</span><span class="n">block</span><span class="o">.</span><span class="n">out_vars</span> <span class="o">=</span> <span class="n">block</span><span class="o">.</span><span class="n">out_vars</span>
 
+    <span class="n">templ</span><span class="o">.</span><span class="n">comment</span> <span class="o">=</span> <span class="s1">&#39;Generator GENQEC RMS model with quadratic saturation&#39;</span>
     <span class="k">return</span> <span class="n">templ</span></div>
 
 
@@ -471,7 +470,7 @@
     <span class="n">P0</span><span class="p">:</span> <span class="n">Var</span> <span class="o">=</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_var</span><span class="p">(</span><span class="s2">&quot;P0&quot;</span><span class="p">)</span>
 
     <span class="n">events_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Var</span><span class="p">,</span> <span class="n">Expr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-    <span class="n">events_dict</span><span class="p">[</span><span class="n">Pm_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">events_dict</span><span class="p">[</span><span class="n">Pm_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">events_dict</span><span class="p">[</span><span class="n">Kp</span><span class="p">]</span> <span class="o">=</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="o">-</span><span class="mf">0.01</span><span class="p">)</span>
     <span class="n">events_dict</span><span class="p">[</span><span class="n">Ki</span><span class="p">]</span> <span class="o">=</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="o">-</span><span class="mf">0.01</span><span class="p">)</span>
     <span class="n">events_dict</span><span class="p">[</span><span class="n">p0</span><span class="p">]</span> <span class="o">=</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
@@ -521,7 +520,6 @@
     <span class="p">)</span>
 
     <span class="n">init_eqs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Var</span><span class="p">,</span> <span class="n">Expr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-    <span class="n">init_eqs</span><span class="p">[</span><span class="n">Pm_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">init_eqs</span><span class="p">[</span><span class="n">x1</span><span class="p">]</span> <span class="o">=</span> <span class="n">u1</span>
     <span class="n">init_eqs</span><span class="p">[</span><span class="n">y1</span><span class="p">]</span> <span class="o">=</span> <span class="n">u1</span>
     <span class="n">init_eqs</span><span class="p">[</span><span class="n">y2_1</span><span class="p">]</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Const</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
@@ -549,6 +547,7 @@
     <span class="n">api_obj_mapping</span><span class="p">[</span><span class="n">ParamPowerFlowReferenceType</span><span class="o">.</span><span class="n">P0</span><span class="p">]</span> <span class="o">=</span> <span class="n">P0</span>
     <span class="n">templ</span><span class="o">.</span><span class="n">block</span><span class="o">.</span><span class="n">api_obj_mapping</span> <span class="o">=</span> <span class="n">api_obj_mapping</span>
 
+    <span class="n">templ</span><span class="o">.</span><span class="n">comment</span> <span class="o">=</span> <span class="s1">&#39;Reusable generator governor RMS control block&#39;</span>
     <span class="k">return</span> <span class="n">templ</span></div>
 
 
@@ -642,6 +641,7 @@
     <span class="n">init_eqs</span><span class="p">[</span><span class="n">y5</span><span class="p">]</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Const</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
     <span class="n">templ</span><span class="o">.</span><span class="n">block</span><span class="o">.</span><span class="n">init_eqs</span> <span class="o">=</span> <span class="n">init_eqs</span>
 
+    <span class="n">templ</span><span class="o">.</span><span class="n">comment</span> <span class="o">=</span> <span class="s1">&#39;Reusable generator stabilizer RMS control block&#39;</span>
     <span class="k">return</span> <span class="n">templ</span></div>
 
 
@@ -719,7 +719,7 @@
     <span class="n">f_output</span><span class="p">:</span> <span class="n">Var</span> <span class="o">=</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_var</span><span class="p">(</span><span class="s2">&quot;f_output&quot;</span><span class="p">)</span>
 
     <span class="n">events_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Var</span><span class="p">,</span> <span class="n">Expr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-    <span class="n">events_dict</span><span class="p">[</span><span class="n">UsRefPu</span><span class="p">]</span> <span class="o">=</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">events_dict</span><span class="p">[</span><span class="n">UsRefPu</span><span class="p">]</span> <span class="o">=</span> <span class="n">Efe</span> <span class="o">/</span> <span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;Ka&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">events_dict</span><span class="p">[</span><span class="n">AEz</span><span class="p">]</span> <span class="o">=</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">0.02</span><span class="p">)</span>
     <span class="n">events_dict</span><span class="p">[</span><span class="n">BEz</span><span class="p">]</span> <span class="o">=</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span>
     <span class="n">events_dict</span><span class="p">[</span><span class="n">Se_threshold</span><span class="p">]</span> <span class="o">=</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
@@ -785,7 +785,6 @@
     <span class="p">)</span>
     <span class="n">init_eqs</span><span class="p">[</span><span class="n">u_aux</span><span class="p">]</span> <span class="o">=</span> <span class="n">aux_expr</span>
     <span class="n">init_eqs</span><span class="p">[</span><span class="n">Efe</span><span class="p">]</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;Kd&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">u_aux</span>
-    <span class="n">init_eqs</span><span class="p">[</span><span class="n">UsRefPu</span><span class="p">]</span> <span class="o">=</span> <span class="n">Efe</span> <span class="o">/</span> <span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;Ka&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">init_eqs</span><span class="p">[</span><span class="n">y1</span><span class="p">]</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">init_eqs</span><span class="p">[</span><span class="n">x2</span><span class="p">]</span> <span class="o">=</span> <span class="n">Vf</span>
     <span class="n">init_eqs</span><span class="p">[</span><span class="n">y2</span><span class="p">]</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Const</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
@@ -797,6 +796,7 @@
     <span class="n">init_eqs</span><span class="p">[</span><span class="n">f_output</span><span class="p">]</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">f_exc</span><span class="p">(</span><span class="n">f_input</span><span class="p">)</span>
     <span class="n">templ</span><span class="o">.</span><span class="n">block</span><span class="o">.</span><span class="n">init_eqs</span> <span class="o">=</span> <span class="n">init_eqs</span>
 
+    <span class="n">templ</span><span class="o">.</span><span class="n">comment</span> <span class="o">=</span> <span class="s1">&#39;Reusable generator exciter RMS control block&#39;</span>
     <span class="k">return</span> <span class="n">templ</span></div>
 
 
@@ -859,6 +859,7 @@
     <span class="n">templ</span><span class="o">.</span><span class="n">block</span><span class="o">.</span><span class="n">out_vars</span> <span class="o">=</span> <span class="p">[</span><span class="n">genqec_mdl</span><span class="o">.</span><span class="n">out_vars</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">genqec_mdl</span><span class="o">.</span><span class="n">out_vars</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
     <span class="n">templ</span><span class="o">.</span><span class="n">block</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
 
+    <span class="n">templ</span><span class="o">.</span><span class="n">comment</span> <span class="o">=</span> <span class="s1">&#39;Complete generator RMS model with GENQEC, exciter, governor, and stabilizer&#39;</span>
     <span class="k">return</span> <span class="n">templ</span></div>
 
 </pre></div>

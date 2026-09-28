@@ -68,7 +68,7 @@ def epsilon(Sn, n, E):
     return estim, E
 
 
-# @nb.njit("(c16[:])(i8, c16[:, :], f8)")
+# @nb.jit("(c16[:])(i8, c16[:, :], f8)")
 def pade4all(order, coeff_mat, s=1.0):
     """
     Computes the "order" Padè approximant of the coefficients at the approximation point s
@@ -131,8 +131,8 @@ def pade4all(order, coeff_mat, s=1.0):
     return voltages
 
 
-# @nb.njit("(c16[:])(c16[:, :], c16[:, :], i8, c16[:])")
-@nb.njit(cache=True)
+# @nb.jit("(c16[:])(c16[:, :], c16[:, :], i8, c16[:])")
+@nb.jit(cache=True)
 def sigma_function(coeff_matU, coeff_matX, order, V_slack):
     """
 
@@ -175,8 +175,8 @@ def sigma_function(coeff_matU, coeff_matX, order, V_slack):
     return sigmas
 
 
-# @nb.njit("(c16[:])(c16[:, :], c16[:, :], i8, i8[:])")
-@nb.njit(cache=True)
+# @nb.jit("(c16[:])(c16[:, :], c16[:, :], i8, i8[:])")
+@nb.jit(cache=True)
 def conv1_old(A, B, c, indices):
     """
     Performs the convolution of A* and B
@@ -193,8 +193,8 @@ def conv1_old(A, B, c, indices):
     return suma
 
 
-# @nb.njit("(c16[:])(c16[:, :], c16[:, :], i8)")
-@nb.njit(cache=True)
+# @nb.jit("(c16[:])(c16[:, :], c16[:, :], i8)")
+@nb.jit(cache=True)
 def conv1(A, B, c):
     """
     Performs the convolution of A* and B
@@ -210,8 +210,8 @@ def conv1(A, B, c):
     return suma
 
 
-# @nb.njit("(c16[:])(c16[:, :], c16[:, :], i8, i8[:])")
-@nb.njit(cache=True)
+# @nb.jit("(c16[:])(c16[:, :], c16[:, :], i8, i8[:])")
+@nb.jit(cache=True)
 def conv2(A, B, c, indices):
     """
     Performs the convolution of A and B
@@ -228,8 +228,8 @@ def conv2(A, B, c, indices):
     return suma
 
 
-# @nb.njit("(c16[:])(c16[:, :], c16[:, :], i8, i8[:])")
-@nb.njit(cache=True)
+# @nb.jit("(c16[:])(c16[:, :], c16[:, :], i8, i8[:])")
+@nb.jit(cache=True)
 def conv3(A, B, c, indices):
     """
     Performs the convolution of A and B*
@@ -455,6 +455,26 @@ class HelmPreparation:
     HelmPreparation
     """
 
+    __slots__ = (
+        'sys_mat_factorization',
+        'Uini',
+        'Xini',
+        'Yslack',
+        'Vslack',
+        'vec_P',
+        'vec_Q',
+        'Ysh',
+        'vec_W',
+        'pq',
+        'pv',
+        'sl',
+        'pqpv',
+        'npqpv',
+        'nbus',
+        'pqpv_original',
+        'pq_original',
+    )
+
     def __init__(self, sys_mat_factorization, Uini, Xini, Yslack, Vslack,
                  vec_P, vec_Q, Ysh, vec_W, pq, pv, pqpv, sl,
                  npqpv, nbus, pqpv_original, pq_original):
@@ -497,7 +517,7 @@ class HelmPreparation:
 
 
 def helm_preparation_dY(Yseries, V0, S0, Ysh0, pq, pv, sl, pqpv, verbose: int = 0,
-                        logger: Logger = None) -> HelmPreparation:
+                        logger: Logger | None = None) -> HelmPreparation:
     """
     This function returns the constant objects to run many HELM simulations
 

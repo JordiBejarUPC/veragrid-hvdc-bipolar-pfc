@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
 
-@nb.njit()
+@nb.jit()
 def make_contingency_flows(base_flow: Vec,
                            lodf_factors: sp.csc_matrix,
                            ptdf_factors: sp.csc_matrix,
@@ -142,7 +142,7 @@ def make_jacobian_ptdf(Ybus: sp.csc_matrix,
     return PTDF
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def make_dP_from_bus_types(bus_types: IntVec, distribute_slack: bool) -> Mat:
     """
     Build the dP / Dij matrix used to modify the PTDF.
@@ -201,7 +201,7 @@ def make_dP_from_bus_types(bus_types: IntVec, distribute_slack: bool) -> Mat:
     return dP
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def make_corrected_injections(P: Vec, bus_types: IntVec, distribute_slack: bool) -> Vec:
     """
     Compute the effective active-power injection vector used for KCL checks.
@@ -252,7 +252,7 @@ def make_corrected_injections(P: Vec, bus_types: IntVec, distribute_slack: bool)
     return P_eff
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def make_corrected_injections_2d(P: Mat, bus_types: IntVec, distribute_slack: bool) -> Mat:
     """
     Compute the effective active-power injection vector used for KCL checks.
@@ -374,11 +374,12 @@ def make_acdc_ptdf(nc: NumericalCircuit,
 
         if nc.bus_data.is_dc[f] and nc.bus_data.is_dc[t]:
             # this is a dc branch
-            ys = float(nc.passive_branch_data.active[k]) / (nc.passive_branch_data.R[k] + 1e-20)
+            ys: float = float(nc.passive_branch_data.active[k]) / (nc.passive_branch_data.R[k] + 1e-20)
 
         elif not nc.bus_data.is_dc[f] and not nc.bus_data.is_dc[t]:
-            # this is an ac branch
-            ys = float(nc.passive_branch_data.active[k]) / (nc.passive_branch_data.X[k] + 1e-20)
+            # AC branch: the DC susceptance includes the tap module, same as Bf
+            m: float = float(nc.active_branch_data.tap_module[k])
+            ys = float(nc.passive_branch_data.active[k]) / (nc.passive_branch_data.X[k] * m + 1e-20)
 
         else:
             # this is an error
@@ -516,7 +517,7 @@ def make_lodf(Cf: sp.csc_matrix,
     return LODF
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def make_transfer_limits(ptdf: Mat,
                          flows: Vec,
                          rates: Vec) -> Vec:
@@ -544,7 +545,7 @@ def make_transfer_limits(ptdf: Mat,
     return tmc
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def create_M_numba(lodf: Mat, branch_contingency_indices) -> Mat:
     """
 
@@ -566,30 +567,36 @@ def compute_phase_shift_terms(nc: NumericalCircuit) -> Tuple[Vec, Vec]:
     """
     Build the per-unit contribution of the branch phase shifts to the DC branch flows.
 
-    A branch with susceptance b = 1/X and phase shift tau has
-    ``Pf = b · (theta_f - theta_t - tau)``, where the tap ratio ``t = m·exp(j·tau)`` 
-    gives ``Pf ~ sin(theta_f - theta_t - tau) / (X·m)``.
+    A branch with susceptance ``b = 1 / (X · m)`` and phase shift ``tau`` has
+    ``Pf = b · (theta_f - theta_t - tau)``. This is the same convention as
+    ``compute_linear_admittances`` and ``power_flow_post_process_linear``.
+    The tap ratio is ``t = m · exp(j · tau)``, so both the tap module and the
+    tap phase enter the DC flow.
 
     Separating the constant part turns the DC system into ``B·theta = P - Pshift``, so the flows are
     ``Pf = PTDF @ (P - Pshift) + shift_flow`` with ``shift_flow = -b·tau`` and
-    ``Pshift[from] = -b·tau``, ``Pshift[to] = +b·tau``. 
+    ``Pshift[from] = -b·tau``, ``Pshift[to] = +b·tau``.
     Without these two terms the PTDF flows are simply blind to any phase shifter.
 
     :param nc: numerical circuit
-    :return: direct flow term per branch, equivalent bus injections), in p.u.
+    :return: direct flow term per branch, equivalent bus injections, in p.u.
     """
     tau_flows: Vec = np.zeros(nc.nbr, dtype=float)
     tau_injections: Vec = np.zeros(nc.nbus, dtype=float)
 
     for k in range(nc.nbr):
-        tau = float(nc.active_branch_data.tap_angle[k])
-        x = float(nc.passive_branch_data.X[k])
+        tau: float = float(nc.active_branch_data.tap_angle[k])
+        x: float = float(nc.passive_branch_data.X[k])
+        m: float = float(nc.active_branch_data.tap_module[k])
+        is_dc: bool = bool(nc.passive_branch_data.dc[k])
+        is_active: bool = bool(nc.passive_branch_data.active[k])
 
-        if tau == 0.0 or bool(nc.passive_branch_data.dc[k]) or x == 0.0:
-            # no shift, a DC branch where the concept does not apply, or no usable susceptance
+        if (not is_active) or is_dc or (tau == 0.0) or (x == 0.0) or (m == 0.0):
+            # no contribution: the branch is off, DC, unshifted, or has no usable susceptance
             pass
         else:
-            contribution = -tau / x
+            # b = 1/(X*m), add m to the contribution
+            contribution: float = -tau / (x * m)
             tau_flows[k] = contribution
             tau_injections[nc.passive_branch_data.F[k]] += contribution
             tau_injections[nc.passive_branch_data.T[k]] -= contribution
@@ -602,12 +609,30 @@ class LinearAnalysis:
     Linear Analysis
     """
 
+    __slots__ = (
+        "logger",
+        "islands",
+        "PTDF",
+        "PTDF_by_island",
+        "LODF",
+        "HvdcDF",
+        "HvdcODF",
+        "VscDF",
+        "VscODF",
+        "bus_types",
+        "distributed_slack",
+        "Sbase",
+        "tau_flows",
+        "tau_injections",
+    )
+
     def __init__(self,
                  nc: NumericalCircuit,
                  distributed_slack: bool = False,
                  correct_values: bool = False,
                  converters_as_setpoint: bool = False,
-                 logger: Logger = Logger()):
+                 logger: Logger = Logger(),
+                 use_jacobian_ptdf: bool = False):
         """
         Linear Analysis constructor
         :param nc: numerical circuit instance
@@ -615,6 +640,7 @@ class LinearAnalysis:
         :param correct_values: boolean to fix out layer values
         :param converters_as_setpoint: build the AC-DC PTDF with every converter treated
             as a set-point device regardless of its control mode
+        :param use_jacobian_ptdf: use the AC Jacobian PTDF for AC islands
         """
 
         self.logger: Logger = logger
@@ -665,18 +691,32 @@ class LinearAnalysis:
                             )
 
                         else:
-                            adml = island.get_linear_admittance_matrices(indices=indices)
+                            if use_jacobian_ptdf:
+                                # Use the nonlinear operating-point derivatives only when explicitly requested.
+                                adm = island.get_admittance_matrices()
+                                ptdf_island = make_jacobian_ptdf(
+                                    Ybus=adm.Ybus,
+                                    Yf=adm.Yf,
+                                    F=island.passive_branch_data.F,
+                                    T=island.passive_branch_data.T,
+                                    V=island.bus_data.Vbus,
+                                    pq=indices.pq,
+                                    pv=indices.pv,
+                                    bus_types=island.bus_data.bus_types,
+                                    distribute_slack=distributed_slack
+                                )
+                            else:
+                                adml = island.get_linear_admittance_matrices(indices=indices)
+                                Bpqpv = adml.get_Bred(pqpv=indices.no_slack)
 
-                            Bpqpv = adml.get_Bred(pqpv=indices.no_slack)
-
-                            # compute the PTDF of the island
-                            ptdf_island = make_ptdf(
-                                Bpqpv=Bpqpv,
-                                Bf=adml.Bf,
-                                no_slack=indices.no_slack,
-                                bus_types=island.bus_data.bus_types,
-                                distribute_slack=distributed_slack
-                            )
+                                # Keep the established DC PTDF implementation as the default path.
+                                ptdf_island = make_ptdf(
+                                    Bpqpv=Bpqpv,
+                                    Bf=adml.Bf,
+                                    no_slack=indices.no_slack,
+                                    bus_types=island.bus_data.bus_types,
+                                    distribute_slack=distributed_slack
+                                )
 
                         # store maybe for later
                         self.PTDF_by_island.append(ptdf_island)
@@ -890,6 +930,21 @@ class LinearMultiContingency:
     LinearMultiContingency
     """
 
+    __slots__ = (
+        "branch_indices",
+        "hvdc_indices",
+        "vsc_indices",
+        "bus_indices",
+        "mlodf_factors",
+        "compensated_ptdf_factors",
+        "injections_factor",
+        "hvdc_odf",
+        "vsc_odf",
+        "compensated_vsc_df",
+        "compensated_hvdc_df",
+        "enabled",
+    )
+
     def __init__(self,
                  branch_indices: IntVec,
                  hvdc_indices: IntVec,
@@ -1073,6 +1128,14 @@ class ContingencyIndices:
     Contingency indices
     """
 
+    __slots__ = (
+        "branch_contingency_indices",
+        "hvdc_contingency_indices",
+        "vsc_contingency_indices",
+        "bus_contingency_indices",
+        "injections_factors",
+    )
+
     def __init__(self,
                  contingency_group: ContingencyGroup,
                  contingency_group_dict: Dict[str, List[Contingency]],
@@ -1158,6 +1221,18 @@ class LinearMultiContingencies:
     """
     LinearMultiContingencies
     """
+
+    __slots__ = (
+        "grid",
+        "contingency_groups_used",
+        "__contingency_group_dict",
+        "__branches_dict",
+        "__hvdc_dict",
+        "__vsc_dict",
+        "__injections_bus_index_dict",
+        "contingency_indices_list",
+        "multi_contingencies",
+    )
 
     def __init__(self, grid: MultiCircuit, contingency_groups_used: List[ContingencyGroup]):
         """
@@ -1402,6 +1477,18 @@ class LinearAnalysisTs:
     Class to compute the different linear states of a grid
     """
 
+    __slots__ = (
+        "time_indices",
+        "_inverse_time_index",
+        "groups",
+        "mapping",
+        "_linear_analysis",
+        "_linear_multi_contingencies",
+        "nbr",
+        "nbus",
+        "nt",
+    )
+
     def __init__(self, grid: MultiCircuit,
                  distributed_slack: bool = False,
                  correct_values: bool = False,
@@ -1409,7 +1496,8 @@ class LinearAnalysisTs:
                  contingency_groups_used: List[ContingencyGroup] | None = None,
                  ptdf_threshold: float = 1e-4,
                  lodf_threshold: float = 1e-4,
-                 compute_multi_contingencies: bool = True):
+                 compute_multi_contingencies: bool = True,
+                 use_jacobian_ptdf: bool = False):
         """
         Constructor
         :param grid: MultiCircuit instance
@@ -1420,6 +1508,7 @@ class LinearAnalysisTs:
         :param ptdf_threshold: threshold for PTDF's to be converted to sparse
         :param lodf_threshold: threshold for LODF's to be converted to sparse
         :param compute_multi_contingencies: also pre-compute the LinearMultiContingencies
+        :param use_jacobian_ptdf: use the AC Jacobian PTDF implementation?
         """
 
         if not grid.has_time_series:
@@ -1446,7 +1535,8 @@ class LinearAnalysisTs:
             # Linear analysis (PTDF & LODF)
             lin = LinearAnalysis(nc=nc,
                                  distributed_slack=distributed_slack,
-                                 correct_values=correct_values)
+                                 correct_values=correct_values,
+                                 use_jacobian_ptdf=use_jacobian_ptdf)
 
             self._linear_analysis[t_idx] = lin
 

@@ -85,7 +85,7 @@ def test_first_order_system():
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.show()
+        plt.show(block=False)
         
     except Exception as e:
         print(f"Simulation failed with error: {e}")
@@ -161,7 +161,7 @@ def test_second_order_system():
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.show()
+        plt.show(block=False)
         
     except Exception as e:
         print(f"Simulation failed with error: {e}")
@@ -243,7 +243,7 @@ def test_pi_controller():
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.show()
+        plt.show(block=False)
         
     except Exception as e:
         print(f"Simulation failed with error: {e}")
@@ -306,7 +306,7 @@ def test_variable_input():
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.show()
+        plt.show(block=False)
         
     except Exception as e:
         print(f"Simulation failed with error: {e}")

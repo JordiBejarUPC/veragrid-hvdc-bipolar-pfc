@@ -43,5 +43,5 @@ if __name__ == "__main__":
     plt.scatter(range(rand_evals), y_pop[:rand_evals], s=6, c='r', label='Random iterations')
     plt.legend(loc='upper right', bbox_to_anchor=(1, 1), fontsize='8')
 
-    plt.show()
+    plt.show(block=False)
     print()

@@ -345,7 +345,7 @@ def voltage_pdc_droop_neg(ut: complex,
     return Pdc / S_base
 
 
-@nb.njit(cache=True, fastmath=True)
+@nb.jit(cache=True, fastmath=True)
 def polar_to_rect(Vm: Vec, Va: Vec) -> CxVec:
     """
     Convert polar to rectangular coordinates
@@ -371,7 +371,7 @@ def expand(n, arr: Vec, idx: IntVec, default: float) -> Vec:
     return x
 
 
-@nb.njit(cache=True, fastmath=True)
+@nb.jit(cache=True, fastmath=True)
 def compute_zip_power(S0: CxVec, I0: CxVec, Y0: CxVec, Vm: Vec) -> CxVec:
     """
     Compute the equivalent power injection
@@ -435,7 +435,7 @@ def fortescue_012_to_abc(z0: complex, z1: complex, z2: complex) -> CxMat:
     return Zabc
 
 
-@nb.njit(cache=True, fastmath=True)
+@nb.jit(cache=True, fastmath=True)
 def compute_fx(Scalc: CxVec, Sbus: CxVec, idx_dP: IntVec, idx_dQ: IntVec) -> Vec:
     """
     Compute the NR-like error function
@@ -479,7 +479,7 @@ def compute_fx_error(fx: Vec) -> float:
     return np.linalg.norm(fx, np.inf)
 
 
-@nb.njit()
+@nb.jit()
 def get_Sf(k: IntVec, Vm: Vec, V: CxVec, yff: CxVec, yft: CxVec, F: IntVec, T: IntVec):
     """
 
@@ -497,7 +497,7 @@ def get_Sf(k: IntVec, Vm: Vec, V: CxVec, yff: CxVec, yft: CxVec, F: IntVec, T: I
     return np.power(Vm[f], 2.0) * np.conj(yff[k]) + V[f] * np.conj(V[t]) * np.conj(yft[k])
 
 
-@nb.njit()
+@nb.jit()
 def get_St(k: IntVec, Vm: Vec, V: CxVec, ytf: CxVec, ytt: CxVec, F: IntVec, T: IntVec):
     """
 
@@ -515,7 +515,7 @@ def get_St(k: IntVec, Vm: Vec, V: CxVec, ytf: CxVec, ytt: CxVec, F: IntVec, T: I
     return np.power(Vm[t], 2.0) * np.conj(ytt[k]) + V[t] * np.conj(V[f]) * np.conj(ytf[k])
 
 
-@nb.njit()
+@nb.jit()
 def get_If(k: IntVec, V: CxVec, yff: CxVec, yft: CxVec, F: IntVec, T: IntVec):
     """
 
@@ -532,7 +532,7 @@ def get_If(k: IntVec, V: CxVec, yff: CxVec, yft: CxVec, F: IntVec, T: IntVec):
     return np.conj(V[f]) * np.conj(yff[k]) + np.conj(V[t]) * np.conj(yft[k])
 
 
-@nb.njit()
+@nb.jit()
 def get_It(k: IntVec, V: CxVec, ytf: CxVec, ytt: CxVec, F: IntVec, T: IntVec):
     """
 
@@ -566,7 +566,7 @@ def expand_magnitudes(magnitude: CxVec, lookup: IntVec):
     return magnitude_expanded
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def floating_star_currents(Va, Vb, Vc, Istar_a, Istar_b, Istar_c, Vn0) -> Tuple[complex, complex, complex, complex]:
     """
     Given the phase voltages and currents of a floating star connected current load,
@@ -591,7 +591,7 @@ def floating_star_currents(Va, Vb, Vc, Istar_a, Istar_b, Istar_c, Vn0) -> Tuple[
     iteration = 0
     max_iterations = 25
 
-    # Remove @nb.njit decorator - nested functions can't be decorated
+    # Remove @nb.jit decorator - nested functions can't be decorated
     def Iphase(U, Istar):
         Umag = abs(U)
         if Umag < 1e-12:  # guard
@@ -733,7 +733,7 @@ def floating_star_currents(Va, Vb, Vc, Istar_a, Istar_b, Istar_c, Vn0) -> Tuple[
     return Ia, Ib, Ic, Vn
 
 
-# @nb.njit(cache=True)
+# @nb.jit(cache=True)
 def floating_star_powers(Ua,
                          Ub,
                          Uc,
@@ -987,7 +987,7 @@ def power_flow_post_process_linear(Sbus: CxVec, V: CxVec,
     return Sfb, Stb, If, It, Vbranch, loading, losses, Sbus
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def split_bus_quantity(
         Qbus: Vec,
         gen_bus_idx: IntVec,
@@ -1450,6 +1450,7 @@ def split_reactive_power_between_generators_and_batteries(
         v_ctrl_val_gen: int,
         qv_droop_val_gen: int,
         Vm: Vec,
+        enforce_q_limits: bool = True,
         atol: float = 1e-12,
 ) -> Tuple[Vec, Vec]:
     """
@@ -1494,6 +1495,7 @@ def split_reactive_power_between_generators_and_batteries(
     :param v_ctrl_val_gen: Integer code for voltage control.
     :param qv_droop_val_gen: Integer code for QV droop control.
     :param Vm: Solved bus voltage magnitudes.
+    :param enforce_q_limits: Clip voltage-controller Q reports to the declared capability limits.
     :param atol: Numerical zero tolerance.
     :return: Tuple with generator and battery reactive power vectors.
     """
@@ -1509,8 +1511,10 @@ def split_reactive_power_between_generators_and_batteries(
     qfixed_per_bus: Vec = Qfixed_bus.copy()
     qmin_control_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
     qmax_control_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
+    qrange_control_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
     control_count_per_bus: np.ndarray = np.zeros(n_bus, dtype=np.int64)
     qshare_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
+    qflat_extra_per_bus: Vec = np.zeros(n_bus, dtype=np.float64)
 
     delta_v: float
     q_droop_value: float
@@ -1581,6 +1585,7 @@ def split_reactive_power_between_generators_and_batteries(
         qmin_control_value = qmin_control_per_bus[bus_idx]
         qmax_control_value = qmax_control_per_bus[bus_idx]
         qrange_control_value = qmax_control_value - qmin_control_value
+        qrange_control_per_bus[bus_idx] = qrange_control_value
         qcontrol_required_value = Qbus[bus_idx] - qfixed_per_bus[bus_idx]
         control_count_value = control_count_per_bus[bus_idx]
 
@@ -1589,25 +1594,32 @@ def split_reactive_power_between_generators_and_batteries(
             # NaN bus capability would otherwise leak into the sharing factor.
             if np.isfinite(qrange_control_value) and np.isfinite(qcontrol_required_value):
                 if qrange_control_value > atol:
-                    if qcontrol_required_value < qmin_control_value:
-                        qcontrol_limited_value = qmin_control_value
-                    else:
-                        if qcontrol_required_value > qmax_control_value:
-                            qcontrol_limited_value = qmax_control_value
+                    if enforce_q_limits:
+                        if qcontrol_required_value < qmin_control_value:
+                            qcontrol_limited_value = qmin_control_value
                         else:
-                            qcontrol_limited_value = qcontrol_required_value
+                            if qcontrol_required_value > qmax_control_value:
+                                qcontrol_limited_value = qmax_control_value
+                            else:
+                                qcontrol_limited_value = qcontrol_required_value
 
-                    qshare_value = (qcontrol_limited_value - qmin_control_value) / qrange_control_value
+                        qshare_value = (qcontrol_limited_value - qmin_control_value) / qrange_control_value
 
-                    if qshare_value < 0.0:
-                        qshare_per_bus[bus_idx] = 0.0
-                    else:
-                        if qshare_value > 1.0:
-                            qshare_per_bus[bus_idx] = 1.0
+                        if qshare_value < 0.0:
+                            qshare_per_bus[bus_idx] = 0.0
                         else:
-                            qshare_per_bus[bus_idx] = qshare_value
+                            if qshare_value > 1.0:
+                                qshare_per_bus[bus_idx] = 1.0
+                            else:
+                                qshare_per_bus[bus_idx] = qshare_value
+                    else:
+                        qshare_per_bus[bus_idx] = (qcontrol_required_value - qmin_control_value) / qrange_control_value
                 else:
                     qshare_per_bus[bus_idx] = 0.0
+                    if not enforce_q_limits:
+                        qflat_extra_per_bus[bus_idx] = (
+                            (qcontrol_required_value - qmin_control_value) / control_count_value
+                        )
             else:
                 qshare_per_bus[bus_idx] = 0.0
         else:
@@ -1624,7 +1636,10 @@ def split_reactive_power_between_generators_and_batteries(
                 # Reject non-finite limits before reconstructing the device Q
                 # because 0 * NaN still raises an invalid warning in NumPy.
                 if np.isfinite(qmin_gen_value) and np.isfinite(qmax_gen_value):
-                    q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
+                    if qrange_control_per_bus[bus_idx] > atol:
+                        q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
+                    else:
+                        q_gen[gen_idx] = qmin_gen_value + qflat_extra_per_bus[bus_idx]
                 else:
                     q_gen[gen_idx] = 0.0
             elif control_mode_int_gen[gen_idx] == qv_droop_val_gen:
@@ -1677,7 +1692,10 @@ def split_reactive_power_between_generators_and_batteries(
                 # Reject non-finite limits before reconstructing the device Q
                 # because 0 * NaN still raises an invalid warning in NumPy.
                 if np.isfinite(qmin_batt_value) and np.isfinite(qmax_batt_value):
-                    q_batt[batt_idx] = qmin_batt_value + qshare_per_bus[bus_idx] * qrange_batt_value
+                    if qrange_control_per_bus[bus_idx] > atol:
+                        q_batt[batt_idx] = qmin_batt_value + qshare_per_bus[bus_idx] * qrange_batt_value
+                    else:
+                        q_batt[batt_idx] = qmin_batt_value + qflat_extra_per_bus[bus_idx]
                 else:
                     q_batt[batt_idx] = 0.0
             else:

@@ -687,4 +687,4 @@ diag_axes[4, 1].grid(True)
 diag_axes[4, 1].legend(loc="upper right")
 
 diag_figure.tight_layout()
-plt.show()
+plt.show(block=False)

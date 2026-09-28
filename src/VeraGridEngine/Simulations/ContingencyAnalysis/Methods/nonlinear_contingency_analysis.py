@@ -26,7 +26,8 @@ def nonlinear_contingency_analysis(nc: NumericalCircuit,
                                    is_cancel: Callable[[], bool] | None,
                                    t_idx: Union[None, int] = None,
                                    t_prob: float = 1.0,
-                                   logger: Logger | None = None, ) -> ContingencyAnalysisResults:
+                                   logger: Logger | None = None,
+                                   report_progress: bool = False) -> ContingencyAnalysisResults:
     """
     Run a contingency analysis using the power flow options
     :param nc: NumericalCircuit
@@ -71,7 +72,8 @@ def nonlinear_contingency_analysis(nc: NumericalCircuit,
         # we need the PTDF for this
         linear_analysis = LinearAnalysis(nc=nc,
                                          distributed_slack=options.lin_options.distribute_slack,
-                                         correct_values=options.lin_options.correct_values)
+                                         correct_values=options.lin_options.correct_values,
+                                         use_jacobian_ptdf=options.lin_options.use_jacobian_ptdf)
 
         linear_multiple_contingencies.compute(lin=linear_analysis,
                                               ptdf_threshold=options.lin_options.ptdf_threshold,
@@ -94,11 +96,11 @@ def nonlinear_contingency_analysis(nc: NumericalCircuit,
         nc.set_con_or_ra_status(contingencies)
 
         # report progress
-        if report_text is not None:
+        if report_text is not None and report_progress:
             report_text(f'Contingency group: {contingency_group.name}')
 
-        if report_progress2 is not None:
-            report_progress2(ic, len(linear_multiple_contingencies.contingency_groups_used) * 100)
+        if report_progress2 is not None and report_progress:
+            report_progress2(ic, len(linear_multiple_contingencies.contingency_groups_used))
 
         # run
         con_pf_res = multi_island_pf_nc(nc=nc,

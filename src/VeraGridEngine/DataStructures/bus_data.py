@@ -10,7 +10,7 @@ from VeraGridEngine.enumerations import BusMode
 from VeraGridEngine.Utils.compare import compare_arr
 
 
-@nb.njit(cache=True, inline="always")
+@nb.jit(cache=True, inline="always")
 def _control_priority(is_p: bool,
                       is_q: bool,
                       is_vm: bool,
@@ -34,7 +34,7 @@ def _control_priority(is_p: bool,
         return 1
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def propagate_controls(chosen_idx: int,
                        other_idx: IntVec,
                        bus_types: IntVec,
@@ -102,6 +102,36 @@ class BusData:
     """
     BusData
     """
+
+    __slots__ = (
+        "nbus",
+        "idtag",
+        "names",
+        "active",
+        "Vbus",
+        "Vmin",
+        "Vmax",
+        "Vnom",
+        "cost_v",
+        "angle_min",
+        "angle_max",
+        "bus_types",
+        "is_p_controlled",
+        "is_q_controlled",
+        "is_vm_controlled",
+        "is_va_controlled",
+        "installed_power",
+        "srap_available_power",
+        "is_dc",
+        "is_grounded",
+        "areas",
+        "substations",
+        "q_shared_total",
+        "q_fixed",
+        "ii_fixed",
+        "b_fixed",
+        "original_idx",
+    )
 
     def __init__(self, nbus: int):
         """

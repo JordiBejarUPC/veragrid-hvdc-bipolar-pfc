@@ -92,6 +92,8 @@ tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
 tower.compute()
 
 # Aplicar física a la línea
+grid.add_wire(wire)
+grid.add_overhead_line(tower)
 line0.apply_template(tower, grid.Sbase, grid.fBase)
 
 # load
@@ -114,6 +116,7 @@ grid.add_line(line0)
 grid.add_generator(bus=bus0, api_obj=gen0)
 grid.add_load(bus=bus1, api_obj=load)
 
+gce.save_file(grid=grid, filename="../../src/tests/data/dynamic_versions/emt_syst_static_6_5_37.veragrid")
 
 for bus in grid.buses:
     get_bus_emt_template(grid, bus)
@@ -171,7 +174,7 @@ set_emt_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 # load.emt_model= load_mdl
 # gen0.emt_model= big_gen1
 
-# gce.save_file(grid=grid, filename="grid_save_event.veragrid")
+gce.save_file(grid=grid, filename="../../src/tests/data/dynamic_versions/emt_syst_rms_6_5_37.veragrid")
 
 pf_options = PowerFlowOptions(
     solver_type=gce.SolverType.NR,
@@ -248,7 +251,7 @@ if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
     raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 options = EmtOptions(time_step = 5e-6, # 5e-7,
-                     simulation_time =  5,  #5e-6*10, # s
+                     simulation_time =  0.001,  #5, # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
@@ -521,17 +524,17 @@ plt.grid(True)
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
-theta = find_name_in_block("theta_abs", gen_mdl)
+theta = find_name_in_block("theta", gen_mdl)
 omega_gen = find_name_in_block("omega", gen_mdl)
-theta_plt = y[:, problem.get_var_idx(theta)]
-omega_plt = y[:, problem.get_var_idx(omega_gen)]
+# theta_plt = y[:, problem.get_var_idx(theta)]
+# omega_plt = y[:, problem.get_var_idx(omega_gen)]
 
 plt.figure(figsize=(12, 8))
 
 plt.subplot(2, 1, 1)
-plt.plot(tme, theta_plt[:len(tme)], label='Theta generator [rad]', color='blue')
+# plt.plot(tme, theta_plt[:len(tme)], label='Theta generator [rad]', color='blue')
 plt.title("Theta generator")
 plt.xlabel("Time")
 plt.ylabel("Theta generator")
@@ -539,7 +542,7 @@ plt.legend(loc='upper left')
 plt.grid(True)
 #
 plt.subplot(2, 1, 2)
-plt.plot(tme, omega_plt[:len(tme)], label='Speed generator [rad/s]', color='blue')
+# plt.plot(tme, omega_plt[:len(tme)], label='Speed generator [rad/s]', color='blue')
 plt.title("Omega generator")
 plt.xlabel("Time")
 plt.ylabel("Omega generator [rad/s]")
@@ -548,7 +551,7 @@ plt.grid(True)
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 i_A_gen = find_name_in_block("i_A", gen_mdl)
 i_B_gen = find_name_in_block("i_B", gen_mdl)
@@ -593,7 +596,7 @@ plt.grid(True)
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 # P_A_load = find_name_in_block("P_A_ZIP_Load_EMT_3ph", load_mdl)
 # P_B_load = find_name_in_block("P_B_ZIP_Load_EMT_3ph", load_mdl)
@@ -686,7 +689,7 @@ plt.grid(True)
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 i_d_gen = find_name_in_block("i_d", gen_mdl)
 i_q_gen = find_name_in_block("i_q", gen_mdl)
@@ -745,7 +748,7 @@ plt.grid(True)
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 
 
@@ -812,7 +815,7 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 i_ser_A = find_name_in_block("i_ser_A", line0.emt_model)
 i_ser_B = find_name_in_block("i_ser_B", line0.emt_model)
@@ -872,4 +875,4 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)

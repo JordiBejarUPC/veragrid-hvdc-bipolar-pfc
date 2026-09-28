@@ -1,0 +1,492 @@
+{
+  "model": "Core SGM 2026-03 topology",
+  "sources": {
+    "workbook": "C:\\Users\\nuagb\\Downloads\\202603_Core Static Grid Model_9th release\\202603_Core Static Grid Model_9th release\\202603_Core Static Grid Model_External.xlsx",
+    "map": "C:\\Users\\nuagb\\Downloads\\202603_Core Static Grid Model_9th release\\202603_Core Static Grid Model_9th release\\2026-03-16_Core_SGM_publication.html"
+  },
+  "reference_sources_for_fills": {
+    "milin_capacity": "https://eepublicdownloads.entsoe.eu/tyndp-documents/IoSN2020/200810_RegIP2020_CCE_beforeconsultation.pdf",
+    "milin_loop_length": "https://eru.gov.cz/sites/default/files/obsah/prilohy/navrh-dprps-2023-2032.pdf",
+    "former_v475_length": "https://eru.gov.cz/sites/default/files/import_files/P%C5%99%C3%ADloha%202%20-%20PPPS%20%C4%8C%C3%A1st%20VII_%20-%20Za%C5%99%C3%ADzen%C3%AD%20PS%20-%20revize.pdf",
+    "bucuresti_sud_transformer": "https://www.transelectrica.ro/documents/10179/17407876/2_1_Note%2Bon%2Bthe%2Bapproval%2Bby%2BThe%2BGeneral%2BMeeting%2Bof%2BShareholders%2Bof%2BETG%2BDevelopment%2BPlan%2B2024-2033.pdf/f3e1c19f-34c9-4e05-b182-2e650799a5d9",
+    "manual_coordinates": {
+      "Camporosso": "https://commons.wikimedia.org/wiki/Category:Camporosso_substation",
+      "Menton/Trinite Victor": "https://fr.wikipedia.org/wiki/La_Trinit%C3%A9_(Alpes-Maritimes)",
+      "Arkale": "https://mapcarta.com/W31110032",
+      "Argia": "https://mapcarta.com/W78770178",
+      "Hernani": "https://mapcarta.com/W1316397504"
+    }
+  },
+  "rules": {
+    "scope": "topology only",
+    "bus_model": "one bus per source substation name and normalized voltage level",
+    "voltage_normalization_kv": {
+      "110-130": 110,
+      "135-179": 150,
+      "180-274": 220,
+      "275-549": 380,
+      ">=550": 750
+    },
+    "line_rating_priority": [
+      "DLR maximum",
+      "fixed",
+      "maximum seasonal period"
+    ],
+    "tielines": "VeraGrid Line devices; opposite TSO border shares consolidated",
+    "owner": "TSO"
+  },
+  "source_counts": {
+    "active_line_and_tieline_rows": 2960,
+    "transformer_rows": 526,
+    "html_line_geometries": 2951,
+    "matched_line_geometries": 2923,
+    "html_substation_markers": 1575,
+    "html_transformer_markers": 526,
+    "decommissioned_current_rows_excluded": 5
+  },
+  "output_counts": {
+    "countries": 24,
+    "owners": 27,
+    "substations": 1582,
+    "voltage_levels": 1884,
+    "buses": 1884,
+    "lines": 2861,
+    "transformers2w": 526,
+    "source_line_rows_represented": 2960,
+    "tieline_rows_consolidated": 99
+  },
+  "rating_basis_counts": {
+    "DLR maximum": 854,
+    "ENTSO-E target capacity": 2,
+    "Transelectrica nominal rating": 2,
+    "fixed": 2000,
+    "maximum min/max rating": 342,
+    "maximum seasonal period": 266,
+    "median TSO and voltage-class current": 20
+  },
+  "coordinate_source_counts": {
+    "HTML line endpoint snapped to HTML substation marker": 1556,
+    "HTML transformer coordinate snapped to HTML substation marker": 4,
+    "La Trinite municipality coordinate; substation-level approximation": 1,
+    "OpenStreetMap Argia site coordinate": 1,
+    "OpenStreetMap Arkale substation coordinate": 1,
+    "OpenStreetMap Hernani substation coordinate": 1,
+    "Wikimedia/OSM Camporosso substation coordinate": 1,
+    "inferred from connected substations and snapped to HTML marker": 17
+  },
+  "decommissioned_rows_excluded": [
+    {
+      "sheet": "Lines",
+      "name": "TIHANGE BIS – TIHANGE 2 380.15",
+      "eic": "22T20180112---8D",
+      "reason": "Element no longer operational (decommissioning)"
+    },
+    {
+      "sheet": "Tielines",
+      "name": "Daxlanden - Maximiliansau ge (Rheingraben prov)",
+      "eic": "11T0-0000-2271-C",
+      "reason": "Provisional line decommissioned"
+    },
+    {
+      "sheet": "Tielines",
+      "name": "Y-Grafenrheinfeld -(Hoepfingen-Stalldorf) ge/rt",
+      "eic": "11T0-0000-2290-7",
+      "reason": "Provisional line decommissioned"
+    },
+    {
+      "sheet": "Tielines",
+      "name": "Y-Hoepfingen -(Grafenrheinfeld-Stalldorf) ge/rt",
+      "eic": "11T0-0000-2291-4",
+      "reason": "Provisional line decommissioned"
+    },
+    {
+      "sheet": "Tielines",
+      "name": "Y-Stalldorf -(Grafenrheinfeld-Hoepfingen) ge/rt",
+      "eic": "11T0-0000-2292-1",
+      "reason": "Provisional line decommissioned"
+    }
+  ],
+  "filled_source_gaps": [
+    {
+      "element": "Y-Schwanheim (-Bischofsheim -Kriftel) TREBUR S",
+      "field": "voltage",
+      "value": 380.0,
+      "method": "connected equipment"
+    },
+    {
+      "element": "Reporyje - Milin",
+      "field": "rate",
+      "value": 1730.0,
+      "unit": "MVA",
+      "method": "https://eepublicdownloads.entsoe.eu/tyndp-documents/IoSN2020/200810_RegIP2020_CCE_beforeconsultation.pdf"
+    },
+    {
+      "element": "Reporyje - Milin",
+      "field": "length",
+      "value": 68.01486662291289,
+      "unit": "km",
+      "method": "official route lengths allocated by mapped distance"
+    },
+    {
+      "element": "Reporyje - Milin",
+      "field": "R/X/B",
+      "value": [
+        1.621530903224463,
+        19.601833898945387,
+        268.71125314544
+      ],
+      "method": "median CEPS 380 kV specific parameters"
+    },
+    {
+      "element": "Milin - Kocin",
+      "field": "rate",
+      "value": 1730.0,
+      "unit": "MVA",
+      "method": "https://eepublicdownloads.entsoe.eu/tyndp-documents/IoSN2020/200810_RegIP2020_CCE_beforeconsultation.pdf"
+    },
+    {
+      "element": "Milin - Kocin",
+      "field": "length",
+      "value": 70.38513337708709,
+      "unit": "km",
+      "method": "official route lengths allocated by mapped distance"
+    },
+    {
+      "element": "Milin - Kocin",
+      "field": "R/X/B",
+      "value": [
+        1.6780400310315917,
+        20.28494301197367,
+        278.0756374547457
+      ],
+      "method": "median CEPS 380 kV specific parameters"
+    },
+    {
+      "element": "FAI - Suceava",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Isaccea - Stupina",
+      "field": "current rating",
+      "value": 1920.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Tulcea Vest - Tariverde",
+      "field": "current rating",
+      "value": 1920.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Cernavoda - Gura Ialomitei c4",
+      "field": "current rating",
+      "value": 1920.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Alba Iulia - Galceag",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Cernavoda - Gura Ialomitei c3",
+      "field": "current rating",
+      "value": 1920.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Stalpu - Teleajen",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Alba Iulia - Sugag",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Retezat - Hasdat",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Cetate - Calafat",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Rosiori - Vetis",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Slatina - Draganesti Olt",
+      "field": "current rating",
+      "value": 1920.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Arad - Nadab",
+      "field": "current rating",
+      "value": 1920.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Brazi Vest - Teleajen",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Iaz - Resita c1",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Iaz - Resita c2",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Iernut - Ungheni c2",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Medgidia Sud - Cernavoda",
+      "field": "current rating",
+      "value": 1920.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Gadalin - Cluj Est",
+      "field": "current rating",
+      "value": 1920.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Craiova Nord - Isalnita c1",
+      "field": "current rating",
+      "value": 978.0,
+      "unit": "A",
+      "method": "median TSO and voltage-class current in this release"
+    },
+    {
+      "element": "Gurtweil-Stockach rt",
+      "field": "length",
+      "value": 30.4161811495194,
+      "unit": "km",
+      "method": "mapped distance x 1.08"
+    },
+    {
+      "element": "Y – RODENHUIZE (– HORTA – MERCATOR) 380.74",
+      "field": "R/X/B",
+      "value": [
+        0.01,
+        0.14,
+        0.0
+      ],
+      "method": "source dash interpreted as zero shunt susceptance"
+    },
+    {
+      "element": "Y – RODENHUIZE (– HORTA – MERCATOR) 380.73",
+      "field": "R/X/B",
+      "value": [
+        0.02,
+        0.23,
+        0.0
+      ],
+      "method": "source dash interpreted as zero shunt susceptance"
+    },
+    {
+      "element": "BRUME – BRUME SNCB 220.600",
+      "field": "R/X/B",
+      "value": [
+        0.0,
+        0.05,
+        0.0
+      ],
+      "method": "source dash interpreted as zero shunt susceptance"
+    },
+    {
+      "element": "ROMSEE – ROMSEE SNCB 220.536",
+      "field": "R/X/B",
+      "value": [
+        0.0,
+        0.05,
+        0.0
+      ],
+      "method": "source dash interpreted as zero shunt susceptance"
+    },
+    {
+      "element": "ROMSEE – ROMSEE SNCB 220.537",
+      "field": "R/X/B",
+      "value": [
+        0.0,
+        0.05,
+        0.0
+      ],
+      "method": "source dash interpreted as zero shunt susceptance"
+    },
+    {
+      "element": "ST-MARD – ST-MARD SNCB 220.602",
+      "field": "R/X/B",
+      "value": [
+        0.0,
+        0.05,
+        0.0
+      ],
+      "method": "source dash interpreted as zero shunt susceptance"
+    },
+    {
+      "element": "ST-MARD – ST-MARD SNCB 220.601",
+      "field": "R/X/B",
+      "value": [
+        0.0,
+        0.05,
+        0.0
+      ],
+      "method": "source dash interpreted as zero shunt susceptance"
+    },
+    {
+      "element": "LIT 400KV N0 1 FAUX-FRESNAY-VESLE",
+      "field": "R/X/B",
+      "value": [
+        2.037,
+        21.818,
+        250.46347666549863
+      ],
+      "method": "median TSO and voltage-class specific parameters"
+    },
+    {
+      "element": "LIT 400kV N0 1 AVELIN - GAVRELLE",
+      "field": "R/X/B",
+      "value": [
+        0.448,
+        7.862,
+        116.57200563960424
+      ],
+      "method": "median TSO and voltage-class specific parameters"
+    },
+    {
+      "element": "LIT 400kV N0 2 AVELIN - GAVRELLE",
+      "field": "R/X/B",
+      "value": [
+        0.448,
+        7.862,
+        116.57200563960424
+      ],
+      "method": "median TSO and voltage-class specific parameters"
+    },
+    {
+      "element": "Eichstetten C1 - Eichstetten C2 vi",
+      "field": "R/X/B",
+      "value": [
+        0.01,
+        0.15,
+        0.0
+      ],
+      "method": "source dash interpreted as zero shunt susceptance"
+    },
+    {
+      "element": "Eichstetten C1 - Eichstetten C2 br",
+      "field": "R/X/B",
+      "value": [
+        0.01,
+        0.15,
+        0.0
+      ],
+      "method": "source dash interpreted as zero shunt susceptance"
+    },
+    {
+      "element": "TR Bucuresti Sud 400/110 4",
+      "field": "rate",
+      "value": 250.0,
+      "unit": "MVA",
+      "method": "https://www.transelectrica.ro/documents/10179/17407876/2_1_Note%2Bon%2Bthe%2Bapproval%2Bby%2BThe%2BGeneral%2BMeeting%2Bof%2BShareholders%2Bof%2BETG%2BDevelopment%2BPlan%2B2024-2033.pdf/f3e1c19f-34c9-4e05-b182-2e650799a5d9"
+    },
+    {
+      "element": "TR Bucuresti Sud 400/110 4",
+      "field": "voltage and R/X/B/G",
+      "value": [
+        400.0,
+        121.0,
+        0.109,
+        9.8499,
+        -3.97892,
+        5.7603
+      ],
+      "method": "co-located transformer 3 proxy"
+    },
+    {
+      "elements": 235,
+      "field": "transformer B/G",
+      "value": 0.0,
+      "method": "blank shunt entries interpreted as zero"
+    }
+  ],
+  "validation": {
+    "roundtrip_open": true,
+    "valid_for_simulation": true,
+    "compiled_numerical_circuit": true,
+    "positive_line_ratings": true,
+    "positive_transformer_ratings": true,
+    "all_substations_have_coordinates": true,
+    "all_substations_have_country": true,
+    "all_buses_have_country": true,
+    "all_physical_devices_have_owner": true,
+    "count_roundtrip": {
+      "buses": [
+        1884,
+        1884
+      ],
+      "substations": [
+        1582,
+        1582
+      ],
+      "voltage_levels": [
+        1884,
+        1884
+      ],
+      "lines": [
+        2861,
+        2861
+      ],
+      "transformers2w": [
+        526,
+        526
+      ]
+    }
+  },
+  "output": "C:\\Users\\nuagb\\Documents\\eRoots\\VeraGrid_Private\\VeraGrid\\outputs\\core_sgm_2026\\Core_SGM_2026_topology.veragrid"
+}

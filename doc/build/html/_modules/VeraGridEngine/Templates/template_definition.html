@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Templates.template_definition &mdash; VeraGrid 6.5.5 documentation</title>
+  <title>VeraGridEngine.Templates.template_definition &mdash; VeraGrid 6.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../_static/documentation_options.js?v=276d7aeb"></script>
+      <script src="../../../_static/documentation_options.js?v=9cce70e7"></script>
       <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -107,11 +108,13 @@
 <span class="c1"># SPDX-License-Identifier: MPL-2.0</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Type</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Devices.Dynamic.emt_template</span><span class="w"> </span><span class="kn">import</span> <span class="n">EmtModelTemplate</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.basic_structures</span><span class="w"> </span><span class="kn">import</span> <span class="n">Vec</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.enumerations</span><span class="w"> </span><span class="kn">import</span> <span class="n">WindingType</span><span class="p">,</span> <span class="n">V_I_CurveSequenceType</span><span class="p">,</span> <span class="n">WaveformSequenceType</span><span class="p">,</span> <span class="n">X_Y_SequenceType</span><span class="p">,</span> <span class="n">X_Y_Z_Matrix</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.enumerations</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">ConverterControlType</span><span class="p">,</span> <span class="n">WindingType</span><span class="p">,</span> <span class="n">V_I_CurveSequenceType</span><span class="p">,</span>
+                                         <span class="n">WaveformSequenceType</span><span class="p">,</span> <span class="n">X_Y_SequenceType</span><span class="p">,</span> <span class="n">X_Y_Z_Matrix</span><span class="p">)</span>
 
 
 
@@ -122,6 +125,7 @@
     <span class="n">Type</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
     <span class="n">Type</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">Type</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Vec</span><span class="p">]],</span>
+    <span class="n">Type</span><span class="p">[</span><span class="n">ConverterControlType</span><span class="p">],</span>
     <span class="n">Type</span><span class="p">[</span><span class="n">WindingType</span><span class="p">],</span>
     <span class="n">Type</span><span class="p">[</span><span class="n">V_I_CurveSequenceType</span><span class="p">],</span>
     <span class="n">Type</span><span class="p">[</span><span class="n">WaveformSequenceType</span><span class="p">],</span>
@@ -145,23 +149,52 @@
         <span class="s2">&quot;display&quot;</span><span class="p">,</span>
         <span class="s2">&quot;editable&quot;</span><span class="p">,</span>
         <span class="s2">&quot;value&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;allowed_values&quot;</span><span class="p">,</span>
 
     <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">units</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">descr</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">tpe</span><span class="p">:</span> <span class="n">TEMPLATEPROP_TYPES</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">units</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">descr</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">tpe</span><span class="p">:</span> <span class="n">TEMPLATEPROP_TYPES</span><span class="p">,</span>
+                 <span class="n">value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">allowed_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Enum</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Describe one editable input of a symbolic template builder.</span>
+
+<span class="sd">        When ``allowed_values`` is provided for an enum property, editors must</span>
+<span class="sd">        offer only that subset instead of every member of the enum class.</span>
+
+<span class="sd">        :param name: Property identifier used by the template builder.</span>
+<span class="sd">        :param units: Units displayed by property editors.</span>
+<span class="sd">        :param descr: Human-readable explanation of the property.</span>
+<span class="sd">        :param tpe: Runtime type expected by the template builder.</span>
+<span class="sd">        :param value: Default property value.</span>
+<span class="sd">        :param allowed_values: Optional ordered subset of permitted enum members.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">units</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">units</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">descr</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">descr</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tpe</span><span class="p">:</span> <span class="n">TEMPLATEPROP_TYPES</span> <span class="o">=</span> <span class="n">tpe</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">display</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">editable</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">value</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allowed_values</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Enum</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="kc">None</span> <span class="k">if</span> <span class="n">allowed_values</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">allowed_values</span><span class="p">)</span>
+        <span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="TemplateDefinition">
 <a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Templates.html#VeraGridEngine.Templates.template_definition.TemplateDefinition">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TemplateDefinition</span><span class="p">:</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;vf&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;params&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;params_dict&#39;</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vf</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>

@@ -91,6 +91,9 @@ class FmuTemplate(PointerDeviceParent):
             device=None,
             comment="",
             device_type=DeviceType.FmuTemplateDevice,
+            pointer_dev_tpes=[
+                DeviceType.PhysicalDeviceType  # Signifies all physical devices
+            ]
         )
         self.tpe: DeviceType = DeviceType.NoDevice
         self._domain: FmuTemplateDomain = FmuTemplateDomain.RMS
@@ -120,7 +123,11 @@ class FmuTemplate(PointerDeviceParent):
         result.action = self.action
         result.selected_to_merge = self.selected_to_merge
         result.diff_changes = copy.deepcopy(self.diff_changes, memo)
-        result._EditableDevice__auto_update_enabled = self._EditableDevice__auto_update_enabled
+
+        if self.auto_update_enabled:
+            result.enable_auto_updates()
+        else:
+            result.disable_auto_updates()
 
         result._device_idtag = self._device_idtag
         result._device_name = self._device_name

@@ -619,7 +619,7 @@ if __name__ == '__main__':
         axes[1, 1].grid(True)
         
         plt.tight_layout()
-        plt.show()
+        plt.show(block=False)
         
     except AssertionError as e:
         print(f"\n❌ TEST FAILED: {e}")

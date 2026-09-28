@@ -9,6 +9,7 @@ from typing import List, Tuple, Union
 from VeraGrid.Gui.FileDialogues.CoordinatesInput.coordinates_input_gui import Ui_Dialog
 from VeraGrid.Gui.FileDialogues.ProfilesInput.excel_dialog import ExcelDialog
 from VeraGrid.Gui.general_dialogues import LogsDialogue
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Devices.Substation import Bus
@@ -213,7 +214,7 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
         self.grid: MultiCircuit = grid
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('Coordinates import dialogue')
+        self.setWindowTitle(self.tr('Coordinates import dialogue'))
         self.setAcceptDrops(True)
 
         self.project_directory = None
@@ -313,14 +314,17 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
         :param text: Text to display
         :param title: Name of the window
         """
-        msg = QtWidgets.QMessageBox()
-        msg.setIcon(QtWidgets.QMessageBox.Icon.Information)
-        msg.setText(text)
-        # msg.setInformativeText("This is additional information")
-        msg.setWindowTitle(title)
-        # msg.setDetailedText("The details are as follows:")
-        msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        retval = msg.exec()
+        msg: QtWidgets.QMessageBox = QtWidgets.QMessageBox()
+        try:
+            msg.setIcon(QtWidgets.QMessageBox.Icon.Information)
+            msg.setText(text)
+            # msg.setInformativeText("This is additional information")
+            msg.setWindowTitle(title)
+            # msg.setDetailedText("The details are as follows:")
+            msg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
+            exec_dialog_safely(dialog=msg)
+        finally:
+            delete_dialog_safely(dialog=msg)
 
     def dropEvent(self, event):
         """
@@ -339,13 +343,15 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
                     if file_extension.lower() in self.accepted_extensions:
                         file_names.append(file_name)
                     else:
-                        error_msg('The file type ' + file_extension.lower() + ' is not accepted :(')
+                        error_msg(self.tr("The file type {file_extension} is not accepted :(").format(
+                            file_extension=file_extension.lower(),
+                        ))
 
                 if len(file_names) == 1:
                     # Just open the file
                     self.open_file_now(filename=file_names[0])
                 else:
-                    error_msg('Only one file accepted :(')
+                    error_msg(self.tr('Only one file accepted :('))
 
     def display_associations(self):
 
@@ -450,52 +456,74 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
         # filename, type_selected = QFileDialog.getOpenFileNameAndFilter(self, 'Save file', '', files_types)
 
         # call dialog to select the file
-        filename, type_selected = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', filter=files_types)
+        filename, type_selected = QtWidgets.QFileDialog.getOpenFileName(self, self.tr('Open file'), filter=files_types)
         self.open_file_now(filename)
 
-    def open_file_now(self, filename: str):
+    def open_file_now(self, filename: str) -> None:
         """
-        Open a file
-        :param filename: path of the file
+        Open and parse a coordinate file (.csv, .xlsx, .xls).
+
+        :param filename: Path of the file
         """
         if len(filename) > 0:
             # get the filename extension
+            name: str
+            file_extension: str
             name, file_extension = os.path.splitext(filename)
+            ext: str = file_extension.lower()
 
             # Depending on the extension load the file
-            if file_extension == '.csv':
+            if ext == '.csv':
                 self.original_data_frame = pd.read_csv(filename, index_col=None)
 
-            elif file_extension in ['.xlsx', '.xls']:
+            elif ext in ['.xlsx', '.xls']:
 
                 # select the sheet from the file
-                excel_window = ExcelDialog(self, filename)
-                excel_window.exec()
-                sheet_index = excel_window.excel_sheet
+                excel_window: ExcelDialog = ExcelDialog(self, filename)
+                try:
+                    exec_dialog_safely(dialog=excel_window)
+                    sheet_index: int | None = excel_window.excel_sheet
+                finally:
+                    delete_dialog_safely(dialog=excel_window)
 
                 if sheet_index is not None:
                     self.original_data_frame = pd.read_excel(filename, sheet_name=sheet_index, index_col=None)
                 else:
                     return
+            else:
+                error_msg(f"Unsupported file format '{file_extension}'. Supported formats: .csv, .xlsx, .xls", parent=self)
+                return
+
+            if self.original_data_frame is None:
+                return
+            else:
+                pass
 
             # check for duplicates
+            unique_hdr: List[str]
+            duplicate_hdr: List[str]
             unique_hdr, duplicate_hdr = find_duplicates(arr=list(self.original_data_frame.columns))
 
-            if len(duplicate_hdr):
+            if len(duplicate_hdr) > 0:
                 # notify
-                logger = Logger()
+                logger: Logger = Logger()
                 for hdr in duplicate_hdr:
                     logger.add_error("Duplicated header", device=hdr)
 
-                logs_dialogue = LogsDialogue(name="Duplicated headers", logger=logger, expand_all=True)
-                logs_dialogue.exec()
+                logs_dialogue: LogsDialogue = LogsDialogue(name=self.tr("Duplicated headers"),
+                                                           logger=logger, expand_all=True, parent=self)
+                exec_dialog_safely(dialog=logs_dialogue)
 
                 # filter the headers
                 self.original_data_frame = self.original_data_frame[unique_hdr]
+            else:
+                pass
 
             # set the profile names list
             self.set_object_type()
             self.assigned_count = 0
+        else:
+            pass
 
     def do_it(self) -> None:
         """

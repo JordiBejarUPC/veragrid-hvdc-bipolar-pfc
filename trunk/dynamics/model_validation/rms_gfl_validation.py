@@ -155,7 +155,7 @@ def print_gfl_init_consistency(grid2, pf_results):
 
 
 def print_trafo_powerflow_equation_consistency(grid, pf_results):
-    """Quick PF-side check for dq/trafo equations used in NUACTIS-style models."""
+    """Quick PF-side check for dq/trafo equations used in HVDC VSC validation-style models."""
     if len(grid.transformers2w) == 0:
         return
 
@@ -163,7 +163,7 @@ def print_trafo_powerflow_equation_consistency(grid, pf_results):
     branches = list(grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True))
 
     print("\n" + "-" * 70)
-    print("Trafo PF Equation Consistency (NUACTIS-style)")
+    print("Trafo PF Equation Consistency (HVDC VSC validation-style)")
     print("-" * 70)
 
     for trafo in grid.transformers2w:
@@ -179,7 +179,7 @@ def print_trafo_powerflow_equation_consistency(grid, pf_results):
         vm_t = float(np.abs(pf_results.voltage[idx_t]))
         va_t = float(np.angle(pf_results.voltage[idx_t]))
 
-        # Use branch "to" powers like NUACTIS Pt/Qt wiring in current setup
+        # Use branch "to" powers like HVDC VSC validation Pt/Qt wiring in current setup
         pt = float(np.real(pf_results.St[bidx]) / grid.Sbase)
         qt = float(np.imag(pf_results.St[bidx]) / grid.Sbase)
 
@@ -684,7 +684,7 @@ def plot_rms_results(grid2, results):
     print(f"  Time span plotted: 0.0 to {t_plot[-1]:.3f} s")
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
     plt.savefig('rms_gfl_validation_results.png', dpi=150)
     plt.close(fig)
     print("  ✓ Plot saved to rms_gfl_validation_results.png")

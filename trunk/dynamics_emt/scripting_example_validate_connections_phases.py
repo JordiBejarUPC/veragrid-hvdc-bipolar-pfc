@@ -546,7 +546,7 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 theta = find_name_in_block("theta", gen_mdl)
 theta_plt = y[:, problem.get_var_idx(theta)]
@@ -564,7 +564,7 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 i_A_gen = find_name_in_block("i_A", gen_mdl)
 i_B_gen = find_name_in_block("i_B", gen_mdl)
@@ -608,7 +608,7 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 
 i_f_A_line = find_name_in_block("if_Pi_0", line0.emt_model)
@@ -677,7 +677,7 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)
 
 i_ser_A = find_name_in_block("i_ser_Pi_0", line0.emt_model)
 i_ser_B = find_name_in_block("i_ser_Pi_1", line0.emt_model)
@@ -737,4 +737,4 @@ plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
-plt.show()
+plt.show(block=False)

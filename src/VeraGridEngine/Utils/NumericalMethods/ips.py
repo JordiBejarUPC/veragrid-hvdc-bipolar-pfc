@@ -10,7 +10,6 @@ import pandas as pd
 from scipy.sparse import csc_matrix as csc
 from scipy import sparse
 import timeit
-from matplotlib import pyplot as plt
 from VeraGridEngine.basic_structures import Vec, CxVec
 from VeraGridEngine.Utils.Sparse.csc import pack_3_by_4, diags
 from VeraGridEngine.Utils.NumericalMethods.sparse_solve import get_linear_solver
@@ -37,7 +36,7 @@ def step_calculation(v: Vec, dv: Vec, tau: float = 0.99995):
     return alpha
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def split(sol: Vec, n: int):
     """
     Split the solution vector in two
@@ -48,7 +47,7 @@ def split(sol: Vec, n: int):
     return sol[:n], sol[n:]
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def calc_error(dx, dz, dmu, dlmbda):
     """
     Calculate the error of the process
@@ -69,7 +68,7 @@ def calc_error(dx, dz, dmu, dlmbda):
     return err
 
 
-@nb.njit(cache=True)
+@nb.jit(cache=True)
 def max_abs(x: Vec):
     """
     Compute max abs efficiently
@@ -209,16 +208,6 @@ class IpsSolution:
     iterations: int
     error_evolution: Vec
 
-    def plot_error(self):
-        """
-        Plot the IPS error
-        """
-        plt.figure()
-        plt.plot(self.error_evolution, )
-        plt.xlabel("Iterations")
-        plt.ylabel("Error")
-        plt.yscale('log')
-        plt.show()
 
 
 def interior_point_solver(x0: Vec,

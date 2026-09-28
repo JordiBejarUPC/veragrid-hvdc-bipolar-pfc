@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Devices.assets &mdash; VeraGrid 6.5.5 documentation</title>
+  <title>VeraGridEngine.Devices.assets &mdash; VeraGrid 6.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../_static/documentation_options.js?v=276d7aeb"></script>
+      <script src="../../../_static/documentation_options.js?v=9cce70e7"></script>
       <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -103,7 +104,7 @@
   <h1>Source code for VeraGridEngine.Devices.assets</h1><div class="highlight"><pre>
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
-<span class="c1"># file, You can obtain one at https://mozilla.org/MPL/2.0/.  </span>
+<span class="c1"># file, You can obtain one at https://mozilla.org/MPL/2.0/.</span>
 <span class="c1"># SPDX-License-Identifier: MPL-2.0</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -118,7 +119,16 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">VeraGridEngine.Templates</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tem</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Devices.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ALL_DEV_TYPES</span><span class="p">,</span> <span class="n">BRANCH_TYPES</span><span class="p">,</span> <span class="n">INJECTION_DEVICE_TYPES</span><span class="p">,</span> <span class="n">FLUID_TYPES</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Devices.Parents.editable_device</span><span class="w"> </span><span class="kn">import</span> <span class="n">GCPROP_TYPES</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.enumerations</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeviceType</span><span class="p">,</span> <span class="n">ActionType</span><span class="p">,</span> <span class="n">FmuTemplateDomain</span><span class="p">,</span> <span class="n">ParamPowerFlowReferenceType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Devices.Dynamic.template_classification</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">classify_dynamic_template_block</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.enumerations</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ActionType</span><span class="p">,</span>
+    <span class="n">DeviceType</span><span class="p">,</span>
+    <span class="n">DynamicTemplateCategory</span><span class="p">,</span>
+    <span class="n">FmuTemplateDomain</span><span class="p">,</span>
+    <span class="n">ParamPowerFlowReferenceType</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.basic_structures</span><span class="w"> </span><span class="kn">import</span> <span class="n">Logger</span><span class="p">,</span> <span class="n">ListSet</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.data_logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataLogger</span>
 
@@ -217,7 +227,9 @@
         <span class="s1">&#39;_it_measurements&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_overhead_line_types&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_wire_types&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_underground_cable_constructions&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_underground_cable_types&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_dc_cable_types&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_sequence_line_types&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_transformer_types&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_branch_groups&#39;</span><span class="p">,</span>
@@ -241,6 +253,7 @@
         <span class="s1">&#39;_fuels&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_emission_gases&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_facilities&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;_market_unit_groups&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_market_units&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_fluid_nodes&#39;</span><span class="p">,</span>
         <span class="s1">&#39;_fluid_paths&#39;</span><span class="p">,</span>
@@ -366,8 +379,14 @@
         <span class="c1"># list of wire types</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_wire_types</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">Wire</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
 
+        <span class="c1"># physical single-core underground cable constructions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_constructions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">UndergroundCableType</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
         <span class="c1"># underground cable lines</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_types</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">UndergroundLineType</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="c1"># DC cable physical catalogue types</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dc_cable_types</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">DcCableType</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
 
         <span class="c1"># sequence modelled lines</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_sequence_line_types</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">SequenceLineType</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
@@ -436,6 +455,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_facilities</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">Facility</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
 
         <span class="c1"># list of market units</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MarketUnitsGroup</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="c1"># list of market units</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_market_units</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MarketUnit</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
 
         <span class="c1"># fluids</span>
@@ -466,7 +488,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_control_pcs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">ControlPc</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
 
         <span class="c1"># list of declared diagrams</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_diagrams</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MapDiagram</span><span class="p">,</span> <span class="n">dev</span><span class="o">.</span><span class="n">SchematicDiagram</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_diagrams</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">DiagramTree</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">DiagramTree</span><span class="p">()</span>
 
         <span class="c1"># Class to handle the dynamic Vars and Consts</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_var_factory</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">VarFactory</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">VarFactory</span><span class="p">()</span>
@@ -540,6 +562,7 @@
                 <span class="n">dev</span><span class="o">.</span><span class="n">Investment</span><span class="p">(),</span>
             <span class="p">],</span>
             <span class="s2">&quot;Market&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="n">dev</span><span class="o">.</span><span class="n">MarketUnitsGroup</span><span class="p">(),</span>
                 <span class="n">dev</span><span class="o">.</span><span class="n">MarketUnit</span><span class="p">()</span>
             <span class="p">],</span>
             <span class="s2">&quot;Dynamic&quot;</span><span class="p">:</span> <span class="p">[</span>
@@ -559,7 +582,9 @@
             <span class="s2">&quot;Catalogue&quot;</span><span class="p">:</span> <span class="p">[</span>
                 <span class="n">dev</span><span class="o">.</span><span class="n">Wire</span><span class="p">(),</span>
                 <span class="n">dev</span><span class="o">.</span><span class="n">OverheadLineType</span><span class="p">(),</span>
+                <span class="n">dev</span><span class="o">.</span><span class="n">UndergroundCableType</span><span class="p">(),</span>
                 <span class="n">dev</span><span class="o">.</span><span class="n">UndergroundLineType</span><span class="p">(),</span>
+                <span class="n">dev</span><span class="o">.</span><span class="n">DcCableType</span><span class="p">(),</span>
                 <span class="n">dev</span><span class="o">.</span><span class="n">SequenceLineType</span><span class="p">(),</span>
                 <span class="n">dev</span><span class="o">.</span><span class="n">TransformerType</span><span class="p">(),</span>
             <span class="p">],</span>
@@ -1781,13 +1806,20 @@
 <span class="sd">        Delete N-winding transformer</span>
 <span class="sd">        :param obj: TransformerNW instance</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">winding</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">windings</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">delete_winding</span><span class="p">(</span><span class="n">winding</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">delete_bus</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">bus0</span><span class="p">,</span> <span class="n">delete_associated</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_transformers_nw</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
             <span class="k">pass</span>
+
+        <span class="n">winding_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">Winding</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">windings</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">winding</span> <span class="ow">in</span> <span class="n">winding_list</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_winding</span><span class="p">(</span><span class="n">winding</span><span class="p">)</span>
+
+        <span class="n">winding_count_to_clear</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">windings</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">winding_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">winding_count_to_clear</span><span class="p">):</span>
+            <span class="n">obj</span><span class="o">.</span><span class="n">delete_winding</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">delete_bus</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">bus0</span><span class="p">,</span> <span class="n">delete_associated</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="n">elms_to_del</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">lst</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_rms_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_emt_events</span><span class="p">]:</span>
@@ -1797,6 +1829,55 @@
 
         <span class="k">for</span> <span class="n">elm</span> <span class="ow">in</span> <span class="n">elms_to_del</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">delete_element</span><span class="p">(</span><span class="n">elm</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Assets.delete_associated_multi_winding_transformers">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_associated_multi_winding_transformers">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete_associated_multi_winding_transformers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">buses_to_remove</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">Bus</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Delete multi-winding transformers connected to any bus being removed.</span>
+
+<span class="sd">        :param buses_to_remove: Buses requested for deletion.</span>
+<span class="sd">        :type buses_to_remove: Set[dev.Bus]</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        :rtype: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">transformers3w_to_delete</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">Transformer3W</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">transformers_nw_to_delete</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">TransformerNW</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="c1"># Transformer windings are stored as branch devices, but the transformer parent also has to disappear.</span>
+        <span class="k">for</span> <span class="n">transformer3w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transformers3w</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">transformer3w</span><span class="o">.</span><span class="n">bus0</span> <span class="ow">in</span> <span class="n">buses_to_remove</span>
+                    <span class="ow">or</span> <span class="n">transformer3w</span><span class="o">.</span><span class="n">bus1</span> <span class="ow">in</span> <span class="n">buses_to_remove</span>
+                    <span class="ow">or</span> <span class="n">transformer3w</span><span class="o">.</span><span class="n">bus2</span> <span class="ow">in</span> <span class="n">buses_to_remove</span>
+                    <span class="ow">or</span> <span class="n">transformer3w</span><span class="o">.</span><span class="n">bus3</span> <span class="ow">in</span> <span class="n">buses_to_remove</span><span class="p">):</span>
+                <span class="n">transformers3w_to_delete</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transformer3w</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="c1"># N-winding transformers need the same parent cleanup for their internal and terminal buses.</span>
+        <span class="k">for</span> <span class="n">transformer_nw</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transformers_nw</span><span class="p">:</span>
+            <span class="n">delete_transformer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">transformer_nw</span><span class="o">.</span><span class="n">bus0</span> <span class="ow">in</span> <span class="n">buses_to_remove</span>
+
+            <span class="k">if</span> <span class="n">delete_transformer</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">bus</span> <span class="ow">in</span> <span class="n">transformer_nw</span><span class="o">.</span><span class="n">buses</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">bus</span> <span class="ow">in</span> <span class="n">buses_to_remove</span><span class="p">:</span>
+                        <span class="n">delete_transformer</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">pass</span>
+
+            <span class="k">if</span> <span class="n">delete_transformer</span><span class="p">:</span>
+                <span class="n">transformers_nw_to_delete</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transformer_nw</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">for</span> <span class="n">transformer3w</span> <span class="ow">in</span> <span class="n">transformers3w_to_delete</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_transformer3w</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">transformer3w</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">transformer_nw</span> <span class="ow">in</span> <span class="n">transformers_nw_to_delete</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_transformer_nw</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">transformer_nw</span><span class="p">)</span></div>
 
 
     <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
@@ -2121,6 +2202,12 @@
 <span class="sd">        :param delete_associated: Delete the associated branches and injections</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
+        <span class="c1"># Multi-winding transformer parents must be deleted before their winding branches are removed.</span>
+        <span class="k">if</span> <span class="n">delete_associated</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_associated_multi_winding_transformers</span><span class="p">(</span><span class="n">buses_to_remove</span><span class="o">=</span><span class="p">{</span><span class="n">obj</span><span class="p">})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span>
+
         <span class="c1"># delete associated Branches in reverse order</span>
         <span class="k">for</span> <span class="n">branch_list</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_branch_lists</span><span class="p">(</span><span class="n">add_vsc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">add_hvdc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">add_switch</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">branch_list</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
@@ -2182,7 +2269,7 @@
         <span class="c1"># Remove branches directly from lists in one pass</span>
         <span class="c1"># This is more efficient than calling delete_branch for each</span>
         <span class="k">for</span> <span class="n">branch_list</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_branch_lists</span><span class="p">(</span><span class="n">add_vsc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">add_hvdc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">add_switch</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-            <span class="c1"># Use list comprehension to not consider branches to delete </span>
+            <span class="c1"># Use list comprehension to not consider branches to delete</span>
             <span class="c1"># This is faster than the multiple remove() calls we had before</span>
             <span class="n">branch_list</span><span class="p">[:]</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">branch_list</span> <span class="k">if</span> <span class="n">b</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">branches_to_delete_set</span><span class="p">]</span>
 
@@ -2239,6 +2326,12 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">buses_to_remove</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">lst</span><span class="p">)</span>
         <span class="n">injections_to_delete</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="c1"># Multi-winding transformer parents must be deleted before their winding branches are removed.</span>
+        <span class="k">if</span> <span class="n">delete_associated</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_associated_multi_winding_transformers</span><span class="p">(</span><span class="n">buses_to_remove</span><span class="o">=</span><span class="n">buses_to_remove</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span>
 
         <span class="c1"># We delete the associated branches by knowing the buses to remove</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">delete_branches_with_sets</span><span class="p">(</span><span class="n">buses_to_remove</span><span class="p">,</span> <span class="n">delete_associated</span><span class="p">)</span>
@@ -2307,7 +2400,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get_bus_devices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bus</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">Bus</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">BRANCH_TYPES</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">INJECTION_DEVICE_TYPES</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the list of associated branches and the list of associated injections</span>
-<span class="sd">        :param bus: </span>
+<span class="sd">        :param bus:</span>
 <span class="sd">        :return: associated_branches, associated_injections</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">associated_branches</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
@@ -4354,6 +4447,10 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">elm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lines</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">elm</span><span class="o">.</span><span class="n">template</span> <span class="o">==</span> <span class="n">obj</span><span class="p">:</span>
+                <span class="n">elm</span><span class="o">.</span><span class="n">template</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">elm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dc_lines</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">elm</span><span class="o">.</span><span class="n">template</span> <span class="o">==</span> <span class="n">obj</span><span class="p">:</span>
                 <span class="n">elm</span><span class="o">.</span><span class="n">template</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
@@ -4421,6 +4518,63 @@
 
 
     <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
+    <span class="c1"># Underground cable physical types</span>
+    <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">underground_cable_constructions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">UndergroundCableType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the physical single-core cable catalogue.</span>
+
+<span class="sd">        :return: Physical cable catalogue.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_constructions</span>
+
+    <span class="nd">@underground_cable_constructions</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">underground_cable_constructions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">UndergroundCableType</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Replace the physical single-core cable catalogue.</span>
+
+<span class="sd">        :param value: New physical cable catalogue.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_constructions</span> <span class="o">=</span> <span class="n">value</span>
+
+<div class="viewcode-block" id="Assets.add_underground_cable">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.add_underground_cable">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_underground_cable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">UndergroundCableType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add one physical cable construction.</span>
+
+<span class="sd">        :param obj: Cable construction to add.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">dev</span><span class="o">.</span><span class="n">UndergroundCableType</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_constructions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;The catalogue entry is not an underground cable type!&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Assets.delete_underground_cable">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_underground_cable">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete_underground_cable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">UndergroundCableType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Delete one physical cable and clear system references to it.</span>
+
+<span class="sd">        :param obj: Cable construction to delete.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">system</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">UndergroundLineType</span>
+        <span class="n">relationship</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">CableInSystem</span>
+        <span class="k">for</span> <span class="n">system</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_types</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">relationship</span> <span class="ow">in</span> <span class="n">system</span><span class="o">.</span><span class="n">cables_in_system</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">relationship</span><span class="o">.</span><span class="n">cable</span> <span class="o">==</span> <span class="n">obj</span><span class="p">:</span>
+                    <span class="n">relationship</span><span class="o">.</span><span class="n">cable</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">pass</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_constructions</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">pass</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
     <span class="c1"># Underground cable</span>
     <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
 
@@ -4462,6 +4616,61 @@
 
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_types</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">pass</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
+    <span class="c1"># DC cable type</span>
+    <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dc_cable_types</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">DcCableType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the DC cable catalogue.</span>
+
+<span class="sd">        :return: Canonical DC cable type list.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dc_cable_types</span>
+
+    <span class="nd">@dc_cable_types</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dc_cable_types</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">DcCableType</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Replace the DC cable catalogue.</span>
+
+<span class="sd">        :param value: Canonical DC cable type list.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dc_cable_types</span> <span class="o">=</span> <span class="n">value</span>
+
+<div class="viewcode-block" id="Assets.add_dc_cable_type">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.add_dc_cable_type">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_dc_cable_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">DcCableType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add one DC cable type to the catalogue.</span>
+
+<span class="sd">        :param obj: DC cable type to register.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">dev</span><span class="o">.</span><span class="n">DcCableType</span><span class="p">):</span>
+            <span class="n">obj</span><span class="o">.</span><span class="n">set_var_factory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_var_factory</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dc_cable_types</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;The template is not a DC cable type!&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Assets.delete_dc_cable_type">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_dc_cable_type">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete_dc_cable_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">DcCableType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Delete one DC cable type and clear dependent line references.</span>
+
+<span class="sd">        :param obj: DC cable type to remove.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delete_line_template_dependency</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dc_cable_types</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
             <span class="k">pass</span></div>
 
@@ -6950,6 +7159,174 @@
 
 
     <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
+    <span class="c1"># Market unit groups</span>
+    <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">market_unit_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MarketUnitsGroup</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the list of market unit groups</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span>
+
+    <span class="nd">@market_unit_groups</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">market_unit_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MarketUnitsGroup</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span> <span class="o">=</span> <span class="n">value</span>
+
+<div class="viewcode-block" id="Assets.get_market_unit_groups">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_market_unit_groups">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_market_unit_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MarketUnitsGroup</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get list of market unit groups</span>
+<span class="sd">        :return: List[dev.MarketUnitsGroup]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span></div>
+
+
+<div class="viewcode-block" id="Assets.get_market_unit_group_names">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_market_unit_group_names">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_market_unit_group_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StrVec</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get array of market unit group names</span>
+<span class="sd">        :return: StrVec</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">a</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="Assets.get_market_unit_groups_names">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_market_unit_groups_names">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_market_unit_groups_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StrVec</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get array of market unit group names</span>
+<span class="sd">        :return: StrVec</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_market_unit_group_names</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Assets.get_market_unit_group_number">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_market_unit_group_number">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_market_unit_group_number</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get number of market unit groups</span>
+<span class="sd">        :return: number of market unit groups</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Assets.get_market_unit_groups_number">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_market_unit_groups_number">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_market_unit_groups_number</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get number of market unit groups</span>
+<span class="sd">        :return: number of market unit groups</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Assets.add_market_unit_group">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.add_market_unit_group">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_market_unit_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">MarketUnitsGroup</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add market unit group</span>
+<span class="sd">        :param obj: MarketUnitsGroup object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Assets.delete_market_unit_group">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_market_unit_group">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete_market_unit_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">MarketUnitsGroup</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Delete market unit group</span>
+<span class="sd">        :param obj: MarketUnitsGroup</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">elm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_market_units</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">elm</span><span class="o">.</span><span class="n">group</span> <span class="o">==</span> <span class="n">obj</span><span class="p">:</span>
+                <span class="n">elm</span><span class="o">.</span><span class="n">group</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="Assets.delete_market_unit_groups">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.delete_market_unit_groups">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete_market_unit_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">MarketUnitsGroup</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Delete market unit group</span>
+<span class="sd">        :param obj: MarketUnitsGroup</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delete_market_unit_group</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Assets.get_market_units_by_groups">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_market_units_by_groups">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_market_units_by_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MarketUnitsGroup</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MarketUnit</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get a list of market unit groups and their associated market units</span>
+<span class="sd">        :return: list of market unit groups and their list of associated market units</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{</span><span class="n">e</span><span class="p">:</span> <span class="nb">list</span><span class="p">()</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span><span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">mu</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_market_units</span><span class="p">:</span>
+            <span class="n">mu_list</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">mu</span><span class="o">.</span><span class="n">group</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mu_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">mu_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">mu_group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span><span class="p">:</span>
+            <span class="n">mu_list</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">mu_group</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mu_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">mu_group</span><span class="p">,</span> <span class="n">mu_list</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">mu_group</span><span class="p">,</span> <span class="nb">list</span><span class="p">()))</span>
+
+        <span class="k">return</span> <span class="n">res</span></div>
+
+
+<div class="viewcode-block" id="Assets.get_market_units_by_groups_index_dict">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_market_units_by_groups_index_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_market_units_by_groups_index_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MarketUnit</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get a dictionary of market unit groups index to list of market units</span>
+<span class="sd">        :return: Dict[market unit group index] = list of market units</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{</span><span class="n">e</span><span class="p">:</span> <span class="n">idx</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span><span class="p">)}</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">mu</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_market_units</span><span class="p">:</span>
+            <span class="n">group_idx</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">mu</span><span class="o">.</span><span class="n">group</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">group_idx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">mu_list</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">group_idx</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">mu_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">res</span><span class="p">[</span><span class="n">group_idx</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">mu</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">mu_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">res</span></div>
+
+
+<div class="viewcode-block" id="Assets.get_market_unit_group_dict">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_market_unit_group_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_market_unit_group_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MarketUnit</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get a dictionary of group idtags related to list of market units</span>
+<span class="sd">        :return: Dict[str, List[dev.MarketUnit]]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{</span><span class="n">e</span><span class="o">.</span><span class="n">idtag</span><span class="p">:</span> <span class="nb">list</span><span class="p">()</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span><span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">mu</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_market_units</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">mu</span><span class="o">.</span><span class="n">group</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">mu_list</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">mu</span><span class="o">.</span><span class="n">group</span><span class="o">.</span><span class="n">idtag</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">mu_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">mu_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">d</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
     <span class="c1"># Market units</span>
     <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
 
@@ -7601,18 +7978,37 @@
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">diagrams</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MapDiagram</span><span class="p">,</span> <span class="n">dev</span><span class="o">.</span><span class="n">SchematicDiagram</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Get the list of diagrams</span>
+<span class="sd">        Get the list/tree of diagrams</span>
 <span class="sd">        :return:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diagrams</span>
 
     <span class="nd">@diagrams</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">diagrams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MapDiagram</span><span class="p">,</span> <span class="n">dev</span><span class="o">.</span><span class="n">SchematicDiagram</span><span class="p">]]):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_diagrams</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">diagrams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">DiagramTree</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MapDiagram</span><span class="p">,</span> <span class="n">dev</span><span class="o">.</span><span class="n">SchematicDiagram</span><span class="p">]]]):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">dev</span><span class="o">.</span><span class="n">DiagramTree</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diagrams</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diagrams</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">DiagramTree</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_diagrams</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diagrams</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">diagram_tree</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">dev</span><span class="o">.</span><span class="n">DiagramTree</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Explicit property to access the diagram tree</span>
+<span class="sd">        :return: DiagramTree</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diagrams</span>
+
+    <span class="nd">@diagram_tree</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">diagram_tree</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">DiagramTree</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diagrams</span> <span class="o">=</span> <span class="n">value</span>
 
 <div class="viewcode-block" id="Assets.get_diagrams">
 <a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_diagrams">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_diagrams</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MapDiagram</span><span class="p">,</span> <span class="n">dev</span><span class="o">.</span><span class="n">SchematicDiagram</span><span class="p">]]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_diagrams</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">dev</span><span class="o">.</span><span class="n">DiagramTree</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get list of diagrams</span>
 <span class="sd">        :return: MapDiagram, SchematicDiagram device</span>
@@ -7632,13 +8028,16 @@
 
 <div class="viewcode-block" id="Assets.add_diagram">
 <a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.add_diagram">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">add_diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">diagram</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MapDiagram</span><span class="p">,</span> <span class="n">dev</span><span class="o">.</span><span class="n">SchematicDiagram</span><span class="p">]):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                    <span class="n">diagram</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">MapDiagram</span><span class="p">,</span> <span class="n">dev</span><span class="o">.</span><span class="n">SchematicDiagram</span><span class="p">],</span>
+                    <span class="n">folder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">DiagramFolder</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Add diagram</span>
 <span class="sd">        :param diagram: MapDiagram, SchematicDiagram device</span>
+<span class="sd">        :param folder: Optional DiagramFolder</span>
 <span class="sd">        :return:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">diagrams</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">diagram</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_diagrams</span><span class="o">.</span><span class="n">add_diagram</span><span class="p">(</span><span class="n">diagram</span><span class="p">,</span> <span class="n">folder</span><span class="o">=</span><span class="n">folder</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Assets.remove_diagram">
@@ -7649,7 +8048,7 @@
 <span class="sd">        :param diagram: MapDiagram, SchematicDiagram device</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">diagrams</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">diagram</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_diagrams</span><span class="o">.</span><span class="n">remove_diagram</span><span class="p">(</span><span class="n">diagram</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span></div>
 
@@ -7719,12 +8118,44 @@
 <a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_rms_models_by_device_type">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_rms_models_by_device_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tpe</span><span class="p">:</span> <span class="n">DeviceType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">RmsModelTemplate</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Get a list of RmsModelTemplate filtering by device type</span>
-<span class="sd">        :param tpe:</span>
-<span class="sd">        :return:</span>
+<span class="sd">        Return complete RMS device templates assignable to one host type.</span>
+
+<span class="sd">        Internal controls remain registered in ``rms_models`` for composition,</span>
+<span class="sd">        but they must not appear in a physical device property selector.</span>
+
+<span class="sd">        :param tpe: Physical host device type.</span>
+<span class="sd">        :return: Matching complete RMS device templates.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># return [elm for elm in self.rms_models if elm.tpe == tpe]</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">elm</span> <span class="k">for</span> <span class="n">elm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rms_models</span> <span class="k">if</span> <span class="n">_matches_dynamic_template_device_type</span><span class="p">(</span><span class="n">tpe</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">tpe</span><span class="p">)]</span></div>
+        <span class="n">result</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">RmsModelTemplate</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">template</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">RmsModelTemplate</span>
+        <span class="k">for</span> <span class="n">template</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rms_models</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">template</span><span class="o">.</span><span class="n">tpe</span> <span class="o">==</span> <span class="n">tpe</span>
+                    <span class="ow">and</span> <span class="n">classify_dynamic_template_block</span><span class="p">(</span><span class="n">template</span><span class="o">.</span><span class="n">block</span><span class="p">)</span>
+                    <span class="ow">is</span> <span class="n">DynamicTemplateCategory</span><span class="o">.</span><span class="n">DEVICE</span>
+            <span class="p">):</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="Assets.get_rms_templates_for_editor">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_rms_templates_for_editor">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_rms_templates_for_editor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tpe</span><span class="p">:</span> <span class="n">DeviceType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">RmsModelTemplate</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return RMS device, component and measurement templates for editing.</span>
+
+<span class="sd">        :param tpe: Device type whose internal model is being composed.</span>
+<span class="sd">        :return: Compatible RMS templates grouped later by their typed contract.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">RmsModelTemplate</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">template</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">RmsModelTemplate</span>
+        <span class="k">for</span> <span class="n">template</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rms_models</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_matches_dynamic_template_device_type</span><span class="p">(</span><span class="n">tpe</span><span class="p">,</span> <span class="n">template</span><span class="o">.</span><span class="n">tpe</span><span class="p">):</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">result</span></div>
 
 
 <div class="viewcode-block" id="Assets.get_loaded_rms_models_by_device_type">
@@ -7736,8 +8167,18 @@
 <span class="sd">        :param tpe: Supported device type.</span>
 <span class="sd">        :return: Matching loaded RMS templates.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># return [elm for elm in self._rms_models if elm.tpe == tpe]</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">elm</span> <span class="k">for</span> <span class="n">elm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rms_models</span> <span class="k">if</span> <span class="n">_matches_dynamic_template_device_type</span><span class="p">(</span><span class="n">tpe</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">tpe</span><span class="p">)]</span></div>
+        <span class="n">result</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">RmsModelTemplate</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">template</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">RmsModelTemplate</span>
+        <span class="k">for</span> <span class="n">template</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rms_models</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">template</span><span class="o">.</span><span class="n">tpe</span> <span class="o">==</span> <span class="n">tpe</span>
+                    <span class="ow">and</span> <span class="n">classify_dynamic_template_block</span><span class="p">(</span><span class="n">template</span><span class="o">.</span><span class="n">block</span><span class="p">)</span>
+                    <span class="ow">is</span> <span class="n">DynamicTemplateCategory</span><span class="o">.</span><span class="n">DEVICE</span>
+            <span class="p">):</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">result</span></div>
 
 
     <span class="c1"># ------------------------------------------------------------------------------------------------------------------</span>
@@ -7808,11 +8249,41 @@
 <a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_emt_models_by_device_type">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_emt_models_by_device_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tpe</span><span class="p">:</span> <span class="n">DeviceType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">EmtModelTemplate</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Get a list of EmtModelTemplate filtering by device type</span>
-<span class="sd">        :param tpe:</span>
-<span class="sd">        :return:</span>
+<span class="sd">        Return complete EMT device templates assignable to one host type.</span>
+
+<span class="sd">        :param tpe: Physical host device type.</span>
+<span class="sd">        :return: Matching complete EMT device templates.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">elm</span> <span class="k">for</span> <span class="n">elm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">emt_models</span> <span class="k">if</span> <span class="n">_matches_dynamic_template_device_type</span><span class="p">(</span><span class="n">tpe</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">tpe</span><span class="p">)]</span></div>
+        <span class="n">result</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">EmtModelTemplate</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">template</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">EmtModelTemplate</span>
+        <span class="k">for</span> <span class="n">template</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">emt_models</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">template</span><span class="o">.</span><span class="n">tpe</span> <span class="o">==</span> <span class="n">tpe</span>
+                    <span class="ow">and</span> <span class="n">classify_dynamic_template_block</span><span class="p">(</span><span class="n">template</span><span class="o">.</span><span class="n">block</span><span class="p">)</span>
+                    <span class="ow">is</span> <span class="n">DynamicTemplateCategory</span><span class="o">.</span><span class="n">DEVICE</span>
+            <span class="p">):</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="Assets.get_emt_templates_for_editor">
+<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.get_emt_templates_for_editor">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_emt_templates_for_editor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tpe</span><span class="p">:</span> <span class="n">DeviceType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">EmtModelTemplate</span><span class="p">]:</span>  <span class="c1"># TODO: SANPEN: WTF is this? GUI code on the engine?</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return EMT device, component and measurement templates for editing.</span>
+
+<span class="sd">        :param tpe: Device type whose internal model is being composed.</span>
+<span class="sd">        :return: Compatible EMT templates grouped later by their typed contract.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">EmtModelTemplate</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">template</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">EmtModelTemplate</span>
+        <span class="k">for</span> <span class="n">template</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">emt_models</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_matches_dynamic_template_device_type</span><span class="p">(</span><span class="n">tpe</span><span class="p">,</span> <span class="n">template</span><span class="o">.</span><span class="n">tpe</span><span class="p">):</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">result</span></div>
 
 
 <div class="viewcode-block" id="Assets.get_loaded_emt_models_by_device_type">
@@ -7824,7 +8295,18 @@
 <span class="sd">        :param tpe: Supported device type.</span>
 <span class="sd">        :return: Matching loaded EMT templates.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">elm</span> <span class="k">for</span> <span class="n">elm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_emt_models</span> <span class="k">if</span> <span class="n">_matches_dynamic_template_device_type</span><span class="p">(</span><span class="n">tpe</span><span class="p">,</span> <span class="n">elm</span><span class="o">.</span><span class="n">tpe</span><span class="p">)]</span></div>
+        <span class="n">result</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">EmtModelTemplate</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">template</span><span class="p">:</span> <span class="n">dev</span><span class="o">.</span><span class="n">EmtModelTemplate</span>
+        <span class="k">for</span> <span class="n">template</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_emt_models</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">template</span><span class="o">.</span><span class="n">tpe</span> <span class="o">==</span> <span class="n">tpe</span>
+                    <span class="ow">and</span> <span class="n">classify_dynamic_template_block</span><span class="p">(</span><span class="n">template</span><span class="o">.</span><span class="n">block</span><span class="p">)</span>
+                    <span class="ow">is</span> <span class="n">DynamicTemplateCategory</span><span class="o">.</span><span class="n">DEVICE</span>
+            <span class="p">):</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">result</span></div>
 
 
     <span class="nd">@property</span>
@@ -7976,11 +8458,11 @@
 
         <span class="k">if</span> <span class="n">domain</span> <span class="o">==</span> <span class="n">FmuTemplateDomain</span><span class="o">.</span><span class="n">RMS</span><span class="p">:</span>
             <span class="n">native_templates</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">RmsModelTemplate</span> <span class="o">|</span> <span class="n">dev</span><span class="o">.</span><span class="n">EmtModelTemplate</span> <span class="o">|</span> <span class="n">dev</span><span class="o">.</span><span class="n">FmuTemplate</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_models_by_device_type</span><span class="p">(</span><span class="n">tpe</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_templates_for_editor</span><span class="p">(</span><span class="n">tpe</span><span class="p">)</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">domain</span> <span class="o">==</span> <span class="n">FmuTemplateDomain</span><span class="o">.</span><span class="n">EMT</span><span class="p">:</span>
-                <span class="n">native_templates</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_emt_models_by_device_type</span><span class="p">(</span><span class="n">tpe</span><span class="p">))</span>
+                <span class="n">native_templates</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_emt_templates_for_editor</span><span class="p">(</span><span class="n">tpe</span><span class="p">))</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported dynamic template domain </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
@@ -8882,6 +9364,12 @@
         <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">UnderGroundLineDevice</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_types</span>
 
+        <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">UndergroundCableTypeDevice</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_constructions</span>
+
+        <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">DcCableTypeDevice</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dc_cable_types</span>
+
         <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">SequenceLineDevice</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sequence_line_types</span>
 
@@ -9029,6 +9517,9 @@
         <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">FacilityDevice</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">facilities</span>
 
+        <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitsGroupDevice</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_unit_groups</span>
+
         <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitDevice</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_units</span>
 
@@ -9138,8 +9629,9 @@
 
 
         <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">TransformerNwDevice</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">devices</span><span class="p">:</span>
-                <span class="n">d</span><span class="o">.</span><span class="n">set_var_factory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_var_factory</span><span class="p">)</span>
+            <span class="c1"># TODO: TransformerNwDevice is not a DynamicDevice (for now). We must inspect how to model it dynamically</span>
+            <span class="c1"># for d in devices:</span>
+            <span class="c1">#     d.set_var_factory(self._var_factory)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_transformers_nw</span> <span class="o">=</span> <span class="n">devices</span>
 
 
@@ -9192,6 +9684,14 @@
             <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">devices</span><span class="p">:</span>
                 <span class="n">d</span><span class="o">.</span><span class="n">set_var_factory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_var_factory</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_types</span> <span class="o">=</span> <span class="n">devices</span>
+
+        <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">UndergroundCableTypeDevice</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_underground_cable_constructions</span> <span class="o">=</span> <span class="n">devices</span>
+
+        <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">DcCableTypeDevice</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">devices</span><span class="p">:</span>
+                <span class="n">d</span><span class="o">.</span><span class="n">set_var_factory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_var_factory</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dc_cable_types</span> <span class="o">=</span> <span class="n">devices</span>
 
         <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">SequenceLineDevice</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">devices</span><span class="p">:</span>
@@ -9332,6 +9832,9 @@
         <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">FacilityDevice</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_facilities</span> <span class="o">=</span> <span class="n">devices</span>
 
+        <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitsGroupDevice</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_market_unit_groups</span> <span class="o">=</span> <span class="n">devices</span>
+
         <span class="k">elif</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitDevice</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_market_units</span> <span class="o">=</span> <span class="n">devices</span>
 
@@ -9446,6 +9949,12 @@
 
         <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">UnderGroundLineDevice</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_underground_line</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">UndergroundCableTypeDevice</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_underground_cable</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">DcCableTypeDevice</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_dc_cable_type</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">)</span>
 
         <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">SequenceLineDevice</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_sequence_line</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">)</span>
@@ -9567,6 +10076,9 @@
         <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">FacilityDevice</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_facility</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">)</span>
 
+        <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitsGroupDevice</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_market_unit_group</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">)</span>
+
         <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitDevice</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_market_unit</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">)</span>
 
@@ -9686,6 +10198,12 @@
 
         <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">UnderGroundLineDevice</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">delete_underground_line</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">UndergroundCableTypeDevice</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_underground_cable</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">DcCableTypeDevice</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_dc_cable_type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 
         <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">SequenceLineDevice</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">delete_sequence_line</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
@@ -9809,6 +10327,9 @@
 
         <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">FacilityDevice</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">delete_facility</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitsGroupDevice</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">delete_market_unit_group</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 
         <span class="k">elif</span> <span class="n">obj</span><span class="o">.</span><span class="n">device_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitDevice</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">delete_market_unit</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
@@ -10069,6 +10590,7 @@
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">ZoneDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">zones</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">SubstationDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">substations</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">VoltageLevelDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">voltage_levels</span><span class="p">,</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">BusBarDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bus_bars</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">CountryDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">countries</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">Owner</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owners</span><span class="p">,</span>
@@ -10145,6 +10667,7 @@
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">Technology</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">technologies</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">Owner</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owners</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_units</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">FacilityDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">facilities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">BusDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">buses</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_models_by_device_type</span><span class="p">(</span><span class="n">elm_type</span><span class="p">),</span>
@@ -10177,11 +10700,20 @@
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">LineDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">Line</span><span class="p">()</span>
+            <span class="n">any_line_templates</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ALL_DEV_TYPES</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">line_template_list</span> <span class="ow">in</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">overhead_line_types</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">underground_cable_types</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sequence_line_types</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">line_template</span> <span class="ow">in</span> <span class="n">line_template_list</span><span class="p">:</span>
+                    <span class="n">any_line_templates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line_template</span><span class="p">)</span>
+
             <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">Owner</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owners</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">BranchGroupDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_groups</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">BusDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">buses</span><span class="p">,</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">AnyLineTemplateDevice</span><span class="p">:</span> <span class="n">any_line_templates</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_models_by_device_type</span><span class="p">(</span><span class="n">elm_type</span><span class="p">),</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">EmtModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_emt_models_by_device_type</span><span class="p">(</span><span class="n">elm_type</span><span class="p">),</span>
             <span class="p">}</span>
@@ -10225,8 +10757,8 @@
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">Owner</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owners</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">BusDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">buses</span><span class="p">,</span>
-                <span class="c1"># DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),</span>
-                <span class="c1"># DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_models_by_device_type</span><span class="p">(</span><span class="n">elm_type</span><span class="p">),</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">EmtModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_emt_models_by_device_type</span><span class="p">(</span><span class="n">elm_type</span><span class="p">),</span>
             <span class="p">}</span>
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">TransformerNwDevice</span><span class="p">:</span>
@@ -10250,11 +10782,18 @@
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">VscDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">VSC</span><span class="p">()</span>
+            <span class="n">bus_or_branch_devices</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ALL_DEV_TYPES</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">bus</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">buses</span><span class="p">:</span>
+                <span class="n">bus_or_branch_devices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bus</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">branch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_branches_iter</span><span class="p">(</span><span class="n">add_vsc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">add_hvdc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">add_switch</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+                <span class="n">bus_or_branch_devices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">branch</span><span class="p">)</span>
+
             <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">Owner</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owners</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">BranchGroupDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_groups</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">BusDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">buses</span><span class="p">,</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">BusOrBranch</span><span class="p">:</span> <span class="n">bus_or_branch_devices</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_models_by_device_type</span><span class="p">(</span><span class="n">elm_type</span><span class="p">),</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">EmtModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_emt_models_by_device_type</span><span class="p">(</span><span class="n">elm_type</span><span class="p">),</span>
             <span class="p">}</span>
@@ -10283,11 +10822,20 @@
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">DCLineDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">DcLine</span><span class="p">()</span>
+            <span class="n">any_line_templates</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ALL_DEV_TYPES</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">line_template_list</span> <span class="ow">in</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">overhead_line_types</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">underground_cable_types</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sequence_line_types</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">line_template</span> <span class="ow">in</span> <span class="n">line_template_list</span><span class="p">:</span>
+                    <span class="n">any_line_templates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line_template</span><span class="p">)</span>
+
             <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">Owner</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owners</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">BranchGroupDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_groups</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">BusDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">buses</span><span class="p">,</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">AnyLineTemplateDevice</span><span class="p">:</span> <span class="n">any_line_templates</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_models_by_device_type</span><span class="p">(</span><span class="n">elm_type</span><span class="p">),</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">EmtModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_emt_models_by_device_type</span><span class="p">(</span><span class="n">elm_type</span><span class="p">),</span>
             <span class="p">}</span>
@@ -10296,6 +10844,7 @@
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">Substation</span><span class="p">()</span>
             <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">Owner</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owners</span><span class="p">,</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">CountryDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_countries</span><span class="p">(),</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">CommunityDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_communities</span><span class="p">(),</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">RegionDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_regions</span><span class="p">(),</span>
@@ -10316,6 +10865,7 @@
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">VoltageLevel</span><span class="p">()</span>
             <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">Owner</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owners</span><span class="p">,</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">SubstationDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_substations</span><span class="p">(),</span>
             <span class="p">}</span>
 
@@ -10352,8 +10902,8 @@
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">ShortCircuitEvent</span><span class="p">()</span>
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">RemedialActionDevice</span><span class="p">:</span>
-            <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">Contingency</span><span class="p">()</span>
-            <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span><span class="n">DeviceType</span><span class="o">.</span><span class="n">RemedialActionDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">remedial_action_groups</span><span class="p">,</span> <span class="p">}</span>
+            <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">RemedialAction</span><span class="p">()</span>
+            <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span><span class="n">DeviceType</span><span class="o">.</span><span class="n">RemedialActionGroupDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">remedial_action_groups</span><span class="p">,</span> <span class="p">}</span>
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">RemedialActionGroupDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">RemedialActionGroup</span><span class="p">()</span>
@@ -10384,9 +10934,13 @@
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">WireDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">Wire</span><span class="p">()</span>
 
+        <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">UndergroundCableTypeDevice</span><span class="p">:</span>
+            <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">UndergroundCableType</span><span class="p">()</span>
+
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">OverheadLineTypeDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">OverheadLineType</span><span class="p">()</span>
             <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_models_by_device_type</span><span class="p">(</span><span class="n">DeviceType</span><span class="o">.</span><span class="n">LineDevice</span><span class="p">),</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">EmtModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_emt_models_by_device_type</span><span class="p">(</span><span class="n">DeviceType</span><span class="o">.</span><span class="n">LineDevice</span><span class="p">),</span>
             <span class="p">}</span>
@@ -10394,6 +10948,7 @@
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">SequenceLineDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">SequenceLineType</span><span class="p">()</span>
             <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_models_by_device_type</span><span class="p">(</span><span class="n">DeviceType</span><span class="o">.</span><span class="n">LineDevice</span><span class="p">),</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">EmtModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_emt_models_by_device_type</span><span class="p">(</span><span class="n">DeviceType</span><span class="o">.</span><span class="n">LineDevice</span><span class="p">),</span>
             <span class="p">}</span>
@@ -10401,13 +10956,22 @@
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">UnderGroundLineDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">UndergroundLineType</span><span class="p">()</span>
             <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_models_by_device_type</span><span class="p">(</span><span class="n">DeviceType</span><span class="o">.</span><span class="n">LineDevice</span><span class="p">),</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">EmtModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_emt_models_by_device_type</span><span class="p">(</span><span class="n">DeviceType</span><span class="o">.</span><span class="n">LineDevice</span><span class="p">),</span>
+            <span class="p">}</span>
+
+        <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">DcCableTypeDevice</span><span class="p">:</span>
+            <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">DcCableType</span><span class="p">()</span>
+            <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_models_by_device_type</span><span class="p">(</span><span class="n">DeviceType</span><span class="o">.</span><span class="n">DCLineDevice</span><span class="p">),</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">EmtModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_emt_models_by_device_type</span><span class="p">(</span><span class="n">DeviceType</span><span class="o">.</span><span class="n">DCLineDevice</span><span class="p">),</span>
             <span class="p">}</span>
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">TransformerTypeDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">TransformerType</span><span class="p">()</span>
             <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_loaded_rms_models_by_device_type</span><span class="p">(</span>
                     <span class="n">DeviceType</span><span class="o">.</span><span class="n">Transformer2WDevice</span><span class="p">),</span>
                 <span class="n">DeviceType</span><span class="o">.</span><span class="n">EmtModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_loaded_emt_models_by_device_type</span><span class="p">(</span>
@@ -10416,7 +10980,10 @@
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">FluidNodeDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">FluidNode</span><span class="p">()</span>
-            <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span><span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span> <span class="p">}</span>
+            <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">BusDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">buses</span><span class="p">,</span>
+            <span class="p">}</span>
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">FluidPathDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">FluidPath</span><span class="p">()</span>
@@ -10464,9 +11031,16 @@
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">Facility</span><span class="p">()</span>
             <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
 
+        <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitsGroupDevice</span><span class="p">:</span>
+            <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">MarketUnitsGroup</span><span class="p">()</span>
+            <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">MarketUnit</span><span class="p">()</span>
-            <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">FacilityDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">facilities</span><span class="p">,</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">MarketUnitsGroupDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_unit_groups</span><span class="p">,</span>
+            <span class="p">}</span>
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">RmsModelTemplate</span><span class="p">()</span>
@@ -10482,7 +11056,11 @@
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">ControlPc</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">ControlPc</span><span class="p">()</span>
-            <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">dictionary_of_lists</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">ModellingAuthority</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelling_authorities</span><span class="p">,</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rms_models_by_device_type</span><span class="p">(</span><span class="n">elm_type</span><span class="p">),</span>
+                <span class="n">DeviceType</span><span class="o">.</span><span class="n">EmtModelTemplateDevice</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_emt_models_by_device_type</span><span class="p">(</span><span class="n">elm_type</span><span class="p">),</span>
+            <span class="p">}</span>
 
         <span class="k">elif</span> <span class="n">elm_type</span> <span class="o">==</span> <span class="n">DeviceType</span><span class="o">.</span><span class="n">RmsEventDevice</span><span class="p">:</span>
             <span class="n">elm</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">RmsEvent</span><span class="p">()</span>
@@ -10608,7 +11186,7 @@
 <a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.assets.Assets.refine_pointer_objects">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">refine_pointer_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                                <span class="n">logger</span><span class="p">:</span> <span class="n">Logger</span><span class="p">,</span>
-                               <span class="n">all_elements_dict</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ALL_DEV_TYPES</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                               <span class="n">all_elements_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ALL_DEV_TYPES</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Find the device types of pointer objects</span>
 <span class="sd">        :param logger:</span>

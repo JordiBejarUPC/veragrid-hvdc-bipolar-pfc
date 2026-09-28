@@ -85,7 +85,7 @@ def convert_battery(k: int,
         idtag=elm.idtag,
         code=elm.code,
         P=elm.P,
-        Q=elm.Q,
+        Q=0.0,
         power_factor=elm.Pf,
         vset=elm.Vset,
         active=elm.active,
@@ -121,7 +121,6 @@ def convert_battery(k: int,
         control_mode=battery_control_mode(elm=elm),
     )
     gen.min_soc_charge = elm.min_soc_charge
-    gen.market_unit = market_unit_dict.get(elm.market_unit, None)
     gen.startup_cost = elm.startup_cost
     gen.shutdown_cost = elm.shutdown_cost
     gen.min_time_up = elm.min_time_up
@@ -169,7 +168,8 @@ def convert_battery(k: int,
             default_val=elm.P,
         )
 
-    fill_profile(gen.Q, elm.Q_prof, use_time_series, time_indices, n_time, elm.Q)
+    # The pre-solve NumericalCircuit keeps battery reactive injection at zero; Q is solved through controls/limits.
+    gen.Q.fill(0.0)
     fill_profile(gen.power_factor, elm.Pf_prof, use_time_series, time_indices, n_time, elm.Pf)
 
     gen.Pmin = fill_profile(gen.Pmin, elm.Pmin_prof, use_time_series, time_indices, n_time, elm.Pmin)
@@ -181,12 +181,6 @@ def convert_battery(k: int,
     fill_profile(gen.cost, elm.Cost_prof, use_time_series, time_indices, n_time, elm.Cost)
     fill_profile(gen.Cost0, elm.Cost0_prof, use_time_series, time_indices, n_time, elm.Cost0)
     fill_profile(gen.Cost2, elm.Cost2_prof, use_time_series, time_indices, n_time, elm.Cost2)
-    fill_profile(gen.market_unit_share,
-                 elm.market_unit_share_prof,
-                 use_time_series,
-                 time_indices,
-                 n_time,
-                 elm.market_unit_share)
 
     return gen
 

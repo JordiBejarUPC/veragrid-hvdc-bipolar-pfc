@@ -21,9 +21,10 @@ from VeraGridEngine.enumerations import (
     ContingencyOperationTypes,
     BuildStatus,
     BranchGroupTypes,
-    ConverterControlType
+    ConverterControlType,
+    GeneratorControlMode
 )
-GSLV_RECOMMENDED_VERSION: str = "0.7.15"
+GSLV_RECOMMENDED_VERSION: str = "0.9.3"
 GSLV_VERSION: str = ''
 GSLV_AVAILABLE: bool = False
 
@@ -75,6 +76,12 @@ try:
         TapPhaseControl.Pt: pg.TapPhaseControl.Pt,
     }
 
+    generator_control_mode_dict = {
+        GeneratorControlMode.Q: pg.GeneratorControlMode.Q,
+        GeneratorControlMode.V: pg.GeneratorControlMode.V,
+        GeneratorControlMode.QVDroop: pg.GeneratorControlMode.QVDroop,
+    }
+
     hvdc_control_mode_dict = {
         HvdcControlType.type_0_free: pg.HvdcControlType.type_0_free,
         HvdcControlType.type_1_Pset: pg.HvdcControlType.type_1_Pset,
@@ -104,6 +111,13 @@ try:
         ConverterControlType.Qac: pg.ConverterControlType.Q_ac,
         ConverterControlType.Pdc: pg.ConverterControlType.P_dc,
         ConverterControlType.Pac: pg.ConverterControlType.P_ac,
+        ConverterControlType.Pdc_angle_droop: pg.ConverterControlType.P_dc_angle_droop,
+        ConverterControlType.Pdc_droop: pg.ConverterControlType.P_dc_droop,
+        ConverterControlType.Q_droop: pg.ConverterControlType.Q_droop,
+        ConverterControlType.P_droop: pg.ConverterControlType.P_droop,
+        ConverterControlType.Imax: pg.ConverterControlType.Imax,
+        ConverterControlType.Fault1: pg.ConverterControlType.Fault1,
+        ConverterControlType.Fault2: pg.ConverterControlType.Fault2,
     }
 
     bus_type_dict = {
@@ -125,7 +139,9 @@ try:
         WindingType.GroundedStar: pg.WindingType.GroundedStar,
         WindingType.NeutralStar: pg.WindingType.NeutralStar,
         WindingType.Delta: pg.WindingType.Delta,
-        WindingType.ZigZag: pg.WindingType.ZigZag,
+        WindingType.GroundedZigZag: pg.WindingType.ZigZag,
+        WindingType.FloatingZigZag: pg.WindingType.ZigZag,
+        WindingType.NeutralZigZag: pg.WindingType.ZigZag,
     }
 
     windings_connection_dict = {
@@ -145,6 +161,7 @@ except ImportError:
     build_status_dict = dict()
     tap_module_control_mode_dict = dict()
     tap_phase_control_mode_dict = dict()
+    generator_control_mode_dict = dict()
     hvdc_control_mode_dict = dict()
     group_type_dict = dict()
     contingency_ops_type_dict = dict()

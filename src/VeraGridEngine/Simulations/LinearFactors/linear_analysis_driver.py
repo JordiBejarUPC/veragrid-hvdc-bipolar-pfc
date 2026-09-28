@@ -72,6 +72,7 @@ class LinearAnalysisDriver(DriverTemplate):
         Run thread
         """
         self.tic()
+        self.report_text("Compiling and configuring...")
         self.report_text('Analyzing')
         self.report_progress(0)
 
@@ -111,6 +112,7 @@ class LinearAnalysisDriver(DriverTemplate):
                 nc=nc,
                 distributed_slack=self.options.distribute_slack,
                 correct_values=self.options.correct_values,
+                use_jacobian_ptdf=self.options.use_jacobian_ptdf,
                 converters_as_setpoint=True
             )
 

@@ -26,7 +26,7 @@ from VeraGridEngine.enumerations import (DeviceType, PrpCat, TimeFrame, BuildSta
                                          EraSvdSolverType, ShuntControlMode, RmsProblemTypes, FmuTemplateDomain,
                                          FmuTemplateMode, RmsInitializationMethod, EmtSolverTypes, PlotSimulationType,
                                          DynamicEventTransitionType, DynamicPlotEntryKind, DynamicPlotEntryRole,
-                                         ParamPowerFlowReferenceType)
+                                         ParamPowerFlowReferenceType, GeneratorControlMode)
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
     Type[int],
@@ -49,6 +49,7 @@ GCPROP_TYPES = Union[
     Type[InvestmentsEvaluationObjectives],
     Type[NodalCapacityMethod],
     Type[ShuntControlMode],
+    Type[GeneratorControlMode],
     Type[SolverType],
     Type[TimeGrouping],
     Type[ZonalGrouping],
@@ -205,10 +206,9 @@ class GCProp:
         self._is_color: bool = is_color
         self._is_date: bool = is_date
         self.dyn_ref = dyn_ref
-        if old_names is None:
-            self._old_names: Tuple[str, ...] = tuple()
-        else:
-            self._old_names = tuple(old_names)
+
+        self._old_names: Tuple[str, ...] = tuple() if old_names is None else tuple(old_names)
+
         self._category: List[PrpCat] = [PrpCat.All] if cat is None else cat
 
     @property
@@ -314,16 +314,18 @@ class GCProp:
         tpe_name = str(self.tpe)
         if '.' in tpe_name:
             chunks = tpe_name.split('.')
-            return chunks[-1].replace("'", "") \
-                .replace("<", "") \
-                .replace(">", "").strip()
+            return (chunks[-1]
+                    .replace("'", "")
+                    .replace("<", "")
+                    .replace(">", "").strip())
         else:
-            return tpe_name.replace('class', '') \
-                .replace("'", "") \
-                .replace("<", "") \
-                .replace(">", "").strip()
+            return (tpe_name
+                    .replace('class', '')
+                    .replace("'", "")
+                    .replace("<", "")
+                    .replace(">", "").strip())
 
-    def get_dict(self) -> Dict[str, str]:
+    def get_dict(self) -> Dict[str, str | bool]:
         """
         Get the values of this property as a dictionary
         :return: Dict[name, value]
@@ -448,6 +450,7 @@ class EditableDeviceMeta(type):
 
 
 class PropertyChanges:
+    __slots__ = ("__property_merge_selections",)
 
     def __init__(self):
         # This per-instance map stores merge toggles to avoid mutating shared schema objects.
@@ -513,24 +516,28 @@ class EditableDevice(metaclass=EditableDeviceMeta):
             tpe=str,
             definition='Unique ID',
             editable=False,
+            cat=[PrpCat.MT],
         ),
         GCProp(
             prop_name='name',
             units='',
             tpe=str,
             definition='Name of the device.',
+            cat=[PrpCat.TP],
         ),
         GCProp(
             prop_name='code',
             units='',
             tpe=str,
             definition='Secondary ID',
+            cat=[PrpCat.MT],
         ),
         GCProp(
             prop_name='rdfid',
             units='',
             tpe=str,
             definition='RDF ID for further compatibility',
+            cat=[PrpCat.MT],
         ),
         GCProp(
             prop_name='action',
@@ -538,6 +545,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
             tpe=ActionType,
             definition='Object action to perform.\nOnly used for model merging.',
             display=False,
+            cat=[PrpCat.TP],
         ),
         GCProp(
             prop_name='selected_to_merge',
@@ -546,12 +554,14 @@ class EditableDevice(metaclass=EditableDeviceMeta):
             definition='Whether this object should be applied during diff merge.',
             display=False,
             editable=False,
+            cat=[PrpCat.MT],
         ),
         GCProp(
             prop_name='comment',
             units='',
             tpe=str,
             definition='User comment',
+            cat=[PrpCat.MT],
         ),
         GCProp(
             prop_name='diff_changes',
@@ -559,6 +569,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
             tpe=SubObjectType.MergeInformation,
             display=False,
             editable=False,
+            cat=[PrpCat.MT],
         )
     )
     CLASS_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = tuple()

@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Templates.Emt.stamp_synchronous_generator_emt_template &mdash; VeraGrid 6.5.5 documentation</title>
+  <title>VeraGridEngine.Templates.Emt.stamp_synchronous_generator_emt_template &mdash; VeraGrid 6.5.26 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../../_static/documentation_options.js?v=276d7aeb"></script>
+      <script src="../../../../_static/documentation_options.js?v=c62e3d9e"></script>
       <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -639,7 +640,7 @@
         <span class="n">in_vars</span><span class="o">=</span><span class="p">[</span><span class="n">irpu</span><span class="p">,</span> <span class="n">v_a</span><span class="p">,</span> <span class="n">v_b</span><span class="p">,</span> <span class="n">v_c</span><span class="p">,</span> <span class="n">vpss</span><span class="p">],</span>
         <span class="n">out_vars</span><span class="o">=</span><span class="p">[</span><span class="n">vf_out</span><span class="p">],</span>
         <span class="n">event_dict</span><span class="o">=</span><span class="p">{</span>
-            <span class="n">us_ref</span><span class="p">:</span> <span class="n">vf</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
+            <span class="n">us_ref</span><span class="p">:</span> <span class="n">vc</span> <span class="o">+</span> <span class="n">y_fb</span> <span class="o">-</span> <span class="n">vpss</span> <span class="o">+</span> <span class="n">verr</span><span class="p">,</span>
             <span class="n">ka</span><span class="p">:</span> <span class="n">vf</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">200.0</span><span class="p">),</span>
             <span class="n">ta</span><span class="p">:</span> <span class="n">vf</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">0.015</span><span class="p">),</span>
             <span class="n">tb</span><span class="p">:</span> <span class="n">vf</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">10.0</span><span class="p">),</span>
@@ -661,7 +662,6 @@
             <span class="n">y_ll</span><span class="p">:</span> <span class="n">x_avr</span> <span class="o">/</span> <span class="n">ka</span><span class="p">,</span>
             <span class="n">x_ll</span><span class="p">:</span> <span class="n">y_ll</span><span class="p">,</span>
             <span class="n">verr</span><span class="p">:</span> <span class="n">y_ll</span><span class="p">,</span>
-            <span class="n">us_ref</span><span class="p">:</span> <span class="n">vc</span> <span class="o">+</span> <span class="n">y_fb</span> <span class="o">-</span> <span class="n">vpss</span> <span class="o">+</span> <span class="n">verr</span><span class="p">,</span>
         <span class="p">},</span>
         <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
     <span class="p">)</span>

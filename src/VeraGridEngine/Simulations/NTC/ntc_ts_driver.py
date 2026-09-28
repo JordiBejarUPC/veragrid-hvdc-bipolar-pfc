@@ -4,12 +4,18 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import numpy as np
-from typing import Union
+from typing import Union, List
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
 from VeraGridEngine.Simulations.NTC.ntc_opf import run_linear_ntc_opf, NtcVars
 from VeraGridEngine.Simulations.NTC.ntc_opf_strict import run_linear_ntc_opf_strict
-from VeraGridEngine.Simulations.NTC.ntc_driver import OptimalNetTransferCapacityOptions
+from VeraGridEngine.Simulations.NTC.ntc_driver import (
+    OptimalNetTransferCapacityOptions,
+    collect_contingency_group_device_names,
+    collect_phase_shifter_indices,
+    select_ntc_contingency_groups,
+)
 from VeraGridEngine.Simulations.NTC.ntc_ts_results import OptimalNetTransferCapacityTimeSeriesResults
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
@@ -72,8 +78,14 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             time_array=self.grid.time_profile[self.time_indices],
             time_indices=self.time_indices,
             clustering_results=self.clustering_results,
+            transmission_reliability_margin=self.options.transmission_reliability_margin,
         )
+        self.results.phase_shifter_indices = collect_phase_shifter_indices(self.grid, self.time_indices)
         self.results.strict_formulation = self.options.strict_formulation
+        self.results.loading_threshold_to_report = self.options.loading_threshold_to_report
+
+        contingency_groups_used: List[ContingencyGroup] = select_ntc_contingency_groups(
+            self.grid, self.options.opf_options.contingency_groups_used)
 
         for t_idx, t in enumerate(self.time_indices):
 
@@ -87,7 +99,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                     skip_generation_limits=self.options.skip_generation_limits,
                     consider_contingencies=self.options.consider_contingencies,
                     corrective_contingencies=self.options.corrective_contingencies,
-                    contingency_groups_used=self.options.opf_options.contingency_groups_used,
+                    contingency_groups_used=contingency_groups_used,
                     alpha_threshold=self.options.branch_exchange_sensitivity,
                     lodf_threshold=self.options.lin_options.lodf_threshold,
                     bus_a1_idx=self.options.sending_bus_idx,
@@ -112,7 +124,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                     skip_generation_limits=self.options.skip_generation_limits,
                     consider_contingencies=self.options.consider_contingencies,
                     corrective_contingencies=self.options.corrective_contingencies,
-                    contingency_groups_used=self.options.opf_options.contingency_groups_used,
+                    contingency_groups_used=contingency_groups_used,
                     alpha_threshold=self.options.branch_exchange_sensitivity,
                     lodf_threshold=self.options.lin_options.lodf_threshold,
                     bus_a1_idx=self.options.sending_bus_idx,
@@ -138,6 +150,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 self.results.inter_space_branches = opf_vars.branch_vars.inter_space_branches
                 self.results.inter_space_hvdc = opf_vars.hvdc_vars.inter_space_hvdc
                 self.results.inter_space_vsc = opf_vars.vsc_vars.inter_space_vsc
+                self.results.contingency_group_device_names = collect_contingency_group_device_names(self.grid)
 
             self.results.voltage[t_idx, :] = opf_vars.get_voltages()[0, :]
             self.results.Sbus[t_idx, :] = opf_vars.bus_vars.Pinj[0, :]
@@ -159,6 +172,10 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
 
             self.results.alpha[t_idx, :] = opf_vars.branch_vars.alpha[0, :]
             self.results.monitor_logic[t_idx, :] = opf_vars.branch_vars.monitor_logic[0, :]
+            self.results.worst_contingency_idx[t_idx, :] = opf_vars.branch_vars.worst_contingency_idx[0, :]
+            self.results.worst_contingency_flow[t_idx, :] = opf_vars.branch_vars.worst_contingency_flow[0, :]
+            self.results.worst_contingency_loading[t_idx, :] = opf_vars.branch_vars.worst_contingency_loading[0, :]
+            self.results.alpha_n1_worst[t_idx, :] = opf_vars.branch_vars.alpha_n1_worst[0, :]
 
             # the snapshot LP always runs at its internal t = 0, so re-stamp every report
             # entry with the time series step index before accumulating
@@ -194,6 +211,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         :return:
         """
         self.tic()
+        self.report_text("Compiling and configuring...")
 
         self.opf()
         self.report_text('Done!')

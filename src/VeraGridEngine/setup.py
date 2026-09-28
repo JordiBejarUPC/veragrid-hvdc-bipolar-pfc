@@ -81,15 +81,16 @@ dependencies = ["numpy>=2.2.0",
                 "highspy>=1.8.0",
                 "xlwt>=1.3.0",
                 "xlrd>=2.0.2",
-                "matplotlib>=3.10.0",
                 "openpyxl>=3.1.5",
                 "chardet>=5.2.0",  # for the psse files character detection
                 "scikit-learn>=1.5.0",
                 "geopy>=2.4.1",
                 "h5py>=3.12.0",
+                "cbcbox>=2.935",
                 "numba>=0.61",  # to compile routines natively
+                "clang-tool-chain>=1.5.9",
                 "pyproj>=3.7.2",
-                "pulp>=3.3.0",
+                "pulp>=4.0.0",
                 "pyarrow>=23.0.1",
                 "windpowerlib>=0.2.2",
                 "pvlib>=0.14.0",
@@ -98,7 +99,8 @@ dependencies = ["numpy>=2.2.0",
                 "websockets>=9.1",
                 "brotli>=1.2.0",
                 "opencv-python>=4.10.0.84",
-                "fmpy>=0.3.22"
+                "fmpy>=0.3.22",
+                "clang-tool-chain>=1.5.9"
                 ]
 
 extras_require = {

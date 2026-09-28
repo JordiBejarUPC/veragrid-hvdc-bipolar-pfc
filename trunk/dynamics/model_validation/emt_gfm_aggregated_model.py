@@ -18,13 +18,13 @@ def park_transform_block(vf, v_abc, theta, name: str):
     eqs = [
         v_d - c13 * (
             vf.add_const(2.0) * sym.cos(theta) * v_a
-            + (-sym.cos(theta) - sqrt3 * sym.sin(theta)) * v_b
-            + (-sym.cos(theta) + sqrt3 * sym.sin(theta)) * v_c
+            + (-sym.cos(theta) + sqrt3 * sym.sin(theta)) * v_b
+            + (-sym.cos(theta) - sqrt3 * sym.sin(theta)) * v_c
         ),
         v_q - c13 * (
             vf.add_const(2.0) * sym.sin(theta) * v_a
-            + (-sym.sin(theta) + sqrt3 * sym.cos(theta)) * v_b
-            + (-sym.sin(theta) - sqrt3 * sym.cos(theta)) * v_c
+            + (-sym.sin(theta) - sqrt3 * sym.cos(theta)) * v_b
+            + (-sym.sin(theta) + sqrt3 * sym.cos(theta)) * v_c
         ),
     ]
     return Block(algebraic_eqs=eqs, algebraic_vars=[v_d, v_q]), (v_d, v_q)
@@ -40,10 +40,10 @@ def inverse_park_currents_block(vf, i_d, i_q, theta, name: str):
 
     eqs = [
         i_a - (i_d * sym.cos(theta) + i_q * sym.sin(theta)),
-        i_b - (i_d * (-half * sym.cos(theta) - (sqrt3 / two) * sym.sin(theta))
-               + i_q * (-half * sym.sin(theta) + (sqrt3 / two) * sym.cos(theta))),
-        i_c - (i_d * (-half * sym.cos(theta) + (sqrt3 / two) * sym.sin(theta))
+        i_b - (i_d * (-half * sym.cos(theta) + (sqrt3 / two) * sym.sin(theta))
                + i_q * (-half * sym.sin(theta) - (sqrt3 / two) * sym.cos(theta))),
+        i_c - (i_d * (-half * sym.cos(theta) - (sqrt3 / two) * sym.sin(theta))
+               + i_q * (-half * sym.sin(theta) + (sqrt3 / two) * sym.cos(theta))),
     ]
     return Block(algebraic_eqs=eqs, algebraic_vars=[i_a, i_b, i_c]), (i_a, i_b, i_c)
 
@@ -58,10 +58,10 @@ def inverse_park_values_block(vf, x_d, x_q, theta, name: str):
 
     eqs = [
         x_a - (x_d * sym.cos(theta) + x_q * sym.sin(theta)),
-        x_b - (x_d * (-half * sym.cos(theta) - (sqrt3 / two) * sym.sin(theta))
-               + x_q * (-half * sym.sin(theta) + (sqrt3 / two) * sym.cos(theta))),
-        x_c - (x_d * (-half * sym.cos(theta) + (sqrt3 / two) * sym.sin(theta))
+        x_b - (x_d * (-half * sym.cos(theta) + (sqrt3 / two) * sym.sin(theta))
                + x_q * (-half * sym.sin(theta) - (sqrt3 / two) * sym.cos(theta))),
+        x_c - (x_d * (-half * sym.cos(theta) - (sqrt3 / two) * sym.sin(theta))
+               + x_q * (-half * sym.sin(theta) + (sqrt3 / two) * sym.cos(theta))),
     ]
     return Block(algebraic_eqs=eqs, algebraic_vars=[x_a, x_b, x_c]), (x_a, x_b, x_c)
 
@@ -174,8 +174,10 @@ def build_emt_gfm_aggregated_model(
     Kdq = vf.add_var(f"Kdq_{name}")
     fn = vf.add_var(f"fn_{name}")
     omega_base = vf.add_var(f"omega_base_{name}")
-    Kp = vf.add_var(f"Kp_icl_{name}")
-    Ki = vf.add_var(f"Ki_icl_{name}")
+    Kp_vcl = vf.add_var(f"Kp_vcl_{name}")
+    Ki_vcl = vf.add_var(f"Ki_vcl_{name}")
+    Kp_icl = vf.add_var(f"Kp_icl_{name}")
+    Ki_icl = vf.add_var(f"Ki_icl_{name}")
     tau_p = vf.add_var(f"tau_P_{name}")
     tau_q = vf.add_var(f"tau_Q_{name}")
     i_max = vf.add_var(f"I_max_{name}")
@@ -218,9 +220,11 @@ def build_emt_gfm_aggregated_model(
         vq_ref - v_mag,
     ]
 
-    id_hat = Kp * (vd_ref - vd_f) + Ki * z_vd
-    iq_hat = Kp * (vq_ref - vq_f) + Ki * z_vq
+    id_hat = Kp_vcl * (vd_ref - vd_f) + Ki_vcl * z_vd
+    iq_hat = Kp_vcl * (vq_ref - vq_f) + Ki_vcl * z_vq
 
+    # Conventional increasing Park angle: transform the capacitor equation
+    # with dtheta/dt = +omega_base*omega.
     id_raw = id_hat + id_g + Cf * omega * vq_f
     iq_raw = iq_hat + iq_g - Cf * omega * vd_f
     eqs += [
@@ -234,8 +238,8 @@ def build_emt_gfm_aggregated_model(
     vq_hat = vq_ctrl_out
 
     eqs += [
-        vd_ctrl_out - (Kp * (id_ref - id_c) + Ki * z_id),
-        vq_ctrl_out - (Kp * (iq_ref - iq_c) + Ki * z_iq),
+        vd_ctrl_out - (Kp_icl * (id_ref - id_c) + Ki_icl * z_id),
+        vq_ctrl_out - (Kp_icl * (iq_ref - iq_c) + Ki_icl * z_iq),
         vd_c_ref - (vd_hat + vd_f + Lf * omega * iq_c),
         vq_c_ref - (vq_hat + vq_f - Lf * omega * id_c),
         vd_c - vd_c_ref,
@@ -288,7 +292,9 @@ def build_emt_gfm_aggregated_model(
         event_dict={
             Rf: vf.add_const(0.02), Lf: vf.add_const(0.15), Rc: vf.add_const(0.01), Lc: vf.add_const(0.1),
             Cf: vf.add_const(0.05), Rcap: vf.add_const(1e6), Kdp: vf.add_const(0.1), Kdq: vf.add_const(0.005),
-            fn: vf.add_const(50.0), omega_base: vf.add_const(2.0 * math.pi * 50.0), Kp: vf.add_const(0.00075), Ki: vf.add_const(0.2), tau_p: vf.add_const(0.01),
+            fn: vf.add_const(50.0), omega_base: vf.add_const(2.0 * math.pi * 50.0),
+            Kp_vcl: vf.add_const(0.00075), Ki_vcl: vf.add_const(0.2),
+            Kp_icl: vf.add_const(0.00075), Ki_icl: vf.add_const(0.2), tau_p: vf.add_const(0.01),
             tau_q: vf.add_const(0.01), i_max: vf.add_const(1.2), a0: vf.add_const(0.0), a1: vf.add_const(0.0), a2: vf.add_const(0.0),
             p_ref: vf.add_const(None), q_ref: vf.add_const(None), v_ref: vf.add_const(None),
         },

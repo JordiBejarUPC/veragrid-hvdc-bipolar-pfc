@@ -7,7 +7,7 @@ from __future__ import annotations
 import copy
 from typing import Any, Callable, Dict, Tuple
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, normalize_event_parameter_initialization
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.enumerations import DeviceType, SubObjectType
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
@@ -76,12 +76,14 @@ class EmtModelTemplate(PointerDeviceParent):
                          code="",
                          device=None,
                          comment="",
-                         device_type=DeviceType.EmtModelTemplateDevice)
+                         device_type=DeviceType.EmtModelTemplateDevice,
+                         pointer_dev_tpes=[
+                             DeviceType.PhysicalDeviceType  # Signifies all physical devices
+                         ])
 
         self._tpe: DeviceType = DeviceType.NoDevice
         self._block: Block = Block()
         self._lazy_builder: EmtLazyTemplateBuilder | None = None
-
 
     def __deepcopy__(self, memo):
         cls = self.__class__
@@ -97,7 +99,11 @@ class EmtModelTemplate(PointerDeviceParent):
         result.action = self.action
         result.selected_to_merge = self.selected_to_merge
         result.diff_changes = copy.deepcopy(self.diff_changes, memo)
-        result._EditableDevice__auto_update_enabled = self._EditableDevice__auto_update_enabled
+
+        if self.auto_update_enabled:
+            result.enable_auto_updates()
+        else:
+            result.disable_auto_updates()
 
         result._device_idtag = self._device_idtag
         result._tpe = self._tpe
@@ -110,10 +116,10 @@ class EmtModelTemplate(PointerDeviceParent):
         return result
 
     @property
-    def block(self):
-        """
+    def block(self) -> Block:
+        """Materialize and return the normalized EMT symbolic block.
 
-        :return:
+        :return: EMT symbolic block using one initialization source per event parameter.
         """
         if self._block.empty() and self._lazy_builder is not None:
             built_template: EmtModelTemplate = self._lazy_builder.build()
@@ -122,12 +128,19 @@ class EmtModelTemplate(PointerDeviceParent):
         else:
             pass
 
+        normalize_event_parameter_initialization(block=self._block)
         return self._block
 
     @block.setter
-    def block(self, obj: Block):
+    def block(self, obj: Block) -> None:
+        """Replace the EMT block and normalize legacy event initialization.
+
+        :param obj: Complete symbolic block assigned to the template.
+        :return: None.
+        """
         self._lazy_builder = None
         self._block = obj
+        normalize_event_parameter_initialization(block=self._block)
 
     def set_lazy_builder(self, builder: EmtLazyTemplateBuilder) -> None:
         """

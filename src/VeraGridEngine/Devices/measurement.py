@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 import numpy as np
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
@@ -68,7 +68,8 @@ class MeasurementTemplate(PointerDeviceParent):
                  api_obj: MEASURABLE_OBJECT,
                  name: str,
                  idtag: Union[str, None],
-                 device_type: DeviceType):
+                 device_type: DeviceType,
+                 pointer_dev_tpes: List[DeviceType]):
         """
         Constructor
         :param value: value
@@ -84,7 +85,8 @@ class MeasurementTemplate(PointerDeviceParent):
                                      code="",
                                      name=name,
                                      device_type=device_type,
-                                     comment="")
+                                     comment="",
+                                     pointer_dev_tpes=pointer_dev_tpes)
 
         self.value = float(value)
         self.sigma = float(uncertainty)
@@ -205,6 +207,8 @@ class PiMeasurement(MeasurementTemplate):
     Measurement class
     """
 
+    __slots__ = ()
+
     def __init__(self,
                  value: float = 0.0,
                  uncertainty: float = 0.0,
@@ -225,13 +229,16 @@ class PiMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.PiMeasurementDevice)
+                                     device_type=DeviceType.PiMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.BusDevice])
 
 
 class QiMeasurement(MeasurementTemplate):
     """
     Measurement class
     """
+
+    __slots__ = ()
 
     def __init__(self,
                  value: float = 0.0,
@@ -253,13 +260,16 @@ class QiMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.QiMeasurementDevice)
+                                     device_type=DeviceType.QiMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.BusDevice])
 
 
 class PgMeasurement(MeasurementTemplate):
     """
     Measurement class
     """
+
+    __slots__ = ()
 
     def __init__(self,
                  value: float = 0.0,
@@ -281,13 +291,16 @@ class PgMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.PgMeasurementDevice)
+                                     device_type=DeviceType.PgMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.GeneratorDevice, DeviceType.BatteryDevice])
 
 
 class QgMeasurement(MeasurementTemplate):
     """
     Measurement class
     """
+
+    __slots__ = ()
 
     def __init__(self,
                  value: float = 0.0,
@@ -309,7 +322,8 @@ class QgMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.QgMeasurementDevice)
+                                     device_type=DeviceType.QgMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.GeneratorDevice, DeviceType.BatteryDevice])
 
 
 class VmMeasurement(MeasurementTemplate):
@@ -317,19 +331,30 @@ class VmMeasurement(MeasurementTemplate):
     Measurement class
     """
 
+    __slots__ = ()
+
     def __init__(self,
                  value: float = 0.0,
                  uncertainty: float = 0.0,
                  api_obj: Bus | None = None,
                  name="",
                  idtag: Union[str, None] = None):
+        """
+
+        :param value:
+        :param uncertainty:
+        :param api_obj:
+        :param name:
+        :param idtag:
+        """
         MeasurementTemplate.__init__(self,
                                      value=value,
                                      uncertainty=uncertainty,
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.VmMeasurementDevice)
+                                     device_type=DeviceType.VmMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.BusDevice])
 
 
 class VaMeasurement(MeasurementTemplate):
@@ -337,25 +362,38 @@ class VaMeasurement(MeasurementTemplate):
     Measurement class
     """
 
+    __slots__ = ()
+
     def __init__(self,
                  value: float = 0.0,
                  uncertainty: float = 0.0,
                  api_obj: Bus | None = None,
                  name="",
                  idtag: Union[str, None] = None):
+        """
+
+        :param value:
+        :param uncertainty:
+        :param api_obj:
+        :param name:
+        :param idtag:
+        """
         MeasurementTemplate.__init__(self,
                                      value=value,
                                      uncertainty=uncertainty,
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.VaMeasurementDevice)
+                                     device_type=DeviceType.VaMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.BusDevice])
 
 
 class PfMeasurement(MeasurementTemplate):
     """
     Measurement class
     """
+
+    __slots__ = ()
 
     def __init__(self,
                  value: float = 0.0,
@@ -377,13 +415,18 @@ class PfMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.PfMeasurementDevice)
+                                     device_type=DeviceType.PfMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.LineDevice,
+                                                       DeviceType.Transformer2WDevice,
+                                                       DeviceType.WindingDevice])
 
 
 class QfMeasurement(MeasurementTemplate):
     """
     Measurement class
     """
+
+    __slots__ = ()
 
     def __init__(self,
                  value: float = 0.0,
@@ -405,13 +448,18 @@ class QfMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.QfMeasurementDevice)
+                                     device_type=DeviceType.QfMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.LineDevice,
+                                                       DeviceType.Transformer2WDevice,
+                                                       DeviceType.WindingDevice])
 
 
 class PtMeasurement(MeasurementTemplate):
     """
     Measurement class
     """
+
+    __slots__ = ()
 
     def __init__(self,
                  value: float = 0.0,
@@ -433,13 +481,18 @@ class PtMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.PtMeasurementDevice)
+                                     device_type=DeviceType.PtMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.LineDevice,
+                                                       DeviceType.Transformer2WDevice,
+                                                       DeviceType.WindingDevice])
 
 
 class QtMeasurement(MeasurementTemplate):
     """
     Measurement class
     """
+
+    __slots__ = ()
 
     def __init__(self,
                  value: float = 0.0,
@@ -461,7 +514,10 @@ class QtMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.QtMeasurementDevice)
+                                     device_type=DeviceType.QtMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.LineDevice,
+                                                       DeviceType.Transformer2WDevice,
+                                                       DeviceType.WindingDevice])
 
 
 def get_i_base(Sbase, Vbase):
@@ -472,6 +528,8 @@ class IfMeasurement(MeasurementTemplate):
     """
     Measurement class
     """
+
+    __slots__ = ()
 
     def __init__(self,
                  value: float = 0.0,
@@ -493,19 +551,30 @@ class IfMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.IfMeasurementDevice)
+                                     device_type=DeviceType.IfMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.LineDevice,
+                                                       DeviceType.Transformer2WDevice,
+                                                       DeviceType.WindingDevice])
 
     def get_value_pu_at(self, t: int | None, Sbase: float):
-        return self.get_value_at(t) / get_i_base(Sbase, Vbase=self.api_object.bus_from.Vnom)
+        if self.device is None:
+            return 0.0
+        else:
+            return self.get_value_at(t) / get_i_base(Sbase, Vbase=self.device.bus_from.Vnom)
 
     def get_standard_deviation_pu_at(self, t: int | None, Sbase: float):
-        return self.get_sigma_at(t) / get_i_base(Sbase, Vbase=self.api_object.bus_from.Vnom)
+        if self.device is None:
+            return 0.0
+        else:
+            return self.get_sigma_at(t) / get_i_base(Sbase, Vbase=self.device.bus_from.Vnom)
 
 
 class ItMeasurement(MeasurementTemplate):
     """
     Measurement class
     """
+
+    __slots__ = ()
 
     def __init__(self,
                  value: float = 0.0,
@@ -527,18 +596,19 @@ class ItMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.ItMeasurementDevice)
-
-    @property
-    def device(self) -> SE_BRANCH_TYPES:
-        """
-        device getter
-        :return:
-        """
-        return self._device
+                                     device_type=DeviceType.ItMeasurementDevice,
+                                     pointer_dev_tpes=[DeviceType.LineDevice,
+                                                       DeviceType.Transformer2WDevice,
+                                                       DeviceType.WindingDevice])
 
     def get_value_pu_at(self, t: int | None, Sbase: float):
-        return self.value / get_i_base(Sbase, Vbase=self.device.bus_to.Vnom)
+        if self.device is None:
+            return 0.0
+        else:
+            return self.value / get_i_base(Sbase, Vbase=self.device.bus_to.Vnom)
 
     def get_standard_deviation_pu_at(self, t: int | None, Sbase: float):
-        return self.sigma / get_i_base(Sbase, Vbase=self.device.bus_to.Vnom)
+        if self.device is None:
+            return 0.0
+        else:
+            return self.sigma / get_i_base(Sbase, Vbase=self.device.bus_to.Vnom)

@@ -13,7 +13,6 @@ import sys
 from typing import Tuple, TYPE_CHECKING
 from scipy.sparse import csc_matrix
 from scipy.sparse import linalg as spla
-import matplotlib.pyplot as plt
 
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
@@ -60,6 +59,43 @@ class PseudoTransientOptions(OptionsTemplate):
     :param residual_reset_steps: Number of accepted residuals in the reset window.
     :param residual_reset_improvement_tol: Relative residual improvement required to avoid reset.
     """
+
+    __slots__ = (
+        "equilibrium_inputs_as_params",
+        "equilibrium_references_as_params",
+        "equilibrium_references_as_equations",
+        "delta_seed",
+        "allow_best_effort_init",
+        "use_weighted_residual",
+        "weight_algebraic",
+        "use_weighted_linear_solve",
+        "linear_solve_state_weight",
+        "linear_solve_algebraic_weight",
+        "use_state_tau_scaling",
+        "use_state_tau_dtau_scale",
+        "state_tau_min",
+        "state_tau_max",
+        "state_tau_eps",
+        "allow_lsqr_fallback",
+        "use_svd_diagnostics",
+        "svd_diagnostics_limit",
+        "linear_solve_damp",
+        "artificial_algebraic_mass",
+        "artificial_algebraic_mass_names",
+        "positive_clamp_names",
+        "positive_clamp_min",
+        "soft_positive_names",
+        "soft_positive_min",
+        "soft_positive_eps",
+        "dtau_ser_min_factor",
+        "dtau_ser_max_factor",
+        "dtau_stall_ratio",
+        "dtau_stall_steps",
+        "dtau_stall_boost",
+        "stop_on_residual_stall",
+        "residual_reset_steps",
+        "residual_reset_improvement_tol",
+    )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key="equilibrium_inputs_as_params", tpe=bool),
@@ -176,7 +212,62 @@ class PseudoTransientOptions(OptionsTemplate):
         self.residual_reset_improvement_tol: float = float(residual_reset_improvement_tol)
 
 
-class  PseudoTransient:
+class PseudoTransient:
+    """
+    Pseudo-transient solver.
+    """
+
+    __slots__ = (
+        "problem",
+        "h",
+        "dtau0",
+        "dtau_min",
+        "dtau_max",
+        "steps",
+        "max_iter_0",
+        "tol",
+        "reference_error_tol",
+        "verbose",
+        "options",
+        "use_weighted_residual",
+        "weight_algebraic",
+        "use_weighted_linear_solve",
+        "linear_solve_state_weight",
+        "linear_solve_algebraic_weight",
+        "use_state_tau_scaling",
+        "use_state_tau_dtau_scale",
+        "state_tau_min",
+        "state_tau_max",
+        "state_tau_eps",
+        "allow_lsqr_fallback",
+        "use_svd_diagnostics",
+        "svd_diagnostics_limit",
+        "linear_solve_damp",
+        "artificial_algebraic_mass",
+        "artificial_algebraic_mass_names",
+        "positive_clamp_names",
+        "positive_clamp_min",
+        "soft_positive_names",
+        "soft_positive_min",
+        "soft_positive_eps",
+        "dtau_ser_min_factor",
+        "dtau_ser_max_factor",
+        "dtau_stall_ratio",
+        "dtau_stall_steps",
+        "dtau_stall_boost",
+        "stop_on_residual_stall",
+        "residual_reset_steps",
+        "residual_reset_improvement_tol",
+        "fixed_var_uids",
+        "_fixed_var_indices",
+        "debug_check_x_new",
+        "debug_x_new_abs_max",
+        "t",
+        "y",
+        "state_tau",
+        "_singular_report_count",
+        "_svd_report_count",
+    )
 
     def __init__(self,
                  problem: RmsProblemDae | EmtPseudoTransientProblemAdapter,
@@ -689,7 +780,7 @@ class  PseudoTransient:
                 )
 
             if rhs.size > 0 and np.all(np.isfinite(rhs)):
-                idx = np.argsort(np.abs(rhs))[::-1][:8]
+                idx = np.argsort(np.abs(rhs), kind="stable")[::-1][:8]
                 top_rhs = [f"{self._rhs_index_equation_repr(int(i))}: {rhs[int(i)]:+.3e}" for i in idx]
                 print(f"[PseudoTransient][Singular] largest rhs entries: {top_rhs}", file=sys.stderr)
                 self._report_piecewise_activity(rhs)
@@ -713,7 +804,7 @@ class  PseudoTransient:
                     if singular_dirs.size > 0:
                         i = int(singular_dirs[0])
                         v = vh.T[:, i]
-                        dom = np.argsort(np.abs(v))[::-1][:8]
+                        dom = np.argsort(np.abs(v), kind="stable")[::-1][:8]
                         dom_vars = [f"{self._var_index_name(int(j))}: {v[int(j)]:+.3e}" for j in dom]
                         print(
                             f"[PseudoTransient][Singular] dominant variables in null-like direction: {dom_vars}",
@@ -797,7 +888,7 @@ class  PseudoTransient:
 
             if vh.size > 0 and s.size > 0:
                 v_min = vh[min(rank, vh.shape[0] - 1), :] if rank < vh.shape[0] else vh[-1, :]
-                dom = np.argsort(np.abs(v_min))[::-1][:8]
+                dom = np.argsort(np.abs(v_min), kind="stable")[::-1][:8]
                 dom_vars = [f"{self._var_index_name(int(j))}: {v_min[int(j)]:+.3e}" for j in dom]
                 emit(f"[SVD] {context}: weak right-singular variables={dom_vars}")
 
@@ -805,7 +896,7 @@ class  PseudoTransient:
                 n_weak = min(3, s.size, u.shape[1])
                 for sv_idx in range(s.size - n_weak, s.size):
                     left_vec = u[:, sv_idx]
-                    dom_rows = np.argsort(np.abs(left_vec))[::-1][:8]
+                    dom_rows = np.argsort(np.abs(left_vec), kind="stable")[::-1][:8]
                     row_labels = [
                         f"{self._rhs_index_equation_begin(int(i))}: {left_vec[int(i)]:+.3e}, rhs={rhs_solve[int(i)]:+.3e}"
                         for i in dom_rows
@@ -819,11 +910,11 @@ class  PseudoTransient:
             if u.shape[1] > left_null_start:
                 coeffs = u[:, left_null_start:].T @ b
                 if coeffs.size > 0:
-                    order = np.argsort(np.abs(coeffs))[::-1]
+                    order = np.argsort(np.abs(coeffs), kind="stable")[::-1]
                     for pos in order[:min(3, order.size)]:
                         left_vec = u[:, left_null_start + int(pos)]
                         coeff = float(coeffs[int(pos)])
-                        dom_rows = np.argsort(np.abs(left_vec))[::-1][:8]
+                        dom_rows = np.argsort(np.abs(left_vec), kind="stable")[::-1][:8]
                         row_labels = [
                             f"{self._rhs_index_equation_begin(int(i))}: {left_vec[int(i)]:+.3e}"
                             for i in dom_rows
@@ -1137,94 +1228,6 @@ class  PseudoTransient:
         else:
             return f_algeb
 
-    def _plot_diagnostics(self,
-                          dtau_hist: list[float],
-                          dx_error_hist: list[float],
-                          residual_hist: list[float],
-                          x_hist: list[np.ndarray],
-                          state_eq_hist: list[np.ndarray]) -> None:
-        fig, axs = plt.subplots(3, 1, figsize=(8, 10), sharex=True)
-
-        if len(dx_error_hist) > 0:
-            axs[0].semilogy(dx_error_hist, label="||dx||")
-        axs[0].set_ylabel("dx error (log)")
-        axs[0].legend()
-
-        if len(residual_hist) > 0:
-            axs[1].semilogy(residual_hist, label="Residual norm")
-        axs[1].set_ylabel("Residual (log)")
-        axs[1].legend()
-
-        if len(dtau_hist) > 0:
-            axs[2].semilogy(dtau_hist, label="dtau")
-        axs[2].set_ylabel("dtau")
-        axs[2].set_xlabel("Step index")
-        axs[2].legend()
-
-        x_hist_arr = np.array(x_hist)
-        if x_hist_arr.size == 0 or x_hist_arr.ndim < 2:
-            return
-
-        state_vars = self._problem_state_vars()
-        n_state_vars = len(state_vars)
-        algeb_vars = self._problem_algebraic_vars()
-        n_algeb_vars = len(algeb_vars)
-        vars_per_plot = 5
-
-        if n_state_vars > 0:
-            nplots_state = (n_state_vars + vars_per_plot - 1) // vars_per_plot
-            fig_state, axs_state = plt.subplots(nplots_state, 1, figsize=(10, 2.5 * nplots_state), sharex=True)
-            if nplots_state == 1:
-                axs_state = [axs_state]
-            for i in range(nplots_state):
-                start = i * vars_per_plot
-                end = min((i + 1) * vars_per_plot, n_state_vars)
-                for var in state_vars[start:end]:
-                    axs_state[i].plot(x_hist_arr[:, self.problem.uid2idx_vars[var.uid]], label=var.name)
-                axs_state[i].set_ylabel("Value")
-                axs_state[i].legend(loc="best", fontsize="x-small", ncol=2, frameon=False)
-            axs_state[-1].set_xlabel("Step index")
-
-        if n_algeb_vars > 0:
-            nplots_algeb = (n_algeb_vars + vars_per_plot - 1) // vars_per_plot
-            fig_algeb, axs_algeb = plt.subplots(nplots_algeb, 1, figsize=(10, 2.5 * nplots_algeb), sharex=True)
-            if nplots_algeb == 1:
-                axs_algeb = [axs_algeb]
-            for i in range(nplots_algeb):
-                start = i * vars_per_plot
-                end = min((i + 1) * vars_per_plot, n_algeb_vars)
-                for var in algeb_vars[start:end]:
-                    axs_algeb[i].plot(x_hist_arr[:, self.problem.uid2idx_vars[var.uid]], label=var.name)
-                axs_algeb[i].set_ylabel("Value")
-                axs_algeb[i].legend(loc="best", fontsize="x-small", ncol=2, frameon=False)
-            axs_algeb[-1].set_xlabel("Step index")
-
-        state_eq_hist_arr = np.array(state_eq_hist)
-        n_state_eqs = int(self.problem.get_states_number())
-        if n_state_eqs > 0 and state_eq_hist_arr.size > 0 and state_eq_hist_arr.ndim == 2:
-            nplots_state_eq = (n_state_eqs + vars_per_plot - 1) // vars_per_plot
-            fig_state_eq, axs_state_eq = plt.subplots(nplots_state_eq, 1, figsize=(10, 2.5 * nplots_state_eq), sharex=True)
-            if nplots_state_eq == 1:
-                axs_state_eq = [axs_state_eq]
-
-            state_vars = self._problem_state_vars()
-            labels = list()
-            for i in range(n_state_eqs):
-                if i < len(state_vars):
-                    labels.append(f"state_update({state_vars[i].name})")
-                else:
-                    labels.append(f"state_update[{i}]")
-
-            for i in range(nplots_state_eq):
-                start = i * vars_per_plot
-                end = min((i + 1) * vars_per_plot, n_state_eqs)
-                for j in range(start, end):
-                    axs_state_eq[i].plot(state_eq_hist_arr[:, j], label=labels[j])
-                axs_state_eq[i].axhline(0.0, color="k", linewidth=0.8, alpha=0.4)
-                axs_state_eq[i].set_ylabel("Eq value")
-                axs_state_eq[i].legend(loc="best", fontsize="x-small", ncol=2, frameon=False)
-            axs_state_eq[-1].set_xlabel("Step index")
-        plt.show()
 
     def _report_failure_svd_diagnostics(self, x: Vec, xn: Vec, dx: Vec, dtau: float, context: str) -> None:
         if not self.verbose:
@@ -1270,7 +1273,7 @@ class  PseudoTransient:
             print(f"[PseudoTransient] Final RHS offenders: none above threshold={threshold:.3e}")
             return
 
-        ranked = offenders[np.argsort(-abs_rhs[offenders])]
+        ranked = offenders[np.argsort(-abs_rhs[offenders], kind="stable")]
         n_show = min(int(top_n), ranked.size)
         print(f"[PseudoTransient] Final RHS offenders (top {n_show}, threshold={threshold:.3e}):")
         for i in ranked[:n_show]:
@@ -1600,8 +1603,6 @@ class  PseudoTransient:
                 dtau=dtau,
                 context=f"failed run exception at step={step_idx} try={tries}",
             )
-            if plot:
-                self._plot_diagnostics(dtau_hist, dx_error_hist, residual_hist, x_hist, state_eq_hist)
             raise
         finally:
             self._fixed_var_indices = original_fixed_indices
@@ -1628,7 +1629,5 @@ class  PseudoTransient:
             if 0 <= idx < x_new.size:
                 init_guess[var] = x_new[idx]
 
-        if plot:
-            self._plot_diagnostics(dtau_hist, dx_error_hist, residual_hist, x_hist, state_eq_hist)
 
         return x_new, init_guess

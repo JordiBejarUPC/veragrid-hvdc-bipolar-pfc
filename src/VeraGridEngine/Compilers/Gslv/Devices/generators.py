@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Dict, TYPE_CHECKING
 
-from VeraGridEngine.Compilers.Gslv.activation import build_status_dict, pg
+from VeraGridEngine.Compilers.Gslv.activation import build_status_dict, generator_control_mode_dict, pg
 from VeraGridEngine.Compilers.Gslv.common import fill_profile, fill_profile_with_array, set_generator_associations
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.Devices.Aggregation.market_unit import MarketUnit
@@ -49,7 +49,7 @@ def generator_control_mode(elm: Generator) -> "pg.GeneratorControlMode":
     :param elm: VeraGrid generator.
     :return: Equivalent pygslv control mode.
     """
-    return pg.GeneratorControlMode.__members__[elm.control_mode.name]
+    return generator_control_mode_dict[elm.control_mode]
 
 
 def convert_generator(k: int,
@@ -108,7 +108,7 @@ def convert_generator(k: int,
         tpe=generator_tpe(elm=elm),
         active=elm.active,
         P=elm.P,
-        Q=elm.Q,
+        Q=0.0,
         power_factor=elm.Pf,
         vset=elm.Vset,
         Pmin=elm.Pmin,
@@ -152,8 +152,6 @@ def convert_generator(k: int,
         rr=elm.Rr,
         xr=elm.Xr,
         freq=elm.freq,
-        market_unit=market_unit_dict.get(elm.market_unit, None),
-        market_unit_share=elm.market_unit_share,
         is_static_generator=elm.is_static_generator,
     )
     if elm.control_bus is None:
@@ -196,7 +194,8 @@ def convert_generator(k: int,
             default_val=elm.P,
         )
 
-    fill_profile(gen.Q, elm.Q_prof, use_time_series, time_indices, n_time, elm.Q)
+    # The pre-solve NumericalCircuit keeps generator reactive injection at zero; Q is solved through controls/limits.
+    gen.Q.fill(0.0)
     fill_profile(gen.power_factor, elm.Pf_prof, use_time_series, time_indices, n_time, elm.Pf)
 
     gen.Pmin = fill_profile(gen.Pmin, elm.Pmin_prof, use_time_series, time_indices, n_time, elm.Pmin)
@@ -208,12 +207,7 @@ def convert_generator(k: int,
     fill_profile(gen.cost, elm.Cost_prof, use_time_series, time_indices, n_time, elm.Cost)
     fill_profile(gen.Cost0, elm.Cost0_prof, use_time_series, time_indices, n_time, elm.Cost0)
     fill_profile(gen.Cost2, elm.Cost2_prof, use_time_series, time_indices, n_time, elm.Cost2)
-    fill_profile(gen.market_unit_share,
-                 elm.market_unit_share_prof,
-                 use_time_series,
-                 time_indices,
-                 n_time,
-                 elm.market_unit_share)
+    fill_profile(gen.control_mode, elm.control_mode_prof, use_time_series, time_indices, n_time, elm.control_mode)
 
     return gen
 

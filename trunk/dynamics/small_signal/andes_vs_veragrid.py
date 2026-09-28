@@ -63,7 +63,7 @@ def compare_rms_results(veragrid_csv: Path, andes_csv: Path) -> None:
         ax_rms.grid(True, alpha=0.3)
         ax_rms.legend()
         fig_rms.tight_layout()
-        plt.show()
+        plt.show(block=False)
     else:
         print("No common RMS columns were found to plot.")
 

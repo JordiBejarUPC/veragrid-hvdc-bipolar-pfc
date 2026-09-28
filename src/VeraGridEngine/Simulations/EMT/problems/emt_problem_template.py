@@ -256,16 +256,26 @@ class EmtBoundaryUpdateProtocol(Protocol):
     """
     Structural protocol implemented by EMT boundary update providers.
     """
+    __slots__ = ()
 
-    def update(self, t: float, x: Vec, params: Vec) -> None:
+    def update(self, t: float, x: Vec, params: Vec) -> float | None:
         """
-        Update the full parameter vector in place.
+        Update the full parameter vector and return a shortened retry target.
         """
         ...
 
     def get_next_forced_event_time(self, t_prev: float, t_target: float) -> float | None:
         """
         Return the next exact-alignment event time inside ``(t_prev, t_target]``.
+        """
+        ...
+
+    def resolve_step(self, accepted: bool, params: Vec) -> float | None:
+        """Resolve a prepared external boundary step after Newton.
+
+        :param accepted: Whether the EMT numerical step converged.
+        :param params: Full runtime-parameter vector.
+        :return: Earlier state-event retry time, or ``None``.
         """
         ...
 
@@ -277,16 +287,17 @@ def _implements_forced_event_time_api(boundary_updater: Any) -> bool:
     :param boundary_updater: Boundary updater instance.
     :return: ``True`` when the API is implemented.
     """
-    updater_type: type = type(boundary_updater)
-    base_type: type
+    return "get_next_forced_event_time" in dir(boundary_updater)
 
-    for base_type in updater_type.__mro__:
-        if "get_next_forced_event_time" in base_type.__dict__:
-            return True
-        else:
-            pass
 
-    return False
+def _implements_step_resolution_api(boundary_updater: Any) -> bool:
+    """Return whether one boundary updater implements ``resolve_step``.
+
+    :param boundary_updater: Boundary updater instance.
+    :return: ``True`` when transactional step resolution is implemented.
+    """
+
+    return "resolve_step" in dir(boundary_updater)
 
 
 def _emt_event_spec_time_sort_key(event_spec: Dict[str, float | str | None]) -> float:
@@ -344,6 +355,35 @@ def get_solver_forced_event_time(
         return None
     else:
         return float(next_time)
+
+
+def resolve_solver_boundary_step(
+        boundary_updater: EmtBoundaryUpdateProtocol | None,
+        accepted: bool,
+        params: Vec,
+) -> float | None:
+    """Resolve a prepared external boundary step when the updater supports it.
+
+    Legacy and native boundary updaters without transactional FMU ME state do
+    not need a resolution callback.
+
+    :param boundary_updater: Effective boundary updater used by the solver.
+    :param accepted: Whether the EMT Newton step converged.
+    :param params: Full runtime-parameter vector receiving resolved outputs.
+    :return: Earlier state-event retry time, or ``None``.
+    """
+
+    if boundary_updater is None:
+        retry_time: float | None = None
+    else:
+        if _implements_step_resolution_api(boundary_updater):
+            retry_time = boundary_updater.resolve_step(
+                accepted=accepted,
+                params=params,
+            )
+        else:
+            retry_time = None
+    return retry_time
 
 
 def is_problem_owned_boundary_updater(problem: "EmtProblemTemplate",
@@ -424,6 +464,56 @@ class EmtProblemTemplate(ABC):
     CONSTANT_PARAMS_NAME = "cprms"
     DIFF_NAME = "diff"
     TIME_NAME = "glob_time"
+
+    __slots__ = (
+        "sys_block",
+        "grid",
+        "_glob_time",
+        "_newton_trace_collector",
+        "_init_eqs_flat",
+        "_diff_init_eqs_flat",
+        "_state_vars",
+        "_algebraic_vars",
+        "_state_eqs",
+        "_algebraic_eqs",
+        "_diff_vars",
+        "_static_parameter_values",
+        "_variable_parameters",
+        "_event_parameters_eqs",
+        "_runtime_mode_uids",
+        "_constant_parameters",
+        "_parameters_values",
+        "_runtime_all_parameters_source",
+        "_runtime_all_eqs_source",
+        "_runtime_continuous_parameters",
+        "_runtime_mode_parameters",
+        "_runtime_continuous_eqs",
+        "_runtime_mode_eqs",
+        "_runtime_continuous_slice",
+        "_runtime_mode_slice",
+        "_vars_glob_name2uid",
+        "init_guess",
+        "event_params_init_dict",
+        "diff_init_guess",
+        "_event_params_values",
+        "_constant_params_values",
+        "progress_signal",
+        "progress_text",
+        "_n_vars",
+        "_n_state",
+        "_n_alg",
+        "_n_algebraic",
+        "_n_diff",
+        "_n_params",
+        "_n_event_params",
+        "_uid2idx_vars",
+        "_uid2idx_diff",
+        "_uid2idx_params",
+        "_uid2idx_event_params",
+        "_compiler_names_dict",
+        "_alias_names_dict",
+        "_uid2idx_t",
+    )
 
     def __init__(self,
                  sys_block: Block,
@@ -733,7 +823,11 @@ class EmtProblemTemplate(ABC):
 
         if n_runtime > 0:
             self._event_params_values = self._initialize_runtime_parameter_values(0.0, seed_values=self._event_params_values)
-            self._event_params_values = self.def_event_params_fn(self._event_params_values, 0.0)
+            self._event_params_values = self.def_event_params_fn(
+                self._event_params_values,
+                0.0,
+                defer_unavailable_dependencies=True,
+            )
         else:
             pass
 
@@ -940,7 +1034,7 @@ class EmtProblemTemplate(ABC):
             if runtime_parameter.uid in runtime_equation_lookup:
                 refreshed_equations.append(runtime_equation_lookup[runtime_parameter.uid])
             else:
-                runtime_idx: int | None = self.uid2idx_event_params.get(runtime_parameter.uid, None) if hasattr(self, 'uid2idx_event_params') else None
+                runtime_idx: int | None = self.uid2idx_event_params.get(runtime_parameter.uid, None)
                 if runtime_idx is None or runtime_idx >= len(self._event_parameters_eqs):
                     refreshed_equations.append(Const(None))
                 else:
@@ -1004,11 +1098,50 @@ class EmtProblemTemplate(ABC):
             expression: Any = self._event_parameters_eqs[i]
             if isinstance(expression, Const) and expression.value is None:
                 out[i] = float(out[i])
+            elif isinstance(expression, Expr) and not self._runtime_expression_dependencies_available(expression):
+                # Runtime initialization happens once while the generic problem
+                # storage is being assembled and again after explicit/native
+                # initialization.  A model-owned runtime expression may depend
+                # on algebraic or state values that are intentionally unavailable
+                # during the first pass.  Preserve its provisional seed here;
+                # explicit initialization will resolve the expression through
+                # the full dependency graph and promote the resulting scalar.
+                out[i] = float(out[i])
             else:
                 out[i] = self._evaluate_runtime_expression(expression, out, tm)
             i += 1
 
         return out
+
+    def _runtime_expression_dependencies_available(self, expression: Expr) -> bool:
+        """Return whether a runtime expression can be evaluated at this stage.
+
+        Runtime and constant parameters are always represented in the problem
+        vectors. Algebraic, state, and differential variables become available
+        only after an initialization value has been assigned. Variables owned by
+        a connected sibling block are deliberately deferred to the explicit
+        initialization graph, which supplies its external UID bindings.
+
+        :param expression: Runtime initialization expression to inspect.
+        :return: ``True`` when every referenced variable has a usable binding.
+        """
+        for variable in expression.get_vars():
+            if variable.uid == self._glob_time.uid or variable.name in {"time", self.TIME_NAME}:
+                pass
+            elif variable.uid in self._uid2idx_event_params:
+                pass
+            elif variable.uid in self._uid2idx_params:
+                pass
+            elif variable.uid in self._uid2idx_vars:
+                if self.init_guess.get(variable.uid, None) is None:
+                    return False
+            elif variable.uid in self._uid2idx_diff:
+                if self.diff_init_guess.get(variable.uid, None) is None:
+                    return False
+            else:
+                return False
+
+        return True
 
     def _evaluate_runtime_expression(self, expression: Any, runtime_params: Vec, tm: float) -> float:
         """
@@ -1265,7 +1398,40 @@ class EmtProblemTemplate(ABC):
                 pass
         return dx
 
-    def def_event_params_fn(self, ev_param: Vec, tm: float) -> Vec:
+    def set_x0(self, x0: Vec) -> None:
+        """
+        Set the initial state vector guess from an array.
+
+        :param x0: Initial state vector.
+        :type x0: Vec
+        :return: None.
+        """
+        for uid, idx in self._uid2idx_vars.items():
+            if idx < len(x0):
+                self.init_guess[uid] = float(x0[idx])
+            else:
+                pass
+
+    def set_dx0(self, dx0: Vec) -> None:
+        """
+        Set the initial differential vector guess from an array.
+
+        :param dx0: Initial differential vector.
+        :type dx0: Vec
+        :return: None.
+        """
+        for uid, idx in self._uid2idx_diff.items():
+            if idx < len(dx0):
+                self.diff_init_guess[uid] = float(dx0[idx])
+            else:
+                pass
+
+    def def_event_params_fn(
+            self,
+            ev_param: Vec,
+            tm: float,
+            defer_unavailable_dependencies: bool = False,
+    ) -> Vec:
         """
         Update only the continuous runtime parameter slice.
 
@@ -1275,6 +1441,8 @@ class EmtProblemTemplate(ABC):
 
         :param ev_param: Current flat runtime parameter vector.
         :param tm: Current simulation time.
+        :param defer_unavailable_dependencies: Preserve the current value when
+            construction-time algebraic/state dependencies are not initialized.
         :return: Updated flat runtime parameter vector.
         """
         n_continuous: int = len(self._runtime_continuous_eqs)
@@ -1289,7 +1457,14 @@ class EmtProblemTemplate(ABC):
                 global_idx: int = self._runtime_continuous_slice.start + i
                 expression: Any = self._runtime_continuous_eqs[i]
 
-                out[global_idx] = self._evaluate_runtime_expression(expression, out, tm)
+                if (
+                    defer_unavailable_dependencies
+                    and isinstance(expression, Expr)
+                    and not self._runtime_expression_dependencies_available(expression)
+                ):
+                    pass
+                else:
+                    out[global_idx] = self._evaluate_runtime_expression(expression, out, tm)
                 i += 1
 
             return out
@@ -1488,6 +1663,3 @@ class EmtProblemTemplate(ABC):
     @property
     def event_parameters_eqs(self) -> List[Any]:
         return self._event_parameters_eqs
-
-
-

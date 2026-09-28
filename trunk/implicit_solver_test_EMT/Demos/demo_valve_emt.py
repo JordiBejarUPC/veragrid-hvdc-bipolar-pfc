@@ -134,7 +134,7 @@ def plot_valve_demo_result(valve_tpe: ValveEmtType, result: ValveDemoResult) -> 
     axes[3].legend(loc="best")
 
     fig.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 def main() -> None:

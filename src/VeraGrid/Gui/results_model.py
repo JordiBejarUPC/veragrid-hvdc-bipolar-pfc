@@ -3,19 +3,19 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import io
+from enum import Enum
 from typing import Any
 
 import numpy as np
 import pandas as pd
 from PySide6 import QtCore, QtWidgets
 
-from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Utils.Filtering.results_table_filtering import FilterResultsTable
 
 
-def is_missing_result_value(value: Any) -> bool:
+def is_missing_result_value(value: object) -> bool:
     """
     Check whether a scalar result value should be displayed as an empty cell.
 
@@ -139,6 +139,8 @@ class ResultsModel(WrappableTableModel):
 
                 if isinstance(val, str):
                     return val
+                elif isinstance(val, Enum):
+                    return str(val)
                 elif isinstance(val, complex):
                     if val.real != 0 or val.imag != 0:
                         return val.__format__(self.table.format_string)
@@ -346,19 +348,3 @@ class ResultsModel(WrappableTableModel):
         else:
             # there are no elements
             pass
-
-    def plot(self, ax=None, selected_col_idx=None, selected_rows=None, stacked=False):
-        """
-        Plot the data model
-        :param ax: Matplotlib axis
-        :param selected_col_idx: list of selected column indices
-        :param selected_rows: list of rows to plot
-        :param stacked: stack the data?
-        """
-        try:
-            self.table.plot(ax=ax,
-                            selected_col_idx=selected_col_idx,
-                            selected_rows=selected_rows,
-                            stacked=stacked)
-        except ValueError as e:
-            error_msg(text=str(e), title="Plotting error")

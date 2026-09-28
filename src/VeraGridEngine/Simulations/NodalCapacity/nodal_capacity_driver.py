@@ -228,16 +228,20 @@ class NodalCapacityDriver(DriverTemplate):
                                          options=vc_options,
                                          inputs=vc_inputs,
                                          pf_options=pf_options)
-        vc.run()
         res = vc.run_at(t_idx=None)
 
-        Sbase = self.grid.Sbase
-        self.results.voltage = res.voltages[-1, :]
-        self.results.Sbus = res.Sbus[-1, :] * Sbase
-        self.results.Sf = res.Sf[-1, :] * Sbase
-        self.results.St = res.St[-1, :] * Sbase
-        self.results.loading = res.loading[-1, :]
-        self.results.converged = res.converged[-1]
+        self.logger += vc.logger
+
+        if len(res.voltages) > 0:
+            Sbase = self.grid.Sbase
+            self.results.voltage = res.voltages[-1, :]
+            self.results.Sbus = res.Sbus[-1, :] * Sbase
+            self.results.Sf = res.Sf[-1, :] * Sbase
+            self.results.St = res.St[-1, :] * Sbase
+            self.results.loading = res.loading[-1, :]
+            self.results.converged = res.converged[-1]
+        else:
+            self.results.converged = False
 
         return self.results
 
@@ -282,6 +286,7 @@ class NodalCapacityDriver(DriverTemplate):
         :return:
         """
         self.tic()
+        self.report_text("Compiling and configuring...")
 
         if self.engine == EngineType.VeraGrid:
             if self.options.method == NodalCapacityMethod.LinearOptimization:

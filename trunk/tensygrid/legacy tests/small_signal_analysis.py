@@ -69,7 +69,7 @@ def generate_plots(eigenvalues: np.ndarray, participation_factors: np.ndarray) -
         ax2.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 def generate_dynamic_plots(dynamic_runs: list[dict]) -> None:
@@ -128,7 +128,7 @@ def generate_dynamic_plots(dynamic_runs: list[dict]) -> None:
 
     plt.suptitle("Dynamic RMS Comparison by Generator Saturation Model")
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 def _seed_problem_init_guess_from_vector(problem, x_vec: np.ndarray) -> None:

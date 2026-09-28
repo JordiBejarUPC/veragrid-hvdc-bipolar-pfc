@@ -53,4 +53,4 @@ else:
 
 print(max_srap_power, solved)
 
-plt.show()
+plt.show(block=False)

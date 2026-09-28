@@ -5,16 +5,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Templates.Emt.bridge_filter_control_2level_3ph_emt_template &mdash; VeraGrid 6.4.4 documentation</title>
+  <title>VeraGridEngine.Templates.Emt.bridge_filter_control_2level_3ph_emt_template &mdash; VeraGrid 6.5.37 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
-      <link rel="stylesheet" type="text/css" href="../../../../_static/style.css?v=b3745da1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/style.css?v=ba3a54df" />
 
   
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../../_static/documentation_options.js?v=f2c0b4ab"></script>
+      <script src="../../../../_static/documentation_options.js?v=069969c3"></script>
       <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -59,6 +60,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/short_circuit.html">⚡ Short-Circuit</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/stochastic_power_flow.html">🎲 Stochastic power flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/continuation_power_flow.html">➿ Continuation power flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/sigma_analysis.html">🌘 Sigma analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/solar_wizard.html">☀️ Solar power wizard</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/contingency_analysis.html">💥 Contingency analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/investment_optimization.html">🏦 Investment optimization</a></li>
@@ -68,13 +70,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/reliability.html">🚧 Reliability</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/state_estimation.html">🌀 State estimation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/dynamic_simulations.html">🧲 Dynamic simulations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/rms_simulations.html">📝 RMS simulations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/small_signal_stability.html">Small-Signal Stability Analysis</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/emt_simulations.html">🔬 EMT simulations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/development.html">💻 Development</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/plugins.html">🧩 Plugins</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/license.html">📜 License</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../rst_source/change_log.html">Change log</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/data_models.html">Data Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../rst_source/api/auto/modules.html">VeraGrid</a></li>
 </ul>
@@ -189,9 +187,10 @@
     <span class="n">eps</span><span class="p">:</span> <span class="n">Const</span> <span class="o">=</span> <span class="n">Const</span><span class="p">(</span><span class="mf">1.0e-10</span><span class="p">)</span>
     <span class="n">c0</span><span class="p">:</span> <span class="n">Const</span> <span class="o">=</span> <span class="n">Const</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
     <span class="n">c23</span><span class="p">:</span> <span class="n">Const</span> <span class="o">=</span> <span class="n">Const</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">/</span> <span class="mf">3.0</span><span class="p">)</span>
+    <span class="n">c_voltage_headroom</span><span class="p">:</span> <span class="n">Const</span> <span class="o">=</span> <span class="n">Const</span><span class="p">(</span><span class="mf">1.15</span><span class="p">)</span>
     <span class="n">v_dc_eff</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">v_dc</span><span class="p">,</span> <span class="n">vdc_floor</span><span class="p">)</span>
     <span class="n">omega_ratio</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">=</span> <span class="n">omega_pll</span> <span class="o">/</span> <span class="p">(</span><span class="n">omega_base</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span>
-    <span class="n">i_d0</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">=</span> <span class="n">c23</span> <span class="o">*</span> <span class="p">((</span><span class="n">P_ref</span> <span class="o">/</span> <span class="n">sbase</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">P_loss0</span> <span class="o">/</span> <span class="n">sbase</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">Vpk</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span>
+    <span class="n">i_d0</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">=</span> <span class="n">c23</span> <span class="o">*</span> <span class="p">((</span><span class="n">P_ref</span> <span class="o">/</span> <span class="n">sbase</span><span class="p">)</span> <span class="o">+</span> <span class="n">P_loss0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">Vpk</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span>
     <span class="n">i_q0</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">=</span> <span class="n">c23</span> <span class="o">*</span> <span class="p">(</span><span class="n">Q_ref</span> <span class="o">/</span> <span class="n">sbase</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">Vpk</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span>
     <span class="n">v_cmd_d0</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">=</span> <span class="n">Vpk</span> <span class="o">-</span> <span class="n">R_f</span> <span class="o">*</span> <span class="n">i_d0</span> <span class="o">-</span> <span class="n">L_f</span> <span class="o">*</span> <span class="n">i_q0</span>
     <span class="n">v_cmd_q0</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">=</span> <span class="o">-</span><span class="n">R_f</span> <span class="o">*</span> <span class="n">i_q0</span> <span class="o">+</span> <span class="n">L_f</span> <span class="o">*</span> <span class="n">i_d0</span>
@@ -214,13 +213,12 @@
             <span class="n">v_pi_d_u</span> <span class="o">-</span> <span class="p">(</span><span class="n">i_kp</span> <span class="o">*</span> <span class="p">(</span><span class="n">i_d_ref</span> <span class="o">-</span> <span class="n">i_d</span><span class="p">)</span> <span class="o">+</span> <span class="n">xi_id</span><span class="p">),</span>
             <span class="n">v_pi_q_u</span> <span class="o">-</span> <span class="p">(</span><span class="n">i_kp</span> <span class="o">*</span> <span class="p">(</span><span class="n">i_q_ref</span> <span class="o">-</span> <span class="n">i_q</span><span class="p">)</span> <span class="o">+</span> <span class="n">xi_iq</span><span class="p">),</span>
             <span class="n">v_pi_0_u</span> <span class="o">-</span> <span class="p">(</span><span class="n">i_kp</span> <span class="o">*</span> <span class="p">(</span><span class="n">i_0_ref</span> <span class="o">-</span> <span class="n">i_0</span><span class="p">)</span> <span class="o">+</span> <span class="n">xi_i0</span><span class="p">),</span>
-            <span class="c1"># The switched abc RL plant induces the opposite dq cross-coupling signs to the pseudo</span>
-            <span class="c1"># dq branch, so the decoupling terms must be flipped here to recover the same low-</span>
-            <span class="c1"># frequency closed-loop behaviour after handover.</span>
+            <span class="c1"># With this sine-based Park transform the rotating-frame derivatives</span>
+            <span class="c1"># contribute -omega*i_q on d and +omega*i_d on q.</span>
             <span class="n">v_cmd_d_u</span> <span class="o">-</span> <span class="p">(</span><span class="n">v_d</span> <span class="o">-</span> <span class="n">R_f</span> <span class="o">*</span> <span class="n">i_d</span> <span class="o">-</span> <span class="n">omega_ratio</span> <span class="o">*</span> <span class="n">L_f</span> <span class="o">*</span> <span class="n">i_q</span> <span class="o">-</span> <span class="n">v_pi_d_u</span><span class="p">),</span>
             <span class="n">v_cmd_q_u</span> <span class="o">-</span> <span class="p">(</span><span class="n">v_q</span> <span class="o">-</span> <span class="n">R_f</span> <span class="o">*</span> <span class="n">i_q</span> <span class="o">+</span> <span class="n">omega_ratio</span> <span class="o">*</span> <span class="n">L_f</span> <span class="o">*</span> <span class="n">i_d</span> <span class="o">-</span> <span class="n">v_pi_q_u</span><span class="p">),</span>
             <span class="n">v_cmd_0_u</span> <span class="o">-</span> <span class="p">(</span><span class="n">v_0</span> <span class="o">-</span> <span class="n">R_f</span> <span class="o">*</span> <span class="n">i_0</span> <span class="o">-</span> <span class="n">v_pi_0_u</span><span class="p">),</span>
-            <span class="n">k_v_conv</span> <span class="o">-</span> <span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">v_cmd_d0</span> <span class="o">*</span> <span class="n">v_cmd_d0</span> <span class="o">+</span> <span class="n">v_cmd_q0</span> <span class="o">*</span> <span class="n">v_cmd_q0</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">m_max</span> <span class="o">*</span> <span class="p">(</span><span class="n">Vdc_ref</span> <span class="o">+</span> <span class="n">eps</span><span class="p">))),</span>
+            <span class="n">k_v_conv</span> <span class="o">-</span> <span class="p">(</span><span class="n">c_voltage_headroom</span> <span class="o">*</span> <span class="n">sym</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">v_cmd_d0</span> <span class="o">*</span> <span class="n">v_cmd_d0</span> <span class="o">+</span> <span class="n">v_cmd_q0</span> <span class="o">*</span> <span class="n">v_cmd_q0</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">m_max</span> <span class="o">*</span> <span class="p">(</span><span class="n">Vdc_ref</span> <span class="o">+</span> <span class="n">eps</span><span class="p">))),</span>
             <span class="n">v_lim</span> <span class="o">-</span> <span class="p">(</span><span class="n">k_v_conv</span> <span class="o">*</span> <span class="n">m_max</span> <span class="o">*</span> <span class="n">v_dc_eff</span><span class="p">),</span>
             <span class="n">v_cmd_d</span> <span class="o">-</span> <span class="n">v_d_cap</span><span class="p">,</span>
             <span class="n">v_cmd_q</span> <span class="o">-</span> <span class="n">sym</span><span class="o">.</span><span class="n">hard_sat</span><span class="p">(</span><span class="n">v_cmd_q_u</span><span class="p">,</span> <span class="o">-</span><span class="n">v_q_cap</span><span class="p">,</span> <span class="n">v_q_cap</span><span class="p">),</span>
@@ -237,7 +235,7 @@
             <span class="p">(</span><span class="n">v_cmd_d_u</span><span class="p">,</span> <span class="n">v_cmd_d0</span><span class="p">),</span>
             <span class="p">(</span><span class="n">v_cmd_q_u</span><span class="p">,</span> <span class="n">v_cmd_q0</span><span class="p">),</span>
             <span class="p">(</span><span class="n">v_cmd_0_u</span><span class="p">,</span> <span class="n">c0</span><span class="p">),</span>
-            <span class="p">(</span><span class="n">k_v_conv</span><span class="p">,</span> <span class="n">sym</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">v_cmd_d0</span> <span class="o">*</span> <span class="n">v_cmd_d0</span> <span class="o">+</span> <span class="n">v_cmd_q0</span> <span class="o">*</span> <span class="n">v_cmd_q0</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">m_max</span> <span class="o">*</span> <span class="p">(</span><span class="n">Vdc_ref</span> <span class="o">+</span> <span class="n">eps</span><span class="p">))),</span>
+            <span class="p">(</span><span class="n">k_v_conv</span><span class="p">,</span> <span class="n">c_voltage_headroom</span> <span class="o">*</span> <span class="n">sym</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">v_cmd_d0</span> <span class="o">*</span> <span class="n">v_cmd_d0</span> <span class="o">+</span> <span class="n">v_cmd_q0</span> <span class="o">*</span> <span class="n">v_cmd_q0</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">m_max</span> <span class="o">*</span> <span class="p">(</span><span class="n">Vdc_ref</span> <span class="o">+</span> <span class="n">eps</span><span class="p">))),</span>
             <span class="p">(</span><span class="n">v_lim</span><span class="p">,</span> <span class="n">k_v_conv</span> <span class="o">*</span> <span class="n">m_max</span> <span class="o">*</span> <span class="n">v_dc_eff</span><span class="p">),</span>
             <span class="p">(</span><span class="n">v_cmd_d</span><span class="p">,</span> <span class="n">v_cmd_d0</span><span class="p">),</span>
             <span class="p">(</span><span class="n">v_cmd_q</span><span class="p">,</span> <span class="n">v_cmd_q0</span><span class="p">),</span>
@@ -606,6 +604,33 @@
         <span class="n">P_loss0_in</span><span class="p">,</span>
         <span class="n">Vpk_in</span><span class="p">,</span>
     <span class="p">]))</span>
+
+    <span class="c1"># Initialize the physical RL-filter currents at the commanded dq0 operating</span>
+    <span class="c1"># point.  The standalone plant defaults these states to zero because it has</span>
+    <span class="c1"># no current-reference inputs of its own.  In the controlled converter that</span>
+    <span class="c1"># zero-current seed is inconsistent with a non-zero power-flow transfer and</span>
+    <span class="c1"># produces a large artificial transient at the first EMT step.</span>
+    <span class="n">shift</span><span class="p">:</span> <span class="n">Const</span> <span class="o">=</span> <span class="n">Const</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">3.0</span><span class="p">)</span>
+    <span class="n">theta_b</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">=</span> <span class="n">pll_theta</span> <span class="o">-</span> <span class="n">shift</span>
+    <span class="n">theta_c</span><span class="p">:</span> <span class="n">Expr</span> <span class="o">=</span> <span class="n">pll_theta</span> <span class="o">+</span> <span class="n">shift</span>
+    <span class="n">plant_block</span><span class="o">.</span><span class="n">init_eqs</span><span class="p">[</span><span class="n">plant_i_A</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">sym</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">pll_theta</span><span class="p">)</span> <span class="o">*</span> <span class="n">i_d_ref_in</span>
+        <span class="o">-</span> <span class="n">sym</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">pll_theta</span><span class="p">)</span> <span class="o">*</span> <span class="n">i_q_ref_in</span>
+        <span class="o">+</span> <span class="n">i_0_ref_in</span>
+    <span class="p">)</span>
+    <span class="n">plant_block</span><span class="o">.</span><span class="n">init_eqs</span><span class="p">[</span><span class="n">plant_i_B</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">sym</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta_b</span><span class="p">)</span> <span class="o">*</span> <span class="n">i_d_ref_in</span>
+        <span class="o">-</span> <span class="n">sym</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta_b</span><span class="p">)</span> <span class="o">*</span> <span class="n">i_q_ref_in</span>
+        <span class="o">+</span> <span class="n">i_0_ref_in</span>
+    <span class="p">)</span>
+    <span class="n">plant_block</span><span class="o">.</span><span class="n">init_eqs</span><span class="p">[</span><span class="n">plant_i_C</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">sym</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta_c</span><span class="p">)</span> <span class="o">*</span> <span class="n">i_d_ref_in</span>
+        <span class="o">-</span> <span class="n">sym</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta_c</span><span class="p">)</span> <span class="o">*</span> <span class="n">i_q_ref_in</span>
+        <span class="o">+</span> <span class="n">i_0_ref_in</span>
+    <span class="p">)</span>
+    <span class="n">plant_block</span><span class="o">.</span><span class="n">init_eqs</span><span class="p">[</span><span class="n">plant_i_d</span><span class="p">]</span> <span class="o">=</span> <span class="n">i_d_ref_in</span>
+    <span class="n">plant_block</span><span class="o">.</span><span class="n">init_eqs</span><span class="p">[</span><span class="n">plant_i_q</span><span class="p">]</span> <span class="o">=</span> <span class="n">i_q_ref_in</span>
+    <span class="n">plant_block</span><span class="o">.</span><span class="n">init_eqs</span><span class="p">[</span><span class="n">plant_i_0</span><span class="p">]</span> <span class="o">=</span> <span class="n">i_0_ref_in</span>
 
     <span class="n">templ</span><span class="o">.</span><span class="n">block</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">list</span><span class="p">([</span><span class="n">plant_block</span><span class="p">,</span> <span class="n">measurement_filter_block</span><span class="p">,</span> <span class="n">pll_input_filter_block</span><span class="p">,</span> <span class="n">pll_block</span><span class="p">,</span> <span class="n">current_ctrl_block</span><span class="p">]))</span>
     <span class="n">templ</span><span class="o">.</span><span class="n">block</span><span class="o">.</span><span class="n">unify_blocks</span><span class="p">()</span>

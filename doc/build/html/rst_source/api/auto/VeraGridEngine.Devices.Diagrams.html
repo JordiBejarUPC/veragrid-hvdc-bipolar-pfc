@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Devices.Diagrams package &mdash; VeraGrid 6.5.5 documentation</title>
+  <title>VeraGridEngine.Devices.Diagrams package &mdash; VeraGrid 6.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
@@ -15,7 +15,7 @@
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../_static/documentation_options.js?v=276d7aeb"></script>
+      <script src="../../../_static/documentation_options.js?v=9cce70e7"></script>
       <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -47,6 +47,7 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -137,7 +138,7 @@
 <span id="veragridengine-devices-diagrams-base-diagram-module"></span><h2>VeraGridEngine.Devices.Diagrams.base_diagram module<a class="headerlink" href="#module-VeraGridEngine.Devices.Diagrams.base_diagram" title="Link to this heading"></a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Devices.Diagrams.base_diagram.</span></span><span class="sig-name descname"><span class="pre">BaseDiagram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">idtag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagram_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.enumerations.DiagramType" title="VeraGridEngine.enumerations.DiagramType"><span class="pre">DiagramType</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;enum</span> <span class="pre">'DiagramType'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_flow_based_width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_branch_width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_branch_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_bus_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_bus_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrow_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.enumerations.Colormaps" title="VeraGridEngine.enumerations.Colormaps"><span class="pre">Colormaps</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">VeraGrid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_bus_voltage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/base_diagram.html#BaseDiagram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Devices.Diagrams.base_diagram.</span></span><span class="sig-name descname"><span class="pre">BaseDiagram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">idtag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagram_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.enumerations.DiagramType" title="VeraGridEngine.enumerations.DiagramType"><span class="pre">DiagramType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_flow_based_width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_branch_width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_branch_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_bus_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_bus_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrow_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.enumerations.Colormaps" title="VeraGridEngine.enumerations.Colormaps"><span class="pre">Colormaps</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">VeraGrid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_bus_voltage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/base_diagram.html#BaseDiagram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Diagram</p>
 <dl class="py property">
@@ -172,6 +173,11 @@ locations to objects in a target circuit.</p>
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.data">
+<span class="sig-name descname"><span class="pre">data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.base_diagram.PointsGroup" title="VeraGridEngine.Devices.Diagrams.base_diagram.PointsGroup"><span class="pre">PointsGroup</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.default_bus_voltage">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">default_bus_voltage</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.default_bus_voltage" title="Link to this definition"></a></dt>
@@ -195,6 +201,11 @@ locations to objects in a target circuit.</p>
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.diagram_type">
+<span class="sig-name descname"><span class="pre">diagram_type</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.enumerations.DiagramType" title="VeraGridEngine.enumerations.DiagramType"><span class="pre">DiagramType</span></a></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.diagram_type" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.get_boundaries">
 <span class="sig-name descname"><span class="pre">get_boundaries</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/base_diagram.html#BaseDiagram.get_boundaries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.get_boundaries" title="Link to this definition"></a></dt>
@@ -208,6 +219,17 @@ locations to objects in a target circuit.</p>
 <dd><p>get the properties dictionary to save
 :return: dictionary to serialize</p>
 </dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.group">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">group</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.group" title="Link to this definition"></a></dt>
+<dd><p>Parent folder/group of this diagram.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.idtag">
+<span class="sig-name descname"><span class="pre">idtag</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.idtag" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.max_branch_width">
@@ -248,6 +270,11 @@ locations to objects in a target circuit.</p>
 </dd>
 </dl>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram.palette">
@@ -366,6 +393,16 @@ is preserved.</p>
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.PointsGroup.locations">
+<span class="sig-name descname"><span class="pre">locations</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation" title="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation"><span class="pre">GraphicLocation</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.map_location.MapLocation" title="VeraGridEngine.Devices.Diagrams.map_location.MapLocation"><span class="pre">MapLocation</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.PointsGroup.locations" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.PointsGroup.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.PointsGroup.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.PointsGroup.parse_data">
 <span class="sig-name descname"><span class="pre">parse_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ALL_DEV_TYPES</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="VeraGridEngine.html#VeraGridEngine.basic_structures.Logger" title="VeraGridEngine.basic_structures.Logger"><span class="pre">Logger</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">category</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/base_diagram.html#PointsGroup.parse_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.PointsGroup.parse_data" title="Link to this definition"></a></dt>
@@ -442,17 +479,17 @@ is preserved.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.base_diagram.copy_diagrams">
-<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Devices.Diagrams.base_diagram.</span></span><span class="sig-name descname"><span class="pre">copy_diagrams</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diagrams</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram" title="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram"><span class="pre">BaseDiagram</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ALL_DEV_TYPES</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram" title="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram"><span class="pre">BaseDiagram</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/base_diagram.html#copy_diagrams"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.copy_diagrams" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Devices.Diagrams.base_diagram.</span></span><span class="sig-name descname"><span class="pre">copy_diagrams</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diagrams</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ALL_DEV_TYPES</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/base_diagram.html#copy_diagrams"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.base_diagram.copy_diagrams" title="Link to this definition"></a></dt>
 <dd><p>Copy diagrams while treating API objects as pointers.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>diagrams</strong> – Diagrams to copy.</p></li>
+<li><p><strong>diagrams</strong> – Diagrams list or DiagramTree to copy.</p></li>
 <li><p><strong>obj_dict</strong> – Optional target circuit object dictionary used to rebind pointers.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Copied diagrams.</p>
+<dd class="field-even"><p>Copied diagrams or DiagramTree.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -544,6 +581,11 @@ is preserved.</p>
 </section>
 <section id="module-VeraGridEngine.Devices.Diagrams.block_diagram">
 <span id="veragridengine-devices-diagrams-block-diagram-module"></span><h2>VeraGridEngine.Devices.Diagrams.block_diagram module<a class="headerlink" href="#module-VeraGridEngine.Devices.Diagrams.block_diagram" title="Link to this heading"></a></h2>
+<p>Persist the graphical projection of one symbolic block hierarchy.</p>
+<p><code class="docutils literal notranslate"><span class="pre">BlockDiagram</span></code> stores editor layout, visible ports, and wire routing only.
+Electrical assembly must resolve physical connectivity from <code class="docutils literal notranslate"><span class="pre">MultiCircuit</span></code>
+and symbolic behavior from <code class="docutils literal notranslate"><span class="pre">Block</span></code>; diagram records are never authoritative
+runtime topology.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Devices.Diagrams.block_diagram.</span></span><span class="sig-name descname"><span class="pre">BlockDiagram</span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram" title="Link to this definition"></a></dt>
@@ -595,6 +637,11 @@ is preserved.</p>
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.con_data">
+<span class="sig-name descname"><span class="pre">con_data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramConnection" title="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramConnection"><span class="pre">BlockDiagramConnection</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.con_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.copy">
 <span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagram.copy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.copy" title="Link to this definition"></a></dt>
@@ -628,6 +675,36 @@ is preserved.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.get_projection_node">
+<span class="sig-name descname"><span class="pre">get_projection_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">layout_uid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode" title="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode"><span class="pre">BlockDiagramProjectionNode</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagram.get_projection_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.get_projection_node" title="Link to this definition"></a></dt>
+<dd><p>Return one declared projection position when it exists.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>layout_uid</strong> – Deterministic semantic projection identifier.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Matching projection node or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.get_projection_node_data_dict">
+<span class="sig-name descname"><span class="pre">get_projection_node_data_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagram.get_projection_node_data_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.get_projection_node_data_dict" title="Link to this definition"></a></dt>
+<dd><p>Return every derived projection position for persistence.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Projection positions keyed by deterministic semantic uid.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.node_data">
+<span class="sig-name descname"><span class="pre">node_data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramNode" title="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramNode"><span class="pre">BlockDiagramNode</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.node_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.parse">
 <span class="sig-name descname"><span class="pre">parse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagram.parse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.parse" title="Link to this definition"></a></dt>
 <dd><dl class="field-list simple">
@@ -651,6 +728,48 @@ is preserved.</p>
 <span class="sig-name descname"><span class="pre">parse_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_data</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagram.parse_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.parse_nodes" title="Link to this definition"></a></dt>
 <dd><p>Parse node data from dictionary</p>
 </dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.parse_projection_nodes">
+<span class="sig-name descname"><span class="pre">parse_projection_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">projection_nodes_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagram.parse_projection_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.parse_projection_nodes" title="Link to this definition"></a></dt>
+<dd><p>Parse Qt-free derived projection positions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>projection_nodes_data</strong> – Declarative projection-node records.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.projection_node_data">
+<span class="sig-name descname"><span class="pre">projection_node_data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode" title="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode"><span class="pre">BlockDiagramProjectionNode</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.projection_node_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.set_projection_node_position">
+<span class="sig-name descname"><span class="pre">set_projection_node_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">layout_uid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagram.set_projection_node_position"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.set_projection_node_position" title="Link to this definition"></a></dt>
+<dd><p>Create or update one stable derived projection position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>layout_uid</strong> – Deterministic semantic projection identifier.</p></li>
+<li><p><strong>x</strong> – Scene x coordinate.</p></li>
+<li><p><strong>y</strong> – Scene y coordinate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.status">
+<span class="sig-name descname"><span class="pre">status</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.status" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram.to_dict">
@@ -709,7 +828,7 @@ is preserved.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramConnection.routing_payload">
-<span class="sig-name descname"><span class="pre">routing_payload</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramConnection.routing_payload" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">routing_payload</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramConnection.routing_payload" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -782,7 +901,7 @@ is preserved.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramNode.sub_diagram">
-<span class="sig-name descname"><span class="pre">sub_diagram</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram" title="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram"><span class="pre">BlockDiagram</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramNode.sub_diagram" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">sub_diagram</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram" title="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagram"><span class="pre">BlockDiagram</span></a></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramNode.sub_diagram" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -802,6 +921,85 @@ is preserved.</p>
 
 </dd></dl>
 
+<dl class="py class">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Devices.Diagrams.block_diagram.</span></span><span class="sig-name descname"><span class="pre">BlockDiagramProjectionNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">layout_uid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagramProjectionNode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Store one Qt-free position in a derived semantic projection.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode" title="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode"><span class="pre">BlockDiagramProjectionNode</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagramProjectionNode.copy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.copy" title="Link to this definition"></a></dt>
+<dd><p>Return an independent projection position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Copied projection node.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.get_layout_uid">
+<span class="sig-name descname"><span class="pre">get_layout_uid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagramProjectionNode.get_layout_uid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.get_layout_uid" title="Link to this definition"></a></dt>
+<dd><p>Return the deterministic projection identifier.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Stable projection identifier.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.get_projection_node_dict">
+<span class="sig-name descname"><span class="pre">get_projection_node_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagramProjectionNode.get_projection_node_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.get_projection_node_dict" title="Link to this definition"></a></dt>
+<dd><p>Return the declarative persistence record.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON-compatible projection position.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.get_x">
+<span class="sig-name descname"><span class="pre">get_x</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagramProjectionNode.get_x"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.get_x" title="Link to this definition"></a></dt>
+<dd><p>Return the persisted scene x coordinate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Scene x coordinate.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.get_y">
+<span class="sig-name descname"><span class="pre">get_y</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagramProjectionNode.get_y"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.get_y" title="Link to this definition"></a></dt>
+<dd><p>Return the persisted scene y coordinate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Scene y coordinate.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.set_position">
+<span class="sig-name descname"><span class="pre">set_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/block_diagram.html#BlockDiagramProjectionNode.set_position"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.block_diagram.BlockDiagramProjectionNode.set_position" title="Link to this definition"></a></dt>
+<dd><p>Replace the persisted scene position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – New scene x coordinate.</p></li>
+<li><p><strong>y</strong> – New scene y coordinate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 <section id="module-VeraGridEngine.Devices.Diagrams.graphic_location">
 <span id="veragridengine-devices-diagrams-graphic-location-module"></span><h2>VeraGridEngine.Devices.Diagrams.graphic_location module<a class="headerlink" href="#module-VeraGridEngine.Devices.Diagrams.graphic_location" title="Link to this heading"></a></h2>
@@ -809,11 +1007,21 @@ is preserved.</p>
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Devices.Diagrams.graphic_location.</span></span><span class="sig-name descname"><span class="pre">GraphicLocation</span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/graphic_location.html#GraphicLocation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.api_object">
+<span class="sig-name descname"><span class="pre">api_object</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.api_object" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.copy">
 <span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_object</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ALL_DEV_TYPES</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation" title="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation"><span class="pre">GraphicLocation</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/graphic_location.html#GraphicLocation.copy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.copy" title="Link to this definition"></a></dt>
 <dd><p>Return a detached copy so diagrams do not accidentally share mutable layout state.</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.draw_labels">
+<span class="sig-name descname"><span class="pre">draw_labels</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.draw_labels" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.get_properties_dict">
@@ -821,6 +1029,41 @@ is preserved.</p>
 <dd><p>get as a dictionary point
 :return:</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.h">
+<span class="sig-name descname"><span class="pre">h</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.h" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.layout_metadata">
+<span class="sig-name descname"><span class="pre">layout_metadata</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.layout_metadata" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.poly_line">
+<span class="sig-name descname"><span class="pre">poly_line</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.poly_line" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.r">
+<span class="sig-name descname"><span class="pre">r</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.r" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.w">
+<span class="sig-name descname"><span class="pre">w</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.w" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.x">
+<span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.x" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.y">
+<span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation.y" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -831,6 +1074,12 @@ is preserved.</p>
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">VeraGridEngine.Devices.Diagrams.map_diagram.</span></span><span class="sig-name descname"><span class="pre">MapDiagram</span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/map_diagram.html#MapDiagram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram" title="VeraGridEngine.Devices.Diagrams.base_diagram.BaseDiagram"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDiagram</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ALL_DEV_TYPES</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram" title="VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram"><span class="pre">MapDiagram</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/map_diagram.html#MapDiagram.copy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.copy" title="Link to this definition"></a></dt>
+<dd><p>Copy the map diagram layout while treating API objects as pointers.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.get_data_dict">
 <span class="sig-name descname"><span class="pre">get_data_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation" title="VeraGridEngine.Devices.Diagrams.graphic_location.GraphicLocation"><span class="pre">GraphicLocation</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.map_location.MapLocation" title="VeraGridEngine.Devices.Diagrams.map_location.MapLocation"><span class="pre">MapLocation</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/map_diagram.html#MapDiagram.get_data_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.get_data_dict" title="Link to this definition"></a></dt>
@@ -844,6 +1093,16 @@ is preserved.</p>
 <dd><p>Find the middle coordinates as diagram origin
 :return: Longitude and Latitude</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.latitude">
+<span class="sig-name descname"><span class="pre">latitude</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.latitude" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.longitude">
+<span class="sig-name descname"><span class="pre">longitude</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.longitude" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.parse_data">
@@ -860,6 +1119,16 @@ is preserved.</p>
 <dd><p>Set the middle coordinates as diagram origin
 :return: Nothing</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.start_level">
+<span class="sig-name descname"><span class="pre">start_level</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.start_level" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.tile_source">
+<span class="sig-name descname"><span class="pre">tile_source</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.map_diagram.MapDiagram.tile_source" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -881,11 +1150,21 @@ is preserved.</p>
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_location.MapLocation.api_object">
+<span class="sig-name descname"><span class="pre">api_object</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.map_location.MapLocation.api_object" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_location.MapLocation.copy">
 <span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">api_object</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#VeraGridEngine.Devices.Diagrams.map_location.MapLocation" title="VeraGridEngine.Devices.Diagrams.map_location.MapLocation"><span class="pre">MapLocation</span></a></span></span><a class="reference internal" href="../../../_modules/VeraGridEngine/Devices/Diagrams/map_location.html#MapLocation.copy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.map_location.MapLocation.copy" title="Link to this definition"></a></dt>
 <dd><p>Return a detached copy while preserving the API object as a pointer.</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_location.MapLocation.draw_labels">
+<span class="sig-name descname"><span class="pre">draw_labels</span></span><a class="headerlink" href="#VeraGridEngine.Devices.Diagrams.map_location.MapLocation.draw_labels" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="VeraGridEngine.Devices.Diagrams.map_location.MapLocation.get_properties_dict">

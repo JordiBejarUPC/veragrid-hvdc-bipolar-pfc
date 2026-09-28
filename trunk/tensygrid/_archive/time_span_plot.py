@@ -133,7 +133,7 @@ def generar_grafics_final(nom_fitxer='time_span.md'):
             "Avís: No s'han trobat dades vàlides per generar el gràfic de dispersió (falten valors a 'State-space' o 'T_pre').")
 
     # Mostrar tots dos gràfics
-    plt.show()
+    plt.show(block=False)
 
 
 # Execució

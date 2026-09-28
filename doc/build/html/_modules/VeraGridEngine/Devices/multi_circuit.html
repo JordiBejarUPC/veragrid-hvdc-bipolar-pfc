@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Devices.multi_circuit &mdash; VeraGrid 6.5.5 documentation</title>
+  <title>VeraGridEngine.Devices.multi_circuit &mdash; VeraGrid 6.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../_static/documentation_options.js?v=276d7aeb"></script>
+      <script src="../../../_static/documentation_options.js?v=9cce70e7"></script>
       <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -103,7 +104,7 @@
   <h1>Source code for VeraGridEngine.Devices.multi_circuit</h1><div class="highlight"><pre>
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
-<span class="c1"># file, You can obtain one at https://mozilla.org/MPL/2.0/.  </span>
+<span class="c1"># file, You can obtain one at https://mozilla.org/MPL/2.0/.</span>
 <span class="c1"># SPDX-License-Identifier: MPL-2.0</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -115,7 +116,6 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">uuid</span><span class="w"> </span><span class="kn">import</span> <span class="n">getnode</span> <span class="k">as</span> <span class="n">get_mac</span><span class="p">,</span> <span class="n">uuid4</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">csc_matrix</span><span class="p">,</span> <span class="n">lil_matrix</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">VeraGridEngine.Devices.assets</span><span class="w"> </span><span class="kn">import</span> <span class="n">Assets</span>
@@ -952,7 +952,9 @@
                 <span class="s1">&#39;bus_bars&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;overhead_line_types&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;wire_types&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;underground_cable_constructions&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;underground_cable_types&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;dc_cable_types&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;sequence_line_types&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;transformer_types&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;substations&#39;</span><span class="p">,</span>
@@ -1002,7 +1004,7 @@
         <span class="n">cpy</span><span class="o">.</span><span class="n">rebind_internal_device_references</span><span class="p">()</span>
 
         <span class="n">obj_dict</span> <span class="o">=</span> <span class="n">cpy</span><span class="o">.</span><span class="n">get_all_elements_dict_by_type</span><span class="p">(</span><span class="n">add_locations</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">cpy</span><span class="o">.</span><span class="n">diagrams</span> <span class="o">=</span> <span class="p">[</span><span class="n">diagram</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">obj_dict</span><span class="o">=</span><span class="n">obj_dict</span><span class="p">)</span> <span class="k">for</span> <span class="n">diagram</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">diagrams</span><span class="p">]</span>
+        <span class="n">cpy</span><span class="o">.</span><span class="n">diagrams</span> <span class="o">=</span> <span class="n">dev</span><span class="o">.</span><span class="n">copy_diagrams</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">diagrams</span><span class="p">,</span> <span class="n">obj_dict</span><span class="o">=</span><span class="n">obj_dict</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">cpy</span></div>
 
@@ -1118,6 +1120,10 @@
         <span class="k">for</span> <span class="n">branch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lines</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">branch</span><span class="o">.</span><span class="n">template</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">branch</span><span class="o">.</span><span class="n">apply_template</span><span class="p">(</span><span class="n">branch</span><span class="o">.</span><span class="n">template</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Sbase</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fBase</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">branch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dc_lines</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">branch</span><span class="o">.</span><span class="n">template</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">branch</span><span class="o">.</span><span class="n">apply_template</span><span class="p">(</span><span class="n">branch</span><span class="o">.</span><span class="n">template</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Sbase</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">branch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transformers2w</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">branch</span><span class="o">.</span><span class="n">template</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1438,21 +1444,6 @@
 
         <span class="k">return</span> <span class="n">ac_bus_1</span><span class="p">,</span> <span class="n">ac_bus_2</span><span class="p">,</span> <span class="n">dc_bus_1</span><span class="p">,</span> <span class="n">dc_bus_2</span><span class="p">,</span> <span class="n">conv1</span><span class="p">,</span> <span class="n">conv2</span><span class="p">,</span> <span class="n">dc_line</span></div>
 
-
-<div class="viewcode-block" id="MultiCircuit.plot_graph">
-<a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit.plot_graph">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">plot_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Plot the grid.</span>
-<span class="sd">        :param ax: Matplotlib axis object</span>
-<span class="sd">        :return:</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
-            <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
-
-        <span class="n">graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_graph</span><span class="p">()</span>
-        <span class="n">nx</span><span class="o">.</span><span class="n">draw_spring</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="MultiCircuit.export_pf">
@@ -2993,12 +2984,12 @@
 <a class="viewcode-back" href="../../../rst_source/api/auto/VeraGridEngine.Devices.html#VeraGridEngine.Devices.multi_circuit.MultiCircuit.set_investments_status">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">set_investments_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                                <span class="n">investments_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">dev</span><span class="o">.</span><span class="n">Investment</span><span class="p">],</span>
-                               <span class="n">status</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+                               <span class="n">apply_investment</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
                                <span class="n">all_elements_dict</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">EditableDevice</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Set the active (and active profile) status of a list of investments&#39; objects</span>
 <span class="sd">        :param investments_list: list of investments</span>
-<span class="sd">        :param status: status to set in the internal structures</span>
+<span class="sd">        :param apply_investment: True to apply the investment status to the device, False to switch it</span>
 <span class="sd">        :param all_elements_dict: Dictionary of all elements (idtag -&gt; object), if None if is computed</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
@@ -3010,10 +3001,13 @@
             <span class="n">device</span> <span class="o">=</span> <span class="n">all_elements_dict</span><span class="p">[</span><span class="n">device_idtag</span><span class="p">]</span>
 
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="s1">&#39;active&#39;</span><span class="p">):</span>
-                <span class="n">device</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="n">status</span>
+                <span class="c1"># apply_investment says &quot;you should apply the investment status to the device&quot; or</span>
+                <span class="c1"># &quot;you should apply the not(investment status) to the device&quot;.</span>
+                <span class="n">device_status</span> <span class="o">=</span> <span class="n">inv</span><span class="o">.</span><span class="n">status</span> <span class="k">if</span> <span class="n">apply_investment</span> <span class="k">else</span> <span class="p">(</span><span class="ow">not</span> <span class="n">inv</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
+                <span class="n">device</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="n">device_status</span>
                 <span class="n">profile</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_profile</span><span class="p">(</span><span class="s1">&#39;active&#39;</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">profile</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="n">status</span><span class="p">)</span></div>
+                    <span class="n">profile</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="n">device_status</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="MultiCircuit.merge_buses">
@@ -3884,6 +3878,12 @@
 
         <span class="k">for</span> <span class="n">tpe</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">underground_cable_types</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_underground_line</span><span class="p">(</span><span class="n">tpe</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">tpe</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">underground_cable_constructions</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_underground_cable</span><span class="p">(</span><span class="n">tpe</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">tpe</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">dc_cable_types</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_dc_cable_type</span><span class="p">(</span><span class="n">tpe</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">tpe</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">wire_types</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_wire</span><span class="p">(</span><span class="n">tpe</span><span class="p">)</span>

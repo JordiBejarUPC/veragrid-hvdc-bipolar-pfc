@@ -30,7 +30,7 @@ from VeraGridEngine.Compilers.Gslv.Simulations.contingencies import gslv_conting
 from VeraGridEngine.Utils.NumericalMethods.weldorf_online_stddev import WeldorfOnlineStdDevMat
 
 
-@nb.njit()
+@nb.jit()
 def max_abs_per_col(A: Mat) -> Vec:
     res = np.zeros(A.shape[1], dtype=nb.float64)
 
@@ -44,7 +44,7 @@ def max_abs_per_col(A: Mat) -> Vec:
     return res
 
 
-@nb.njit()
+@nb.jit()
 def max_abs_per_col_cx(A: CxMat) -> CxVec:
     res = np.zeros(A.shape[1], dtype=nb.complex128)
 
@@ -268,6 +268,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             grid=self.grid,
             distributed_slack=self.options.lin_options.distribute_slack,
             correct_values=self.options.lin_options.correct_values,
+            use_jacobian_ptdf=self.options.lin_options.use_jacobian_ptdf,
             time_indices=self.time_indices,
             contingency_groups_used=contingency_groups_used,
             ptdf_threshold=self.options.lin_options.ptdf_threshold,
@@ -392,11 +393,16 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             grid=self.grid,
             distributed_slack=self.options.lin_options.distribute_slack,
             correct_values=self.options.lin_options.correct_values,
+            use_jacobian_ptdf=self.options.lin_options.use_jacobian_ptdf,
             time_indices=self.time_indices,
             compute_multi_contingencies=False
         )
 
         Pbus_mat = self.grid.get_Pbus_prof()
+        rates_mat = self.grid.get_branch_rates_prof(add_hvdc=False, add_vsc=False, add_switch=True)
+        contingency_rates_mat = self.grid.get_branch_contingency_rates_prof(
+            add_hvdc=False, add_vsc=False, add_switch=True
+        )
 
         std_dev_counter = WeldorfOnlineStdDevMat(nrow=results.nt, ncol=results.nbranch)
 
@@ -412,8 +418,8 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
                 nbr=nc.nbr,
                 n_con_groups=n_con_groups,
                 Pbus=Pbus_mat[t, :],
-                rates=nc.passive_branch_data.rates,
-                con_rates=nc.passive_branch_data.contingency_rates,
+                rates=rates_mat[t, :],
+                con_rates=contingency_rates_mat[t, :],
                 PTDF=lin_t.PTDF,
                 LODF=lin_t.LODF,
                 mon_idx=mon_idx,
@@ -549,6 +555,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
         Run contingency analysis time series
         """
         self.tic()
+        self.report_text("Compiling and configuring...")
 
         if self.engine == EngineType.VeraGrid:
 

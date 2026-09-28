@@ -119,7 +119,7 @@ def run_jmarti_line_comparison(enable_plots: bool = True) -> JMartiLineCompariso
     metrics_txt_path.write_text("\n".join(build_metrics_report_lines(results)), encoding="utf-8")
 
     if enable_plots:
-        plt.show()
+        plt.show(block=False)
     else:
         plt.close(figure_voltage)
         plt.close(figure_current)

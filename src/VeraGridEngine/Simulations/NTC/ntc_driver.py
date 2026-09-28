@@ -4,14 +4,91 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import List
+import numpy as np
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
 from VeraGridEngine.Simulations.NTC.ntc_opf import run_linear_ntc_opf
 from VeraGridEngine.Simulations.NTC.ntc_opf_strict import run_linear_ntc_opf_strict
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.NTC.ntc_options import OptimalNetTransferCapacityOptions
 from VeraGridEngine.Simulations.NTC.ntc_results import OptimalNetTransferCapacityResults
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import SimulationTypes
+from VeraGridEngine.enumerations import SimulationTypes, TapPhaseControl
+from VeraGridEngine.Devices.Parents.controllable_branch_parent import ControllableBranchParent
+from VeraGridEngine.basic_structures import ObjVec, IntVec, BoolVec
+
+
+def select_ntc_contingency_groups(grid: MultiCircuit,
+                                  selected: List[ContingencyGroup]) -> List[ContingencyGroup]:
+    """Resolve the same active contingency selection for both NTC drivers.
+
+    :param grid: Circuit supplying the default contingency groups.
+    :param selected: Explicit selection; an empty list selects all active groups.
+    :return: Active groups in their original selection order.
+    """
+    candidates: List[ContingencyGroup]
+    if len(selected) > 0:
+        candidates = selected
+    else:
+        candidates = grid.get_contingency_groups()
+
+    # Allocate once, filter by activity, and convert to the formulation's list API.
+    group: ContingencyGroup
+    active: BoolVec = np.fromiter((group.active for group in candidates), dtype=bool, count=len(candidates))
+    groups: ObjVec = np.asarray(candidates, dtype=object)
+    return list(groups[active])
+
+
+def collect_phase_shifter_indices(grid: MultiCircuit, time_indices: IntVec | None = None) -> IntVec:
+    """
+    Select branches with phase-angle control in any simulated operating point.
+
+    :param grid: circuit whose branch order matches the NTC results
+    :param time_indices: simulated original time indices, or None for a snapshot
+    :return: branch indices to expose in the control columns
+    """
+    # Use configuration rather than nonzero angles: an optimized angle can be zero.
+    selected: np.ndarray = np.zeros(grid.get_branch_number(), dtype=bool)
+    branch_index: int
+    for branch_index, branch in enumerate(grid.get_branches()):
+        if isinstance(branch, ControllableBranchParent):
+            if time_indices is None:
+                selected[branch_index] = branch.tap_phase_control_mode in (TapPhaseControl.Pf, TapPhaseControl.Pt)
+            else:
+                for time_index in time_indices:
+                    mode: TapPhaseControl = branch.get_tap_phase_control_mode_at(int(time_index))
+                    selected[branch_index] |= mode in (TapPhaseControl.Pf, TapPhaseControl.Pt)
+        else:
+            pass
+    return np.flatnonzero(selected)
+
+
+def collect_contingency_group_device_names(grid: MultiCircuit) -> ObjVec:
+    """
+    Join the device names of every contingency that belongs to each group.
+
+    The order matches ``grid.get_contingency_group_names()``. The report uses this
+    string to make the outaged equipment visible next to the group name.
+
+    :param grid: circuit that owns the contingency groups and contingency objects
+    :return: object array of joined device names, one entry per group
+    """
+    groups = grid.get_contingency_groups()
+    group_dict = grid.get_contingency_group_dict()
+    n_g: int = len(groups)
+    names: ObjVec = np.empty(n_g, dtype=object)
+    i_g: int
+    for i_g in range(n_g):
+        cnt_list = group_dict.get(groups[i_g].idtag, None)
+        if cnt_list is None:
+            names[i_g] = ""
+        else:
+            parts: List[str] = list()
+            i_c: int
+            for i_c in range(len(cnt_list)):
+                parts.append(cnt_list[i_c].device_name)
+            names[i_g] = "; ".join(parts)
+    return names
 
 
 class OptimalNetTransferCapacityDriver(DriverTemplate):
@@ -54,11 +131,8 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
 
         self.report_text('Compiling...')
 
-        # Make sure contingency groups are used. Otherwise a large grid takes hours
-        if len(self.options.opf_options.contingency_groups_used) > 0:
-            contingency_groups_used = [e for e in self.options.opf_options.contingency_groups_used if e.active]
-        else:
-            contingency_groups_used = self.grid.get_contingency_groups_active()
+        contingency_groups_used: List[ContingencyGroup] = select_ntc_contingency_groups(
+            self.grid, self.options.opf_options.contingency_groups_used)
 
         if self.options.consider_contingencies:
             self.report_text(f'Formulating NTC OPF ({len(contingency_groups_used)} contingency groups)...')
@@ -122,9 +196,11 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             hvdc_names=self.grid.get_hvdc_names(),
             vsc_names=self.grid.get_vsc_names(),
-            contingency_group_names=self.grid.get_contingency_group_names()
+            contingency_group_names=self.grid.get_contingency_group_names(),
+            transmission_reliability_margin=self.options.transmission_reliability_margin,
         )
 
+        self.results.phase_shifter_indices = collect_phase_shifter_indices(self.grid)
         self.results.voltage = opf_vars.get_voltages()[0, :]
         self.results.Sbus = opf_vars.bus_vars.Pinj[0, :]
         self.results.dSbus = opf_vars.bus_vars.delta_p[0, :]
@@ -148,6 +224,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
         self.results.monitor_logic = opf_vars.branch_vars.monitor_logic[0, :]
         self.results.contingency_flows_list = opf_vars.branch_vars.contingency_flow_data
         self.results.strict_formulation = self.options.strict_formulation
+        self.results.loading_threshold_to_report = self.options.loading_threshold_to_report
 
         self.results.hvdc_Pf = opf_vars.hvdc_vars.flows[0, :]
         self.results.hvdc_loading = opf_vars.hvdc_vars.loading[0, :]
@@ -164,6 +241,11 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
 
         self.results.inter_area_flows = opf_vars.inter_area_flows[0]
         self.results.structural_inter_area_flows = opf_vars.structural_ntc[0]
+        self.results.contingency_group_device_names = collect_contingency_group_device_names(self.grid)
+        self.results.worst_contingency_idx = opf_vars.branch_vars.worst_contingency_idx[0, :]
+        self.results.worst_contingency_flow = opf_vars.branch_vars.worst_contingency_flow[0, :]
+        self.results.worst_contingency_loading = opf_vars.branch_vars.worst_contingency_loading[0, :]
+        self.results.alpha_n1_worst = opf_vars.branch_vars.alpha_n1_worst[0, :]
 
         self.results.converged = opf_vars.acceptable_solution
 
@@ -179,6 +261,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
         Run this study
         """
         self.tic()
+        self.report_text("Compiling and configuring...")
 
         self.opf()
 

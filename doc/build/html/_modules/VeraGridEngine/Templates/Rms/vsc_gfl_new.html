@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VeraGridEngine.Templates.Rms.vsc_gfl_new &mdash; VeraGrid 6.5.5 documentation</title>
+  <title>VeraGridEngine.Templates.Rms.vsc_gfl_new &mdash; VeraGrid 6.7.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
@@ -14,7 +14,7 @@
   
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../../../_static/documentation_options.js?v=276d7aeb"></script>
+      <script src="../../../../_static/documentation_options.js?v=9cce70e7"></script>
       <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/js/theme.js"></script>
@@ -44,6 +44,7 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/installation.html">💽 Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/user_interface.html">📊 User interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../md_source/veragrid_scripting_guide.html">📑 VeraGrid scripting guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/grid_analysis.html">🔎 Grid analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/structure.html">🌁 Structure of VeraGrid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../md_source/modelling.html">📐 Grid Modelling</a></li>
@@ -122,6 +123,7 @@
 <div class="viewcode-block" id="VscGflRmsTemplate">
 <a class="viewcode-back" href="../../../../rst_source/api/auto/VeraGridEngine.Templates.Rms.html#VeraGridEngine.Templates.Rms.vsc_gfl_new.VscGflRmsTemplate">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">VscGflRmsTemplate</span><span class="p">(</span><span class="n">TemplateDefinition</span><span class="p">):</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vf</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">vf</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">[</span>
@@ -141,6 +143,7 @@
 <div class="viewcode-block" id="TrafoGflRmsTemplate">
 <a class="viewcode-back" href="../../../../rst_source/api/auto/VeraGridEngine.Templates.Rms.html#VeraGridEngine.Templates.Rms.vsc_gfl_new.TrafoGflRmsTemplate">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrafoGflRmsTemplate</span><span class="p">(</span><span class="n">TemplateDefinition</span><span class="p">):</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vf</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">vf</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">[</span>
@@ -492,10 +495,10 @@
         <span class="n">Ki_vac</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span>
         <span class="n">R</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">0.01</span><span class="p">),</span>
         <span class="n">L</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="mf">0.05</span><span class="p">),</span>
-        <span class="n">P_ref</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
-        <span class="n">Q_ref</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
-        <span class="n">Vdc_ref</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
-        <span class="n">Vm_ac_ref</span><span class="p">:</span> <span class="n">vfactory</span><span class="o">.</span><span class="n">add_const</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span>
+        <span class="n">P_ref</span><span class="p">:</span> <span class="n">P</span><span class="p">,</span>
+        <span class="n">Q_ref</span><span class="p">:</span> <span class="n">Q</span><span class="p">,</span>
+        <span class="n">Vdc_ref</span><span class="p">:</span> <span class="n">v_dc</span><span class="p">,</span>
+        <span class="n">Vm_ac_ref</span><span class="p">:</span> <span class="n">Vm</span><span class="p">,</span>
     <span class="p">}</span>
 
     <span class="c1"># P and Q at the point of common coupling</span>
@@ -656,26 +659,7 @@
         <span class="n">v_q_c</span><span class="p">:</span> <span class="n">v_q_g</span> <span class="o">+</span> <span class="n">R</span> <span class="o">*</span> <span class="n">i_q</span> <span class="o">-</span> <span class="n">omega</span> <span class="o">*</span> <span class="n">L</span> <span class="o">*</span> <span class="n">i_d</span><span class="p">,</span>
         <span class="n">vd_hat</span><span class="p">:</span> <span class="n">v_d_c</span> <span class="o">-</span> <span class="p">(</span><span class="n">v_d_g</span> <span class="o">-</span> <span class="n">L</span> <span class="o">*</span> <span class="n">omega</span> <span class="o">*</span> <span class="n">i_q</span><span class="p">),</span>
         <span class="n">vq_hat</span><span class="p">:</span> <span class="n">v_q_c</span> <span class="o">-</span> <span class="p">(</span><span class="n">v_q_g</span> <span class="o">+</span> <span class="n">L</span> <span class="o">*</span> <span class="n">omega</span> <span class="o">*</span> <span class="n">i_d</span><span class="p">),</span>
-        <span class="n">Vdc_ref</span><span class="p">:</span> <span class="n">v_dc</span><span class="p">,</span>
-        <span class="n">Vm_ac_ref</span><span class="p">:</span> <span class="n">Vm</span><span class="p">,</span>
-        <span class="n">Q_ref</span><span class="p">:</span> <span class="n">Q</span><span class="p">,</span>
-        <span class="n">P_ref</span><span class="p">:</span> <span class="n">P</span><span class="p">,</span>
     <span class="p">}</span>
-    
-    <span class="c1"># Add control-specific initialization</span>
-    <span class="k">if</span> <span class="n">control1</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Pac</span><span class="p">,</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Pdc</span><span class="p">]:</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">P_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">P</span>
-    <span class="k">elif</span> <span class="n">control1</span> <span class="o">==</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Vm_dc</span><span class="p">:</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">Vdc_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">v_dc</span>
-        <span class="c1"># For DC voltage control, initialize i_q_ref based on initial power flow</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">i_q_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">P</span> <span class="o">/</span> <span class="n">v_q_g</span>
-    
-    <span class="k">if</span> <span class="n">control2</span> <span class="o">==</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Qac</span><span class="p">:</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">Q_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">Q</span>
-    <span class="k">elif</span> <span class="n">control2</span> <span class="o">==</span> <span class="n">ConverterControlType</span><span class="o">.</span><span class="n">Vm_ac</span><span class="p">:</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">Vm_ac_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">Vm</span>
-        <span class="c1"># For AC voltage control, initialize i_d_ref based on initial reactive power</span>
-        <span class="n">init_eqs</span><span class="p">[</span><span class="n">i_d_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">/</span> <span class="n">v_q_g</span>
 
     <span class="n">gfl_block_aux</span> <span class="o">=</span> <span class="n">Block</span><span class="p">(</span>
         <span class="n">algebraic_eqs</span><span class="o">=</span><span class="n">algebraic_eqs</span><span class="p">,</span>

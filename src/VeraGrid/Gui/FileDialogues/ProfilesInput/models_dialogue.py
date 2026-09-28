@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.general_dialogues import TimeReIndexDialogue
+from VeraGrid.Gui.dialog_lifecycle import delete_dialog_safely, exec_dialog_safely
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.file_open import FileOpen
 from VeraGridEngine.basic_structures import Logger
@@ -601,13 +602,17 @@ class ModelsProcessThread(QtCore.QThread):
 
         :return: None
         """
-        self.gui_instance.process(
-            main_grid=self.main_grid,
-            logger=self.logger,
-            items=self.items,
-            use_secondary_key=self.use_secondary_key,
-            progress_func=self.progress_signal.emit
-        )
+        try:
+            self.gui_instance.process(
+                main_grid=self.main_grid,
+                logger=self.logger,
+                items=self.items,
+                use_secondary_key=self.use_secondary_key,
+                progress_func=self.progress_signal.emit
+            )
+        except Exception as e:
+            self.logger.add_error(msg=str(e))
+
         self.done_signal.emit()
 
     def cancel(self) -> None:
@@ -660,7 +665,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
 
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('Models import dialogue')
+        self.setWindowTitle(self.tr('Models import dialogue'))
 
         self.logger = Logger()
         self.grids_model: GridsModel = GridsModel(logger=self.logger)
@@ -730,7 +735,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
         :return:
         """
         if self.grids_model.rowCount() > 0:
-            ok = yes_no_question("Do you want to clear the import data?")
+            ok = yes_no_question(self.tr("Do you want to clear the import data?"))
             if ok:
                 self.grids_model.clear()
 
@@ -742,7 +747,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
         files_types = "Formats (*.raw *.RAW *.rawx *.xml *.m *.matpower *.epc *.EPC *.dgs *.p *.uct *.UCT)"
 
         # call dialog to select the file
-        filenames, type_selected = QtWidgets.QFileDialog.getOpenFileNames(self, 'Add files', filter=files_types)
+        filenames, type_selected = QtWidgets.QFileDialog.getOpenFileNames(self, self.tr('Add files'), filter=files_types)
 
         if len(filenames):
             self.grids_model.add_paths(paths=filenames)
@@ -769,7 +774,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
                 current_path = str(self.grids_model.items()[index.row()].path)
                 start_folder = os.path.dirname(current_path)
                 filename, type_selected = QtWidgets.QFileDialog.getOpenFileName(self,
-                                                                                'Select file',
+                                                                                self.tr('Select file'),
                                                                                 start_folder,
                                                                                 filter=files_types)
                 del type_selected
@@ -824,7 +829,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
                 use_secondary_key=use_secondary_key
             )
             self.process_thread.progress_signal.connect(self.ui.progressBar.setValue)
-            self.process_thread.done_signal.connect(self.on_process_done)
+            self.process_thread.finished.connect(self.on_process_done)
             self.process_thread.start()
 
     def on_process_done(self) -> None:
@@ -862,7 +867,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
         :return: ``True`` when the close request was accepted.
         """
         ok: bool = yes_no_question(
-            "There is an import procedure running.\nCancel it and close the window?"
+            self.tr("There is an import procedure running.\nCancel it and close the window?")
         )
 
         if ok:
@@ -889,16 +894,19 @@ class ModelsInputGUI(QtWidgets.QDialog):
         :return: None.
         """
         dlg: TimeReIndexDialogue = TimeReIndexDialogue()
-        dlg.setModal(True)
-        dlg.exec()
+        try:
+            dlg.setModal(True)
+            exec_dialog_safely(dialog=dlg)
 
-        if dlg.is_accepted:
-            self.grids_model.re_index_time(t0=dlg.date_time_editor.dateTime().toPython(),
-                                           step_size=dlg.step_length.value(),
-                                           step_unit=dlg.units.currentData())
-            self.ui.modelsTableView.repaint()
-        else:
-            pass
+            if dlg.is_accepted:
+                self.grids_model.re_index_time(t0=dlg.date_time_editor.dateTime().toPython(),
+                                               step_size=dlg.step_length.value(),
+                                               step_unit=dlg.units.currentData())
+                self.ui.modelsTableView.repaint()
+            else:
+                pass
+        finally:
+            delete_dialog_safely(dialog=dlg)
 
     def generate_time_array(self,
                             main_grid: MultiCircuit,
