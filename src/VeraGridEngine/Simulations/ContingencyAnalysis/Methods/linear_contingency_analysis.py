@@ -293,7 +293,7 @@ def linear_contingency_analysis_old(nc: NumericalCircuit,
 
 
 
-@nb.njit()
+@nb.jit()
 def linear_contingency_scan_numba(nbr: int,
                                   n_con_groups: int,
                                   Pbus: Vec,

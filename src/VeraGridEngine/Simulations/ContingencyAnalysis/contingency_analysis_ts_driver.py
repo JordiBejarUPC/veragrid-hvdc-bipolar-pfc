@@ -30,7 +30,7 @@ from VeraGridEngine.Compilers.Gslv.Simulations.contingencies import gslv_conting
 from VeraGridEngine.Utils.NumericalMethods.weldorf_online_stddev import WeldorfOnlineStdDevMat
 
 
-@nb.njit()
+@nb.jit()
 def max_abs_per_col(A: Mat) -> Vec:
     res = np.zeros(A.shape[1], dtype=nb.float64)
 
@@ -44,7 +44,7 @@ def max_abs_per_col(A: Mat) -> Vec:
     return res
 
 
-@nb.njit()
+@nb.jit()
 def max_abs_per_col_cx(A: CxMat) -> CxVec:
     res = np.zeros(A.shape[1], dtype=nb.complex128)
 
