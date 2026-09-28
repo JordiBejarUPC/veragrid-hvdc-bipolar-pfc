@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 from typing import Union, Tuple, List
 
 from VeraGridEngine.basic_structures import Logger, CxVec
