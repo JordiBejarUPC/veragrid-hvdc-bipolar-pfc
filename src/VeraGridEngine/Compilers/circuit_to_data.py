@@ -650,15 +650,26 @@ def get_load_data(data: LoadData,
             data.shift_key[ii] = elm.get_shift_key_at(t_idx)
 
             if fill_three_phase:
+                # Distribute missing P and Q independently, preserving explicit phase values.
+                phase_power: np.ndarray = np.array((elm.get_Sa_at(t_idx),
+                                                    elm.get_Sb_at(t_idx),
+                                                    elm.get_Sc_at(t_idx)), dtype=complex)
+                if not np.any(phase_power.real):
+                    phase_power.real = elm.get_P_at(t_idx) / 3.0
+                else:
+                    pass
+
+                if not np.any(phase_power.imag):
+                    phase_power.imag = elm.get_Q_at(t_idx) / 3.0
+                else:
+                    pass
+
+                # Each device occupies N, A, B, C; generation has the negative load sign.
                 if elm.conn == ShuntConnectionType.GroundedStar:
-                    data.S3_star[3 * ii + 1] -= elm.get_Sa_at(t_idx)
-                    data.S3_star[3 * ii + 2] -= elm.get_Sb_at(t_idx)
-                    data.S3_star[3 * ii + 3] -= elm.get_Sc_at(t_idx)
+                    data.S3_star[4 * ii + 1:4 * ii + 4] -= phase_power
 
                 elif elm.conn == ShuntConnectionType.Delta:
-                    data.S3_delta[3 * ii + 1] -= elm.get_Sa_at(t_idx)
-                    data.S3_delta[3 * ii + 2] -= elm.get_Sb_at(t_idx)
-                    data.S3_delta[3 * ii + 3] -= elm.get_Sc_at(t_idx)
+                    data.S3_delta[4 * ii + 1:4 * ii + 4] -= phase_power
 
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
