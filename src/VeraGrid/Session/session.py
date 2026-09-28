@@ -75,6 +75,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGrid.Gui.results_model import ResultsModel
 
 
+# Qt threads must have at least 16 MB, or they'll crash on some systems like OSX
 QT_WORKER_STACK_SIZE_BYTES: int = 16 * 1024 * 1024
 
 
