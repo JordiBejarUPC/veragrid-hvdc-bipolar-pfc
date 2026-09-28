@@ -75,6 +75,9 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGrid.Gui.results_model import ResultsModel
 
 
+QT_WORKER_STACK_SIZE_BYTES: int = 16 * 1024 * 1024
+
+
 class GcThread(QThread):
     """
     Generic VeraGrid Thread
@@ -85,6 +88,7 @@ class GcThread(QThread):
 
     def __init__(self, driver: DriverTemplate):
         QThread.__init__(self)
+        self.setStackSize(QT_WORKER_STACK_SIZE_BYTES)
 
         # assign the driver and set the driver's reporting functions
         self.driver: DriverTemplate = driver

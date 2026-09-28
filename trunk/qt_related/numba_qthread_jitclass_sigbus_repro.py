@@ -246,8 +246,15 @@ class Controller:
     worker: Worker | None = None
     thread: QThread | None = None
 
-    def start_worker(self, nbus: int) -> None:
+    def start_worker(self, nbus: int, stack_size_mib: int) -> None:
         self.thread = QThread()
+        if stack_size_mib > 0:
+            stack_size_bytes = stack_size_mib * 1024 * 1024
+            print(f"setting QThread stack size to {stack_size_bytes} bytes", flush=True)
+            self.thread.setStackSize(stack_size_bytes)
+        else:
+            pass
+
         self.worker = Worker(nbus)
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
@@ -278,6 +285,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--main-thread", action="store_true", help="Compile and run outside QThread")
     parser.add_argument("--no-cache", action="store_true", help="Re-exec with Numba cache disabled")
     parser.add_argument("--nbus", type=int, default=4)
+    parser.add_argument("--stack-size-mib", type=int, default=0, help="QThread stack size in MiB; 0 uses Qt default")
     return parser.parse_args()
 
 
@@ -310,7 +318,7 @@ def main() -> int:
 
     app = QCoreApplication(sys.argv)
     controller = Controller(app=app)
-    QTimer.singleShot(0, lambda: controller.start_worker(args.nbus))
+    QTimer.singleShot(0, lambda: controller.start_worker(args.nbus, args.stack_size_mib))
     return app.exec()
 
 
