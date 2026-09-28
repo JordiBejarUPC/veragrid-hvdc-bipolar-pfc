@@ -1069,6 +1069,7 @@ def fill_generator_parent(
     :param logger:
     :param bus_data:
     :param t_idx:
+    :param use_stored_guess:
     :param control_remote_voltage:
     :param fill_three_phase:
     :return:
@@ -1087,7 +1088,8 @@ def fill_generator_parent(
     data.mttf[k] = elm.mttf
     data.mttr[k] = elm.mttr
 
-    data.control_mode_int[k] = elm.control_mode.idx()
+    control_mode: GeneratorControlMode = elm.get_control_mode_prof_at(t_idx)
+    data.control_mode_int[k] = control_mode.idx()
     data.installed_p[k] = elm.Snom
     bus_data.installed_power[i] += elm.Snom
 
@@ -1159,7 +1161,7 @@ def fill_generator_parent(
         if elm.get_srap_enabled_at(t_idx) and data.p[k] > 0.0:
             bus_data.srap_available_power[i] += data.p[k]
 
-        if elm.control_mode == GeneratorControlMode.V:
+        if control_mode == GeneratorControlMode.V:
             if elm.control_bus is not None:
                 remote_control = True
                 j = bus_dict[elm.control_bus]
@@ -1180,10 +1182,10 @@ def fill_generator_parent(
                                     logger=logger)
             data.q[k] = 0.0
 
-        elif elm.control_mode == GeneratorControlMode.Q:
+        elif control_mode == GeneratorControlMode.Q:
             data.q[k] = elm.get_Q_at(t_idx)
 
-        elif elm.control_mode == GeneratorControlMode.QVDroop:
+        elif control_mode == GeneratorControlMode.QVDroop:
             # Q will be computed by the droop
             data.q[k] = 0.0
         else:
@@ -1304,7 +1306,6 @@ def get_battery_data(
     :param opf_results:
     :param t_idx:
     :param time_series:
-    :param use_stored_guess:
     :param control_remote_voltage:
     :param fill_three_phase:
     :return:
