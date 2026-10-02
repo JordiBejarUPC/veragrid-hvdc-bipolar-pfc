@@ -1,6 +1,7 @@
 import VeraGridEngine.api as gce
 from VeraGridEngine.enumerations import ConverterControlType
 from VeraGridEngine.enumerations import ResultTypes
+import math
 
 #Params
 Ub = 345
@@ -46,7 +47,7 @@ bus5 = gce.Bus(name = "Bus5",
                Vnom=Ub,
                is_dc=True,
                Vm0=1.01,
-               Va0=3.14)
+               Va0=math.pi)
 grid.add_bus(bus5)
 
 bus6 = gce.Bus(name = "Bus6",
@@ -115,7 +116,7 @@ grid.add_vsc(gce.VSC(name = "VSC_2",
                      alpha3=c,
                      control1=ConverterControlType.Vm_dc,
                      control2=ConverterControlType.Qac,
-                     control1_val=-1.01,
+                     control1_val=-1,
                      control2_val=0.0))
 
 grid.add_vsc(gce.VSC(name = "VSC_3",
@@ -149,7 +150,7 @@ options_pf = gce.PowerFlowOptions(verbose=0,
                                   use_stored_guess=True)
 results = gce.power_flow(grid, options=options_pf)
 
-gce.save_file(grid=grid, filename="trunk/acdc_pf/pfc/jordi_bipolar.veragrid")
+# gce.save_file(grid=grid, filename="trunk/acdc_pf/pfc/jordi_bipolar.veragrid")
 
 
 print('Converged:', results.converged, 'error:', results.error)

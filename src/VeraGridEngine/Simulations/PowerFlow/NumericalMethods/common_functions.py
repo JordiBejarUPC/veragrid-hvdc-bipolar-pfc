@@ -175,7 +175,7 @@ def voltage_pdc_droop(ut: complex,
     Find the actual DC power output for converters controlled with a voltage droop,
     where the converter terminal sits on the positive pole.
 
-    Implements Pdc = Pdc_setp - Pdroop * (Vdc_setp - Vdc) 
+    Implements Pdc = Pdc_setp - Pdroop * (Vdc_setp - Vdc)
     with the voltage being the difference Vdc = Re(ut - un)
     where un = 0 for monopolar converters
 

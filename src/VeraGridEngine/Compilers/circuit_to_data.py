@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Aggregation.area import Area
 from VeraGridEngine.enumerations import (BusMode, BranchImpedanceMode, ExternalGridMode, DeviceType,
                                          TapModuleControl, TapPhaseControl, HvdcControlType, ConverterControlType,
-                                         ShuntConnectionType, ShuntControlMode, GeneratorControlMode)
+                                         ShuntConnectionType, ShuntControlMode, GeneratorControlMode, PfcControlType)
 from VeraGridEngine.basic_structures import BoolVec, IntVec
 from VeraGridEngine.Devices.types import BRANCH_TYPES
 from VeraGridEngine.DataStructures.battery_data import BatteryData
@@ -23,6 +23,7 @@ from VeraGridEngine.DataStructures.bus_data import BusData
 from VeraGridEngine.DataStructures.generator_data import GeneratorData
 from VeraGridEngine.DataStructures.hvdc_data import HvdcData
 from VeraGridEngine.DataStructures.vsc_data import VscData
+from VeraGridEngine.DataStructures.pfc_data import PfcData
 from VeraGridEngine.DataStructures.load_data import LoadData
 from VeraGridEngine.DataStructures.shunt_data import ShuntData
 from VeraGridEngine.DataStructures.fluid_node_data import FluidNodeData
@@ -2123,6 +2124,111 @@ def get_vsc_data(
         ii += 1
 
 
+def set_control_dev_pfc(k: int,
+                        q: int,
+                        r: int,
+                        s: int,
+                        control_int: int,
+                        control_dev: 'Bus | BRANCH_TYPES | None',
+                        control_val: float,
+                        control_bus_idx: IntVec,
+                        control_branch_idx: IntVec,
+                        bus_dict: Dict[Bus, int],
+                        branch_dict: Dict['BRANCH_TYPES', int],
+                        circuit: 'MultiCircuit',
+                        logger: Logger):
+    """
+    :param k: device index
+    :param q: bus Q (DC) index
+    :param r: bus R (DC) index
+    :param s: bus S (DC) index
+    :param control_int: PfcControlType
+    :param control_dev: control device
+    :param control_val: control value
+    :param control_bus_idx: array to be filled in
+    :param control_branch_idx: array to be filled in
+    :param bus_dict: dictionary to be filled in
+    :param logger: Logger para mensajes de error/advertencia
+    """
+    control_branch_idx[k] = k
+    control_bus_idx[k] = -1
+
+
+def get_pfc_data(
+        data: 'PfcData',
+        circuit: 'MultiCircuit',
+        bus_dict: Dict[Bus, int],
+        branch_dict: Dict['BRANCH_TYPES', int],
+        bus_data: 'BusData',
+        bus_voltage_used: 'BoolVec',
+        t_idx: int | None,
+        opf_results: 'VALID_OPF_RESULTS | None' = None,
+        use_stored_guess: bool = False,
+        control_remote_voltage: bool = True,
+        logger: Logger = Logger()
+) -> None:
+    """
+    :param data: PfcData - estructura de datos a llenar
+    :param circuit: MultiCircuit - circuito completo
+    :param bus_dict: Dictionary of buses to compute the indices
+    :param branch_dict: Dictionary of branches to compute the indices
+    :param bus_data: BusData - datos de buses
+    :param bus_voltage_used: array de flags de uso de voltaje
+    :param t_idx: time index (-1 para snapshot)
+    :param opf_results: OptimalPowerFlowResults (opcional)
+    :param use_stored_guess: usar voltaje almacenado?
+    :param control_remote_voltage: Control RemoteVoltage
+    :param logger: Logger para mensajes
+    :return: None (modifica data in-place)
+    """
+
+    ii = 0
+
+    #PFC
+    for i, elm in enumerate(circuit.pfc_devices):
+        data.names[i] = elm.name
+        data.idtag[i] = elm.idtag
+
+        data.mttf[i] = elm.mttf
+        data.mttr[i] = elm.mttr
+        q = bus_dict[elm.bus_dc_q]
+        r = bus_dict[elm.bus_dc_r]
+        s = bus_dict[elm.bus_dc_s]
+        data.original_idx[i] = i
+
+        data.Q_dc[i] = q
+        data.R_dc[i] = r
+        data.S_dc[i] = s
+
+        data.F[i] = r
+        data.T[i] = s
+
+        data.active[i] = elm.get_active_at(t_idx)
+        data.rates[i] = elm.get_rate_at(t_idx)
+        data.contingency_rates[i] = data.rates[i] * elm.get_contingency_factor_at(t_idx)
+        data.protection_rates[i] = data.rates[i] * elm.get_protection_rating_factor_at(t_idx)
+
+        data.overload_cost[i] = elm.get_Cost_at(t_idx)
+
+        data.control1_int[ii] = elm.get_control1_at(t_idx).idx()
+
+        data.control1_val[ii] = elm.get_control1_val_at(t_idx)
+
+        set_control_dev_pfc(k=ii, q=q, r=r, s=s,
+                            control_int=data.control1_int[ii],
+                            control_dev=elm.get_control1_dev_at(t_idx),
+                            control_val=data.control1_val[ii],
+                            control_bus_idx=data.control1_bus_idx,
+                            control_branch_idx=data.control1_branch_idx,
+                            bus_dict=bus_dict,
+                            branch_dict=branch_dict,
+                            circuit=circuit,
+                            logger=logger)
+
+        # Incrementar contador
+        ii += 1
+
+
 def get_hvdc_data(data: HvdcData,
                   circuit: MultiCircuit,
                   bus_dict,
@@ -2417,9 +2523,11 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         nbus=circuit.get_bus_number(),
         nbr=circuit.get_branch_number(add_vsc=False,
                                       add_hvdc=False,
-                                      add_switch=True),
+                                      add_switch=True,
+                                      add_pfc=False),
         nhvdc=circuit.get_hvdc_number(),
         nvsc=circuit.get_vsc_number(),
+        npfc=circuit.get_pfc_number(),
         nload=circuit.get_load_like_device_number(),
         ngen=ngen,
         nbatt=nbatt,
@@ -2520,6 +2628,19 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
 
     get_vsc_data(
         data=nc.vsc_data,
+        circuit=circuit,
+        t_idx=t_idx,
+        bus_dict=bus_dict,
+        branch_dict=branch_dict,
+        bus_data=nc.bus_data,
+        bus_voltage_used=bus_voltage_used,
+        opf_results=opf_results,
+        use_stored_guess=use_stored_guess,
+        control_remote_voltage=control_remote_voltage,
+    )
+
+    get_pfc_data(
+        data=nc.pfc_data,
         circuit=circuit,
         t_idx=t_idx,
         bus_dict=bus_dict,

@@ -1,0 +1,54 @@
+\begin{tikzpicture}
+\begin{axis}[
+    xlabel={Time [$\mu$s]},
+    ylabel={Current [A]},
+    legend style={
+        at={(0.98,0.12)},
+        anchor=south east,
+        font=\footnotesize,
+        draw,
+        legend columns=2,
+        fill=gray!5,
+        legend cell align={left},
+    },
+    xmajorgrids,
+    ymajorgrids,
+    grid style=dashed,
+    width=9cm,
+    height=7cm,
+]
+  \addplot[
+    color=Blue,
+    line width=1.1pt
+  ]
+  coordinates {
+    (0.0000, 1731.601732)
+    (3.3333, 1731.601732)
+    (6.6667, 1731.601732)
+    (10.0000, 1731.601732)
+  };
+  \addlegendentry{$I_{\mathrm{vsc}1}$}
+  \addplot[
+    color=ForestGreen,
+    line width=1.1pt
+  ]
+  coordinates {
+    (0.0000, 329.133909)
+    (3.3333, 329.133909)
+    (6.6667, 329.133909)
+    (10.0000, 329.133909)
+  };
+  \addlegendentry{$I_{1,\mathrm{PFC}}^{+}$}
+  \addplot[
+    color=CadetBlue,
+    line width=1.1pt
+  ]
+  coordinates {
+    (0.0000, 1402.467822)
+    (3.3333, 1402.467822)
+    (6.6667, 1402.467822)
+    (10.0000, 1402.467822)
+  };
+  \addlegendentry{$I_{2,\mathrm{PFC}}^{+}$}
+\end{axis}
+\end{tikzpicture}

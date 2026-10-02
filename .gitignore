@@ -1,50 +1,24 @@
-__pycache__
-__pycache_jit__
-.pytest_cache
-*.swp
-/doc/build
-/doc/_build
-/doc/_static
+# Entornos virtuales
+.venv/
+.venv*/
+venv/
+ENV/
 
+# Archivos de compilación y empaquetado
+build/
+dist/
+*.egg-info/
+*.so
+*.dll
+*.pyd
+*.exe
 
-/**/.idea/*
-**/.idea
+# Carpetas pesadas y temporales de VeraGrid
+precomputed_builds/
+private_tests/
+__pycache__/
+*.pyc
+
+# IDEs
 .idea/
-.idea/*
-.idea/inspectionProfiles
-.idea/workspace.xml
-
-.claude/
-CLAUDE.md
-
-/build
-/dist
-*.egg-info
-
-/src/tests/data/output/*.png
-/src/VeraGrid/Gui/Main/icons/.DS_Store
-
-Results.xlsx
-lynn5node.gridcal
-demo_5_node.json
-
-/venv
-/.tox/
-.idea/*.iml
-.idea/*.xml
-.idea/dictionaries/*.xml
-.DS_Store
-/src/tests/data/output/raw_to_cgmes_export_results/
-.idea/workspace.xml
-.idea/workspace.xml
-.vscode
-.opencode
-
-.aider*
-.env
-profile.pstat
-LOCAL_VERAGRID_NOTES.md
-/trunk/tensygrid/venv_bash/*
-trunk/tensygrid/precomputed_builds/
-trunk/tensygrid/venv_bash/
-/trunk/hpc_contingencies/results.db
+.vscode/

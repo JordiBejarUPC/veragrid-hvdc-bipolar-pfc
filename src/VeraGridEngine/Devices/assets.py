@@ -78,6 +78,7 @@ class Assets:
         '_transformers2w',
         '_hvdc_lines',
         '_vsc_devices',
+        '_pfc_devices',
         '_upfc_devices',
         '_switch_devices',
         '_transformers3w',
@@ -173,6 +174,8 @@ class Assets:
         self._hvdc_lines: List[dev.HvdcLine] = list()
 
         self._vsc_devices: List[dev.VSC] = list()
+
+        self._pfc_devices: List[dev.PFC] = list()
 
         self._upfc_devices: List[dev.UPFC] = list()
 
@@ -401,6 +404,7 @@ class Assets:
                 dev.SeriesReactance(),
                 dev.HvdcLine(),
                 dev.VSC(),
+                dev.PFC(),
                 dev.UPFC(),
                 dev.Switch()
             ],
@@ -1210,6 +1214,98 @@ class Assets:
         return {elm.idtag: i for i, elm in enumerate(self.vsc_devices)}
 
     # ------------------------------------------------------------------------------------------------------------------
+    # PFC
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def pfc_devices(self) -> List[dev.PFC]:
+        """
+        Get list of pfc devices
+        :return:
+        """
+        return self._pfc_devices
+
+    @pfc_devices.setter
+    def pfc_devices(self, value: List[dev.PFC]):
+        self._pfc_devices = value
+
+    def get_pfc(self) -> List[dev.PFC]:
+        """
+
+        :return:
+        """
+        return self._pfc_devices
+
+    def get_pfc_number(self) -> int:
+        """
+
+        :return:
+        """
+        return len(self._pfc_devices)
+
+    def get_pfc_names(self) -> StrVec:
+        """
+        Get pfc names
+        """
+        return np.array([e.name for e in self.pfc_devices])
+
+    def get_pfc_actives(self, t_idx: int | None = None) -> IntVec:
+        """
+        get a vector of actives
+        :return: Array of bus active
+        """
+        data = np.zeros(len(self._pfc_devices), dtype=int)
+        for i, b in enumerate(self._pfc_devices):
+            data[i] = b.active if t_idx is None else b.active_prof[t_idx]
+        return data
+
+    def add_pfc(self, obj: dev.PFC):
+        """
+        Add a pfc line object
+        :param obj: pfc instance
+        """
+
+        if self.time_profile is not None:
+            obj.ensure_profiles_exist(self.time_profile)
+
+        self._pfc_devices.append(obj)
+        obj.set_var_factory(self._var_factory)
+
+    def delete_pfc(self, obj: dev.PFC):
+        """
+        Delete PFC
+        :param obj: PFC Instance
+        """
+        try:
+            self._pfc_devices.remove(obj)
+            self.delete_groupings_with_object(obj=obj)
+        except ValueError:
+            pass
+
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
+
+    def get_pfc_dict(self) -> Dict[str, dev.PFC]:
+        """
+        Get dictionary of PFCs
+        :return: idtag -> PFC
+        """
+        return {elm.idtag: elm for elm in self.pfc_devices}
+
+    def get_pfc_index_dict(self) -> Dict[str, int]:
+        """
+        Get index dictionary of pfc lines
+        :return: idtag -> i
+        """
+        return {elm.idtag: i for i, elm in enumerate(self.pfc_devices)}
+
+    # ------------------------------------------------------------------------------------------------------------------
     # UPFC
     # ------------------------------------------------------------------------------------------------------------------
 
@@ -1740,7 +1836,7 @@ class Assets:
         """
 
         # delete associated Branches in reverse order
-        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             for i in range(len(branch_list) - 1, -1, -1):
                 if branch_list[i].bus_from == obj:
                     if delete_associated:
@@ -1778,7 +1874,7 @@ class Assets:
         branches_to_delete = list()
 
         # First find branches to delete from the passed buses
-        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             for i in range(len(branch_list) - 1, -1, -1):
                 if branch_list[i].bus_from in buses_to_remove:
                     if delete_associated:
@@ -1796,7 +1892,7 @@ class Assets:
 
         # Remove branches directly from lists in one pass
         # This is more efficient than calling delete_branch for each
-        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             # Use list comprehension to not consider branches to delete 
             # This is faster than the multiple remove() calls we had before
             branch_list[:] = [b for b in branch_list if b not in branches_to_delete_set]
@@ -1917,7 +2013,7 @@ class Assets:
         :return: associated_branches, associated_injections
         """
         associated_branches = list()
-        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             if elm.bus_from == bus or elm.bus_to == bus:
                 associated_branches.append(elm)
 
@@ -4363,19 +4459,22 @@ class Assets:
             self,
             add_vsc: bool = True,
             add_hvdc: bool = True,
-            add_switch: bool = False) -> Dict[dev.ContingencyGroup, List[int]]:
+            add_switch: bool = False,
+            add_pfc: bool = True) -> Dict[dev.ContingencyGroup, List[int]]:
         """
         Get a dictionary of contingency groups as keys and a list of contingencies as value
         :param add_vsc: Include the list of VSC?
         :param add_hvdc: Include the list of HvdcLine?
         :param add_switch: Include the list of Switch?
+        :param add_pfc: Include the list of PFC?
         :return: dict[contingency group] -> [contingencies list]
         """
         d: Dict[dev.ContingencyGroup, List[int]] = dict()
 
         br_idtag_dict = self.get_branches_idtag_index_dict(add_vsc=add_vsc,
                                                            add_hvdc=add_hvdc,
-                                                           add_switch=add_switch)
+                                                           add_switch=add_switch,
+                                                           add_pfc=add_pfc)
 
         for con in self.contingencies:
 
@@ -4578,7 +4677,7 @@ class Assets:
 
             if con_group.active:
                 i = 0
-                for elm in self.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True):  # for every branch
+                for elm in self.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True, add_pfc=False):  # for every branch
 
                     if elm.monitor_loading:  # if monitored
 
@@ -6363,7 +6462,7 @@ class Assets:
             if elm.rms_template == obj:
                 elm.rms_template = None
 
-        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             if elm.rms_template == obj:
                 elm.rms_template = None
 
@@ -6437,7 +6536,7 @@ class Assets:
             if elm.emt_model.template == obj:
                 elm.emt_model.template = None
 
-        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             if elm.emt_model.template == obj:
                 elm.emt_model.template = None
 
@@ -6539,7 +6638,7 @@ class Assets:
             else:
                 pass
 
-        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             if elm.rms_fmu_template == obj:
                 elm.rms_fmu_template = None
             else:
@@ -6667,6 +6766,9 @@ class Assets:
         elif obj.device_type == DeviceType.VscDevice:
             self.add_vsc(obj)
 
+        elif obj.device_type == DeviceType.PfcDevice:
+            self.add_pfc(obj)
+
         elif obj.device_type == DeviceType.UpfcDevice:
             self.add_upfc(obj)
 
@@ -6693,7 +6795,7 @@ class Assets:
 
             **obj** (:ref:`Branch<branch>`): :ref:`Branch<branch>` object
         """
-        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             try:
                 branch_list.remove(obj)
                 self.delete_groupings_with_object(obj=obj)
@@ -6702,7 +6804,8 @@ class Assets:
 
     def get_branch_lists(self, add_vsc: bool = True,
                          add_hvdc: bool = True,
-                         add_switch: bool = False) -> List[List[BRANCH_TYPES]]:
+                         add_switch: bool = False,
+                         add_pfc: bool =True) -> List[List[BRANCH_TYPES]]:
         """
         Return all the branch objects
         :param add_vsc: Include the list of VSC?
@@ -6728,10 +6831,13 @@ class Assets:
         if add_switch:
             lst.append(self._switch_devices)
 
+        if add_pfc:
+            lst.append(self._pfc_devices)
+
         return lst
 
     def get_branches(self, add_vsc: bool = False, add_hvdc: bool = False,
-                     add_switch: bool = True) -> List[BRANCH_TYPES]:
+                     add_switch: bool = True, add_pfc: bool = False) -> List[BRANCH_TYPES]:
         """
         Return all the branch objects
         :param add_vsc: Include the list of VSC?
@@ -6740,14 +6846,15 @@ class Assets:
         :return: list of branch devices
         """
         elms = list()
-        for lst in self.get_branch_lists(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch):
+        for lst in self.get_branch_lists(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch, add_pfc=add_pfc):
             for elm in lst:
                 elms.append(elm)
         return elms
 
     def get_branches_iter(self, add_vsc: bool = True,
                           add_hvdc: bool = True,
-                          add_switch: bool = False) -> Generator[BRANCH_TYPES, None, None]:
+                          add_switch: bool = False,
+                          add_pfc: bool = True) -> Generator[BRANCH_TYPES, None, None]:
         """
         Return all the branch objects
         :param add_vsc: Include the list of VSC?
@@ -6755,13 +6862,14 @@ class Assets:
         :param add_switch: Include the list of Switch?
         :return: list of branch devices
         """
-        for lst in self.get_branch_lists(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch):
+        for lst in self.get_branch_lists(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch, add_pfc=add_pfc):
             for elm in lst:
                 yield elm
 
     def get_branch_number(self, add_vsc: bool = False,
                           add_hvdc: bool = False,
-                          add_switch: bool = True) -> int:
+                          add_switch: bool = True,
+                          add_pfc: bool = False) -> int:
         """
         return the number of Branches (of all types)
         :param add_vsc: Include the list of VSC?
@@ -6772,13 +6880,15 @@ class Assets:
         m = 0
         for branch_list in self.get_branch_lists(add_vsc=add_vsc,
                                                  add_hvdc=add_hvdc,
-                                                 add_switch=add_switch):
+                                                 add_switch=add_switch,
+                                                 add_pfc=add_pfc):
             m += len(branch_list)
         return m
 
     def get_branch_names(self, add_vsc: bool = True,
                          add_hvdc: bool = True,
-                         add_switch: bool = False) -> StrVec:
+                         add_switch: bool = False,
+                         add_pfc: bool = True) -> StrVec:
         """
         Get array of all branch names
         :param add_vsc: Include the list of VSC?
@@ -6790,7 +6900,8 @@ class Assets:
         names = list()
         for lst in self.get_branch_lists(add_vsc=add_vsc,
                                          add_hvdc=add_hvdc,
-                                         add_switch=add_switch):
+                                         add_switch=add_switch,
+                                         add_pfc=add_pfc):
             for elm in lst:
                 names.append(elm.name)
         return np.array(names)
@@ -6799,7 +6910,8 @@ class Assets:
                            t_idx: int | None,
                            add_vsc: bool = True,
                            add_hvdc: bool = True,
-                           add_switch: bool = False) -> IntVec:
+                           add_switch: bool = False,
+                           add_pfc: bool = True) -> IntVec:
         """
         Get array of all branch active states
         :param t_idx: Index of time step
@@ -6808,17 +6920,18 @@ class Assets:
         :param add_switch: Include the list of Switch?
         :return: StrVec
         """
-        n = self.get_branch_number(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch)
+        n = self.get_branch_number(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch, add_pfc=add_pfc)
         data: IntVec = np.zeros(n, dtype=int)
         i = 0
-        for elm in self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch):
+        for elm in self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch, add_pfc=add_pfc):
             data[i] = elm.active_prof[t_idx] if t_idx is not None else elm.active
             i += 1
         return data
 
     def get_branches_index_dict(self, add_vsc: bool = True,
                                 add_hvdc: bool = True,
-                                add_switch: bool = False) -> Dict[BRANCH_TYPES, int]:
+                                add_switch: bool = False,
+                                add_pfc: bool = True) -> Dict[BRANCH_TYPES, int]:
         """
         Get the branch to index dictionary
         :param add_vsc: Include the list of VSC?
@@ -6828,11 +6941,13 @@ class Assets:
         """
         return {b: i for i, b in enumerate(self.get_branches_iter(add_vsc=add_vsc,
                                                                   add_hvdc=add_hvdc,
-                                                                  add_switch=add_switch))}
+                                                                  add_switch=add_switch,
+                                                                  add_pfc=add_pfc))}
 
     def get_branches_idtag_index_dict(self, add_vsc: bool = True,
                                       add_hvdc: bool = True,
-                                      add_switch: bool = False) -> Dict[str, int]:
+                                      add_switch: bool = False,
+                                      add_pfc: bool = True) -> Dict[str, int]:
         """
         Get the branch to index dictionary
         :param add_vsc: Include the list of VSC?
@@ -6842,11 +6957,13 @@ class Assets:
         """
         return {b.idtag: i for i, b in enumerate(self.get_branches_iter(add_vsc=add_vsc,
                                                                         add_hvdc=add_hvdc,
-                                                                        add_switch=add_switch))}
+                                                                        add_switch=add_switch,
+                                                                        add_pfc=add_pfc))}
 
     def get_branches_index_dict2(self, add_vsc: bool = True,
                                  add_hvdc: bool = True,
-                                 add_switch: bool = False) -> Dict[str, int]:
+                                 add_switch: bool = False,
+                                 add_pfc: bool = True) -> Dict[str, int]:
         """
         Get the branch to index dictionary
         :param add_vsc: Include the list of VSC?
@@ -6856,11 +6973,13 @@ class Assets:
         """
         return {b.idtag: i for i, b in enumerate(self.get_branches_iter(add_vsc=add_vsc,
                                                                         add_hvdc=add_hvdc,
-                                                                        add_switch=add_switch))}
+                                                                        add_switch=add_switch,
+                                                                        add_pfc=add_pfc))}
 
     def get_branches_dict(self, add_vsc: bool = True,
                           add_hvdc: bool = True,
-                          add_switch: bool = False) -> Dict[str, int]:
+                          add_switch: bool = False,
+                          add_pfc: bool = True) -> Dict[str, int]:
         """
         Get dictionary of branches (excluding HVDC)
         the key is the idtag, the value is the branch position
@@ -6871,11 +6990,13 @@ class Assets:
         """
         return {e.idtag: ei for ei, e in enumerate(self.get_branches_iter(add_vsc=add_vsc,
                                                                           add_hvdc=add_hvdc,
-                                                                          add_switch=add_switch))}
+                                                                          add_switch=add_switch,
+                                                                          add_pfc=add_pfc))}
 
     def get_branch_FT(self, add_vsc: bool = True,
                       add_hvdc: bool = True,
-                      add_switch: bool = False) -> Tuple[IntVec, IntVec]:
+                      add_switch: bool = False,
+                      add_pfc: bool = True) -> Tuple[IntVec, IntVec]:
         """
         get the from and to arrays of indices
         :param add_vsc: Include the list of VSC?
@@ -6883,11 +7004,11 @@ class Assets:
         :param add_switch: Include the list of Switch?
         :return: IntVec, IntVec
         """
-        m = self.get_branch_number(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch)
+        m = self.get_branch_number(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch, add_pfc=add_pfc)
         F: IntVec = np.zeros(m, dtype=int)
         T: IntVec = np.zeros(m, dtype=int)
         bus_dict = self.get_bus_index_dict()
-        for i, elm in enumerate(self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch)):
+        for i, elm in enumerate(self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch, add_pfc=add_pfc)):
             F[i] = bus_dict[elm.bus_from]
             T[i] = bus_dict[elm.bus_to]
         return F, T
@@ -6895,7 +7016,8 @@ class Assets:
     def get_branches_monitored_indices(self,
                                        add_vsc: bool = True,
                                        add_hvdc: bool = True,
-                                       add_switch: bool = False) -> IntVec:
+                                       add_switch: bool = False,
+                                       add_pfc: bool = True) -> IntVec:
         """
          Get the indices of the monitored branche
         :param add_vsc: Include the list of VSC?
@@ -6905,7 +7027,7 @@ class Assets:
         """
         lst = list()
         i = 0
-        for elm in self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch):
+        for elm in self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch, add_pfc=add_pfc):
             if elm.monitor_loading:
                 lst.append(i)
             i += 1
@@ -7288,6 +7410,9 @@ class Assets:
         elif device_type == DeviceType.VscDevice:
             return self._vsc_devices
 
+        elif device_type == DeviceType.PfcDevice:
+            return self._pfc_devices
+
         elif device_type == DeviceType.BranchGroupDevice:
             return self._branch_groups
 
@@ -7433,7 +7558,7 @@ class Assets:
             return self.get_load_like_devices()
 
         elif device_type == DeviceType.BranchDevice:
-            return self.get_branches(add_hvdc=False, add_vsc=False, add_switch=True)
+            return self.get_branches(add_hvdc=False, add_vsc=False, add_switch=True, add_pfc=False)
 
         elif device_type == DeviceType.ShuntLikeDevice:
             return self.get_shunt_like_devices()
@@ -7584,6 +7709,12 @@ class Assets:
             for d in devices:
                 d.set_var_factory(self._var_factory)
             self._vsc_devices = devices
+
+        elif device_type == DeviceType.PfcDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
+            self._pfc_devices = devices
+
 
         elif device_type == DeviceType.BranchGroupDevice:
             self._branch_groups = devices
@@ -7838,6 +7969,9 @@ class Assets:
         elif obj.device_type == DeviceType.VscDevice:
             self.add_vsc(obj=obj)
 
+        elif obj.device_type == DeviceType.PfcDevice:
+            self.add_pfc(obj=obj)
+
         elif obj.device_type == DeviceType.BusDevice:
             self.add_bus(obj=obj)
 
@@ -8071,6 +8205,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.VscDevice:
             self.delete_vsc_converter(obj)
+
+        elif obj.device_type == DeviceType.PfcDevice:
+            self.delete_pfc(obj)
 
         elif obj.device_type == DeviceType.BusDevice:
             self.delete_bus(obj, delete_associated=True)
@@ -8626,6 +8763,17 @@ class Assets:
 
         elif elm_type == DeviceType.VscDevice:
             elm = dev.VSC()
+            dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
+                DeviceType.BranchGroupDevice: self.branch_groups,
+                DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
+            }
+
+        elif elm_type == DeviceType.PfcDevice:
+            elm = dev.PFC()
             dictionary_of_lists = {
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,

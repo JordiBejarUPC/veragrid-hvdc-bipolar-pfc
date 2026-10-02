@@ -29,7 +29,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
                                                                                     asynchronous_gen_q,
                                                                                     voltage_pdc_droop_neg)
 from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, HvdcControlType, ConverterControlType,
-                                         GeneratorType)
+                                         GeneratorType, PfcControlType)
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
 
@@ -129,7 +129,7 @@ def adv_jacobian(nbus: int,
     :param alpha2: VSC linear loss coefficients
     :param alpha3: VSC quadratic loss coefficients
     :param hvdc_r: HVDC resistances [pu]
-    :param hvdc_droop: HVDC droop gains 
+    :param hvdc_droop: HVDC droop gains
     :param i_u_vm: buses with unknown Vm
     :param i_u_va: buses with unknown Va
     :param i_k_p: buses with P balance (AC only)
@@ -497,7 +497,8 @@ def calc_flows_summation_per_bus(nbus: int,
                                  F_br: IntVec, T_br: IntVec, Sf_br: CxVec, St_br: CxVec,
                                  F_hvdc: IntVec, T_hvdc: IntVec, Sf_hvdc: CxVec, St_hvdc: CxVec,
                                  Fdcp_vsc: IntVec, Fdcn_vsc: IntVec, T_vsc: IntVec,
-                                 Pfp_vsc: Vec, Pfn_vsc: Vec, St_vsc: CxVec) -> CxVec:
+                                 Pfp_vsc: Vec, Pfn_vsc: Vec, St_vsc: CxVec, Q_dc_pfc: IntVec,
+                                 R_dc_pfc: IntVec, S_dc_pfc: IntVec, Pq_pfc: Vec, Pr_pfc: Vec, Ps_pfc: Vec) -> CxVec:
     """
     Summation of magnitudes per bus (complex)
     Includes everything: VSCs, HVDCs, and all
@@ -517,6 +518,12 @@ def calc_flows_summation_per_bus(nbus: int,
     :param Pfp_vsc:
     :param Pfn_vsc:
     :param St_vsc:
+    :param Q_pfc:
+    :param R_pfc:
+    :param S_pfc:
+    :param Pq_pfc:
+    :param Pr_pfc:
+    :param Ps_pfc:
     :return:
     """
 
@@ -541,6 +548,12 @@ def calc_flows_summation_per_bus(nbus: int,
 
         res[T_vsc[i]] += St_vsc[i]
 
+    #Add PFC
+    for i in range(len(R_dc_pfc)):
+        res[Q_dc_pfc[i]] += Pq_pfc[i]
+        res[R_dc_pfc[i]] += Pr_pfc[i]
+        res[S_dc_pfc[i]] += Ps_pfc[i]
+
     return res
 
 
@@ -548,7 +561,8 @@ def calc_flows_summation_per_bus(nbus: int,
 def calc_flows_active_branch_per_bus(nbus: int,
                                      F_hvdc: IntVec, T_hvdc: IntVec, Sf_hvdc: CxVec, St_hvdc: CxVec,
                                      Fdcp_vsc: IntVec, Fdcn_vsc: IntVec, T_vsc: IntVec,
-                                     Vm: Vec, Va: Vec, Ifp_vsc: Vec, St_vsc: CxVec) -> CxVec:
+                                     Vm: Vec, Va: Vec, Ifp_vsc: Vec, St_vsc: CxVec, Q_dc_pfc: IntVec,
+                                     R_dc_pfc: IntVec, S_dc_pfc: IntVec, Pq_pfc: Vec, Pr_pfc: Vec, Ps_pfc: Vec) -> CxVec:
     """
     Summation of magnitudes per bus (complex)
     Used to add effects of VSCs and HVDCs to the traditional branches
@@ -566,6 +580,12 @@ def calc_flows_active_branch_per_bus(nbus: int,
     :param Va:
     :param Ifp_vsc:
     :param St_vsc:
+    :param Q_dc_pfc:
+    :param R_dc_pfc:
+    :param S_dc_pfc:
+    :param Pq_pfc:
+    :param Pr_pfc:
+    :param Ps_pfc:
     :return:
     """
 
@@ -586,6 +606,12 @@ def calc_flows_active_branch_per_bus(nbus: int,
             res[Fdcn_vsc[i]] += Pfn_vsc
 
         res[T_vsc[i]] += St_vsc[i]
+
+    # Add PFC
+    for i in range(len(R_dc_pfc)):
+        res[Q_dc_pfc[i]] += Pq_pfc[i]
+        res[R_dc_pfc[i]] += Pr_pfc[i]
+        res[S_dc_pfc[i]] += Ps_pfc[i]
 
     return res
 
@@ -615,6 +641,34 @@ def calculate_vsc_currents(nbus: int,
             Iconv[Fdcn_vsc[i]] -= Ifp_vsc[i]
 
     return Iconv
+
+@njit(cache=True)
+def calculate_pfc_currents(nbus: int,
+                           Q_dc_pfc: IntVec,
+                           R_dc_pfc: IntVec,
+                           S_dc_pfc: IntVec,
+                           Iq_pfc: Vec,
+                           Ir_pfc: Vec,
+                           Is_pfc: Vec) -> CxVec:
+    """
+    Aggregate the PFC current injections per bus, used by
+    the DC bus current-balance residuals
+    :param nbus: Total number of nodes (buses)
+    :param Q_dc_pfc: Node index vector for the Q bus of each PFC
+    :param R_dc_pfc: Node index vector for the R bus of each PFC
+    :param S_dc_pfc: Node index vector for the S bus of each PFC
+    :param Iq_pfc: Quadrature axis current injections (p.u.)
+    :param Ir_pfc: Real axis current injections (p.u.)
+    :param Is_pfc: Synchronous axis current injections (p.u.)
+    :return: vector of current injections per node
+    """
+    Ipfc = np.zeros(nbus, dtype=np.complex128)
+
+    for i in range(len(Q_dc_pfc)):
+        Ipfc[Q_dc_pfc[i]] += Iq_pfc[i]
+        Ipfc[R_dc_pfc[i]] += Ir_pfc[i]
+        Ipfc[S_dc_pfc[i]] += Is_pfc[i]
+    return Ipfc
 
 
 def calc_autodiff_jacobian(func: Callable[[Vec], Vec], x: Vec, h=1e-8) -> CSC:
@@ -670,7 +724,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.logger: Logger = logger
 
         # set to True to use the finite-difference Jacobian
-        self.use_autodiff_jacobian: bool = False
+        self.use_autodiff_jacobian: bool = True
+        # print("use_autodiff_jacobian:", self.use_autodiff_jacobian)
 
         self.V0: CxVec = V0
         self.S0: CxVec = S0
@@ -726,6 +781,27 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.vsc_pdc_set = np.zeros(0, dtype=float)  # Pdc setpoints in MW aligned with k_vsc_pdc
         self._set_vsc_control_indices()
 
+        #Fill PFC Indices
+        self.u_pfc_iq = np.zeros(0, dtype=int)
+        self.u_pfc_ir = np.zeros(0, dtype=int)
+        self.u_pfc_is = np.zeros(0, dtype=int)
+        self.u_pfc_vr = np.zeros(0, dtype=int)
+        self.u_pfc_vs = np.zeros(0, dtype=int)
+        self.k_pfc_iq = np.zeros(0, dtype=int)
+        self.k_pfc_ir = np.zeros(0, dtype=int)
+        self.k_pfc_is = np.zeros(0, dtype=int)
+        self.k_pfc_vr = np.zeros(0, dtype=int)
+        self.k_pfc_vs = np.zeros(0, dtype=int)
+        self.pfc_iq_set = np.zeros(0, dtype=int)
+        self.pfc_ir_set = np.zeros(0, dtype=int)
+        self.pfc_is_set = np.zeros(0, dtype=int)
+        self.pfc_pq_set = np.zeros(0, dtype=int)
+        self.pfc_pr_set = np.zeros(0, dtype=int)
+        self.pfc_ps_set = np.zeros(0, dtype=int)
+        self.pfc_vr_set = np.zeros(0, dtype=int)
+        self.pfc_vs_set = np.zeros(0, dtype=int)
+        self._set_pfc_control_indices()
+
         # Fill HVDC Indices
         self.hvdc_droop_idx = np.zeros(0, dtype=int)
         self._set_hvdc_control_indices()
@@ -743,6 +819,14 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # it is structurally -Ifp for converters with a modelled negative pole
         self.Ifp_vsc = np.zeros(nc.vsc_data.nelm)
         self.Pt_vsc = np.zeros(nc.vsc_data.nelm)
+        self.Iq_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Ir_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Is_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Pq_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Pr_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Ps_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Vr_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Vs_pfc = np.zeros(nc.pfc_data.nelm)
         self.Qt_vsc = np.zeros(nc.vsc_data.nelm)
         self.Pf_hvdc = np.zeros(nc.hvdc_data.nelm)
         self.Qf_hvdc = np.zeros(nc.hvdc_data.nelm)
@@ -754,6 +838,13 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # set the VSC AC-side set-points
         self.Pt_vsc[self.k_vsc_pt] = self.vsc_pt_set / self.nc.Sbase
         self.Qt_vsc[self.k_vsc_qt] = self.vsc_qt_set / self.nc.Sbase
+
+        # set the PFC set-points
+        self.Iq_pfc[self.k_pfc_iq] = self.pfc_iq_set #in p.u.
+        self.Ir_pfc[self.k_pfc_ir] = self.pfc_ir_set #in p.u.
+        self.Is_pfc[self.k_pfc_is] = self.pfc_is_set #in p.u.
+        self.Vr_pfc[self.k_pfc_vr] = self.pfc_vr_set #in p.u.
+        self.Vs_pfc[self.k_pfc_vs] = self.pfc_vs_set #in p.u.
 
         # Admittance ---------------------------------------------------------------------------------------------------
         self.adm = compute_admittances_fast(
@@ -1942,6 +2033,107 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             else:
                 pass
 
+
+    def _set_pfc_control_indices(self) -> None:
+        #PFC Indices
+        u_pfc_iq = list()
+        u_pfc_ir = list()
+        u_pfc_is = list()
+        u_pfc_vr = list()
+        u_pfc_vs = list()
+        k_pfc_iq = list()
+        k_pfc_ir = list()
+        k_pfc_is = list()
+        k_pfc_vr = list()
+        k_pfc_vs = list()
+        pfc_iq_set = list()
+        pfc_ir_set = list()
+        pfc_is_set = list()
+        pfc_vr_set = list()
+        pfc_vs_set = list()
+
+        #PFC LOOP
+        for k in range(self.nc.pfc_data.nelm):
+
+            if self.nc.pfc_data.active[k]:
+
+                control1 = self.nc.pfc_data.control1_int[k]
+
+                control1_magnitude = self.nc.pfc_data.control1_val[k]
+
+                control1_bus_device = self.nc.pfc_data.control1_bus_idx[k]
+
+                control1_branch_device = self.nc.pfc_data.control1_branch_idx[k]
+
+                """
+                Iq_pfc = 'Iq_pfc'
+                Ir_pfc = 'Ir_pfc'
+                Is_pfc = 'Is_pfc'
+                Vr_pfc = 'Vr_pfc'
+                Vs_pfc = 'Vs_pfc'
+                """
+
+                if control1 == PfcControlType.Iq_pfc.idx():
+                    if control1_branch_device > -1:
+                        u_pfc_ir.append(control1_branch_device)
+                        u_pfc_is.append(control1_branch_device)
+                        u_pfc_vr.append(control1_branch_device)
+                        u_pfc_vs.append(control1_branch_device)
+                        k_pfc_iq.append(control1_branch_device)
+                        pfc_iq_set.append(control1_magnitude)
+
+                if control1 == PfcControlType.Ir_pfc.idx():
+                    if control1_branch_device > -1:
+                        u_pfc_iq.append(control1_branch_device)
+                        u_pfc_is.append(control1_branch_device)
+                        u_pfc_vr.append(control1_branch_device)
+                        u_pfc_vs.append(control1_branch_device)
+                        k_pfc_ir.append(control1_branch_device)
+                        pfc_ir_set.append(control1_magnitude)
+
+                if control1 == PfcControlType.Is_pfc.idx():
+                    if control1_branch_device > -1:
+                        u_pfc_iq.append(control1_branch_device)
+                        u_pfc_ir.append(control1_branch_device)
+                        u_pfc_vr.append(control1_branch_device)
+                        u_pfc_vs.append(control1_branch_device)
+                        k_pfc_is.append(control1_branch_device)
+                        pfc_is_set.append(control1_magnitude)
+
+                if  control1 == PfcControlType.Vr_pfc.idx():
+                    if control1_branch_device > -1:
+                        u_pfc_iq.append(control1_branch_device)
+                        u_pfc_ir.append(control1_branch_device)
+                        u_pfc_is.append(control1_branch_device)
+                        u_pfc_vs.append(control1_branch_device)
+                        k_pfc_vr.append(control1_branch_device)
+                        pfc_vr_set.append(control1_magnitude)
+
+                if control1 == PfcControlType.Vs_pfc.idx():
+                    if control1_branch_device > -1:
+                        u_pfc_iq.append(control1_branch_device)
+                        u_pfc_ir.append(control1_branch_device)
+                        u_pfc_is.append(control1_branch_device)
+                        u_pfc_vr.append(control1_branch_device)
+                        k_pfc_vs.append(control1_branch_device)
+                        pfc_vs_set.append(control1_magnitude)
+
+        self.u_pfc_iq = np.array(u_pfc_iq, dtype=int)
+        self.u_pfc_ir = np.array(u_pfc_ir, dtype=int)
+        self.u_pfc_is = np.array(u_pfc_is, dtype=int)
+        self.u_pfc_vr = np.array(u_pfc_vr, dtype=int)
+        self.u_pfc_vs = np.array(u_pfc_vs, dtype=int)
+        self.k_pfc_iq = np.array(k_pfc_iq, dtype=int)
+        self.k_pfc_ir = np.array(k_pfc_ir, dtype=int)
+        self.k_pfc_is = np.array(k_pfc_is, dtype=int)
+        self.k_pfc_vr = np.array(k_pfc_vr, dtype=int)
+        self.k_pfc_vs = np.array(k_pfc_vs, dtype=int)
+        self.pfc_iq_set = np.array(pfc_iq_set, dtype=float)
+        self.pfc_ir_set = np.array(pfc_ir_set, dtype=float)
+        self.pfc_is_set = np.array(pfc_is_set, dtype=float)
+        self.pfc_vr_set = np.array(pfc_vr_set, dtype=float)
+        self.pfc_vs_set = np.array(pfc_vs_set, dtype=float)
+
     def _set_hvdc_control_indices(self) -> None:
         """
         Analyze the control hvdc and compute the indices
@@ -1979,6 +2171,11 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         i = h + self.nc.hvdc_data.nelm
         j = i + len(self.u_cbr_m)
         k = j + len(self.u_cbr_tau)
+        l = k + len(self.u_pfc_iq)
+        m = l + len(self.u_pfc_ir)
+        n = m + len(self.u_pfc_is)
+        o = n + len(self.u_pfc_vr)
+        p = o + len(self.u_pfc_vs)
 
         # update the vectors
         self.Va[self.i_u_va] = x[0:a]
@@ -1992,6 +2189,11 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.Qt_hvdc = x[h:i]
         self.m = x[i:j]
         self.tau = x[j:k]
+        self.Iq_pfc[self.u_pfc_iq] = x[k:l]
+        self.Ir_pfc[self.u_pfc_ir] = x[l:m]
+        self.Is_pfc[self.u_pfc_is] = x[m:n]
+        self.Vr_pfc[self.u_pfc_vr] = x[n:o]
+        self.Vs_pfc[self.u_pfc_vs] = x[o:p]
 
     def var2x(self) -> Vec:
         """
@@ -2009,7 +2211,12 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             self.Qf_hvdc,
             self.Qt_hvdc,
             self.m,
-            self.tau
+            self.tau,
+            self.Iq_pfc[self.u_pfc_iq],
+            self.Ir_pfc[self.u_pfc_ir],
+            self.Is_pfc[self.u_pfc_is],
+            self.Vr_pfc[self.u_pfc_vr],
+            self.Vs_pfc[self.u_pfc_vs]
         ]
 
     def size(self) -> int:
@@ -2027,7 +2234,12 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 + self.nc.hvdc_data.nelm
                 + self.nc.hvdc_data.nelm
                 + len(self.u_cbr_m)
-                + len(self.u_cbr_tau))
+                + len(self.u_cbr_tau)
+                + len(self.u_pfc_iq)
+                + len(self.u_pfc_ir)
+                + len(self.u_pfc_is)
+                + len(self.u_pfc_vr)
+                + len(self.u_pfc_vs))
 
     def _pfp_droop_values(self, V: CxVec) -> Vec:
         """
@@ -2136,7 +2348,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         :param update_class_vars: Update the class vars related to the calculation step
         :return: Residual vector
         """
-        tm = [None] * 9
+        tm = [None] * 10
 
         tm[0] = time.time()
         nhvdc = self.nc.hvdc_data.nelm
@@ -2152,6 +2364,11 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         i = h + nhvdc
         j = i + len(self.u_cbr_m)
         k = j + len(self.u_cbr_tau)
+        l = k + len(self.u_pfc_iq)
+        m = l + len(self.u_pfc_ir)
+        n = m + len(self.u_pfc_is)
+        o = n + len(self.u_pfc_vr)
+        p = o + len(self.u_pfc_vs)
 
         # copy the sliceable vectors
         Vm_ = self.Vm.copy()
@@ -2159,6 +2376,11 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         Ifp_vsc_ = self.Ifp_vsc.copy()
         Pt_vsc_ = self.Pt_vsc.copy()
         Qt_vsc_ = self.Qt_vsc.copy()
+        Iq_pfc_ = self.Iq_pfc.copy()
+        Ir_pfc_ = self.Ir_pfc.copy()
+        Is_pfc_ = self.Is_pfc.copy()
+        Vr_pfc_ = self.Vr_pfc.copy()
+        Vs_pfc_ = self.Vs_pfc.copy()
 
         # update the vectors
         Va_[self.i_u_va] = x[0:a]
@@ -2172,6 +2394,11 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         Qt_hvdc_ = x[h:i]
         m_ = x[i:j]
         tau_ = x[j:k]
+        Iq_pfc_[self.u_pfc_iq] = x[k:l]
+        Ir_pfc_[self.u_pfc_ir] = x[l:m]
+        Is_pfc_[self.u_pfc_is] = x[m:n]
+        Vr_pfc_[self.u_pfc_vr] = x[n:o]
+        Vs_pfc_[self.u_pfc_vs] = x[o:p]
 
         # Controllable branches ----------------------------------------------------------------------------------------
         tm[1] = time.time()
@@ -2376,13 +2603,34 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Ifp_vsc=Ifp_vsc_
         )
 
+        I_pfc = calculate_pfc_currents(
+            nbus=self.nc.bus_data.nbus,
+            Q_dc_pfc=self.nc.pfc_data.Q_dc,
+            R_dc_pfc=self.nc.pfc_data.R_dc,
+            S_dc_pfc=self.nc.pfc_data.S_dc,
+            Iq_pfc=Iq_pfc_,
+            Ir_pfc=Ir_pfc_,
+            Is_pfc=Is_pfc_
+        )
+
         # The injections of loads and generators at DC buses enter as currents too
         I_injections = np.conj(Sbus[is_dc_indices] / (V[is_dc_indices] + 1e-20))
 
-        dI_dc = (I_conv[is_dc_indices] + I_passive_all[is_dc_indices] - I_injections).real
+        dI_dc = (I_conv[is_dc_indices] + I_passive_all[is_dc_indices] + I_pfc[is_dc_indices] - I_injections).real
+
+        # PFC ---------------------------------------------------------------------------------------------------------
+        tm[5] = time.time()
+        KCL_pfc_ = Iq_pfc_ + Ir_pfc_ + Is_pfc_
+        PB_pfc_ = -(Vr_pfc_ * Ir_pfc_) + (Vs_pfc_ * Is_pfc_)
+        Vqr_pfc_ = Vm_[self.nc.pfc_data.Q_dc] - Vr_pfc_ - Vm_[self.nc.pfc_data.R_dc]
+        Vqs_pfc_ = Vm_[self.nc.pfc_data.Q_dc] + Vs_pfc_ - Vm_[self.nc.pfc_data.S_dc]
+        Pq_pfc_ = Vm_[self.nc.pfc_data.Q_dc] * Iq_pfc_
+        Pr_pfc_ = Vm_[self.nc.pfc_data.R_dc] * Ir_pfc_
+        Ps_pfc_ = Vm_[self.nc.pfc_data.S_dc] * Is_pfc_
+        #To be done: Add all the PFC power controls
 
         # HVDC ---------------------------------------------------------------------------------------------------------
-        tm[5] = time.time()
+        tm[6] = time.time()
 
         Vmf_hvdc = Vm_[self.nc.hvdc_data.F]
         zbase = self.nc.hvdc_data.Vnf * self.nc.hvdc_data.Vnf / self.nc.Sbase
@@ -2400,7 +2648,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         St_hvdc = make_complex(Pt_hvdc_, Qt_hvdc_)
 
         # total nodal power --------------------------------------------------------------------------------------------
-        tm[6] = time.time()
+        tm[7] = time.time()
 
         Scalc_active = calc_flows_active_branch_per_bus(
             nbus=self.nc.bus_data.nbus,
@@ -2414,14 +2662,20 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Vm=Vm_,
             Va=Va_,
             Ifp_vsc=Ifp_vsc_,
-            St_vsc=St_vsc)
+            St_vsc=St_vsc,
+            Q_dc_pfc=self.nc.pfc_data.Q_dc,
+            R_dc_pfc=self.nc.pfc_data.R_dc,
+            S_dc_pfc=self.nc.pfc_data.S_dc,
+            Pq_pfc=Pq_pfc_,
+            Pr_pfc=Pr_pfc_,
+            Ps_pfc=Ps_pfc_)
 
         Scalc_ = Scalc_active + Scalc_passive
 
         dS = Scalc_ - Sbus
 
         # compose the residuals vector ---------------------------------------------------------------------------------
-        tm[7] = time.time()
+        tm[8] = time.time()
 
         f_ = np.r_[
             dS[self.i_k_p].real,
@@ -2432,6 +2686,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             pdc_vsc,
             vmdc_diff,
             dI_dc,
+            KCL_pfc_,
+            PB_pfc_,
+            Vqr_pfc_,
+            Vqs_pfc_,
             loss_hvdc,
             inj_hvdc,
             Pf_cbr - self.cbr_pf_set,
@@ -2440,7 +2698,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Qt_cbr - self.cbr_qt_set
         ]
 
-        tm[8] = time.time()
+        tm[9] = time.time()
 
         if update_class_vars:
             self._Va = Va_
@@ -2448,6 +2706,14 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             self.Ifp_vsc = Ifp_vsc_
             self.Pt_vsc = Pt_vsc_
             self.Qt_vsc = Qt_vsc_
+            self.Iq_pfc = Iq_pfc_
+            self.Ir_pfc = Ir_pfc_
+            self.Is_pfc = Is_pfc_
+            self.Pq_pfc = Pq_pfc_
+            self.Pr_pfc = Pr_pfc_
+            self.Ps_pfc = Ps_pfc_
+            self.Vr_pfc = Vr_pfc_
+            self.Vs_pfc = Vs_pfc_
             self.Pf_hvdc = Pf_hvdc_
             self.Pt_hvdc = Pt_hvdc_
             self.Qf_hvdc = Qf_hvdc_
@@ -2819,6 +3085,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 self.is_vm_controlled = self.nc.bus_data.is_vm_controlled.copy()
                 self.is_va_controlled = self.nc.bus_data.is_va_controlled.copy()
                 self._set_vsc_control_indices()
+                self._set_pfc_control_indices()
                 self._set_branch_control_indices()
                 self._set_bus_control_indices()
 
@@ -2989,9 +3256,34 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Ifp_vsc=self.Ifp_vsc
         )
 
+        I_pfc = calculate_pfc_currents(
+            nbus=self.nc.bus_data.nbus,
+            Q_dc_pfc=self.nc.pfc_data.Q_dc,
+            R_dc_pfc=self.nc.pfc_data.R_dc,
+            S_dc_pfc=self.nc.pfc_data.S_dc,
+            Iq_pfc=self.Iq_pfc,
+            Ir_pfc=self.Ir_pfc,
+            Is_pfc=self.Is_pfc
+        )
+
         I_injections = np.conj(Sbus[is_dc_indices] / (V[is_dc_indices] + 1e-20))
 
-        dI_dc = (I_conv[is_dc_indices] + I_passive_all[is_dc_indices] - I_injections).real
+        dI_dc = (I_conv[is_dc_indices] + I_passive_all[is_dc_indices] + I_pfc[is_dc_indices] - I_injections).real
+
+        # PFC ----------------------------------------------------------------------------------------------------------
+        Q_dc_pfc = self.nc.pfc_data.Q_dc
+        R_dc_pfc = self.nc.pfc_data.R_dc
+        S_dc_pfc = self.nc.pfc_data.S_dc
+
+        KCL_pfc = self.Iq_pfc + self.Ir_pfc + self.Is_pfc
+        PB_pfc = - self.Vr_pfc * self.Ir_pfc + self.Vs_pfc * self.Is_pfc
+        Vqr_pfc = self.Vm[Q_dc_pfc] - self.Vr_pfc - self.Vm[R_dc_pfc]
+        Vqs_pfc = self.Vm[Q_dc_pfc] + self.Vs_pfc - self.Vm[S_dc_pfc]
+        Pq_pfc = self.Vm[Q_dc_pfc] * self.Iq_pfc
+        Pr_pfc = self.Vm[R_dc_pfc] * self.Ir_pfc
+        Ps_pfc = self.Vm[S_dc_pfc] * self.Is_pfc
+
+        ##To be done: Add the Power Control for each node##
 
         # HVDC ---------------------------------------------------------------------------------------------------------
         Vmf_hvdc = self.Vm[self.nc.hvdc_data.F]
@@ -3022,7 +3314,13 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Vm=self.Vm,
             Va=self.Va,
             Ifp_vsc=self.Ifp_vsc,
-            St_vsc=St_vsc)
+            St_vsc=St_vsc,
+            Q_dc_pfc=Q_dc_pfc,
+            R_dc_pfc=R_dc_pfc,
+            S_dc_pfc=S_dc_pfc,
+            Pq_pfc=Pq_pfc,
+            Pr_pfc=Pr_pfc,
+            Ps_pfc=Ps_pfc)
 
         self.Scalc = Scalc_active + Scalc_passive
 
@@ -3038,6 +3336,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             pdc_vsc,
             vmdc_diff,
             dI_dc,
+            KCL_pfc,
+            PB_pfc,
+            Vqr_pfc,
+            Vqs_pfc,
             dloss_hvdc,
             dinj_hvdc,
             Pf_cbr - self.cbr_pf_set,
@@ -3167,6 +3469,12 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         cols += [f'dPt_vsc_{i}' for i in self.u_vsc_pt]
         cols += [f'dQt_vsc_{i}' for i in self.u_vsc_qt]
 
+        cols += [f'dIq_pfc_{i}' for i in self.u_pfc_iq]
+        cols += [f'dIr_pfc_{i}' for i in self.u_pfc_ir]
+        cols += [f'dIs_pfc_{i}' for i in self.u_pfc_is]
+        cols += [f'dVr_pfc_{i}' for i in self.u_pfc_vr]
+        cols += [f'dVs_pfc_{i}' for i in self.u_pfc_vs]
+
         cols += [f'dPf_hvdc_{i}' for i in range(self.nc.hvdc_data.nelm)]
         cols += [f'dPt_hvdc_{i}' for i in range(self.nc.hvdc_data.nelm)]
         cols += [f'dQf_hvdc_{i}' for i in range(self.nc.hvdc_data.nelm)]
@@ -3192,6 +3500,12 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         rows += [f'dpdc_vsc_{i}' for i in self.k_vsc_pdc]
         rows += [f'dvmdc_diff_{i}' for i in self.k_vsc_vmdc_diff]
         rows += [f'dI_{i}' for i in bus_dc]
+
+        rows += [f'dKCL_pfc_{i}' for i in range(self.nc.pfc_data.nelm)]
+        rows += [f'dPB_pfc_{i}' for i in range(self.nc.pfc_data.nelm)]
+        rows += [f'Vqr_pfc_{i}' for i in range(self.nc.pfc_data.nelm)]
+        rows += [f'Vqs_pfc_{i}' for i in range(self.nc.pfc_data.nelm)]
+
         rows += [f'dloss_hvdc_{i}' for i in range(self.nc.hvdc_data.nelm)]
         rows += [f'dinj_hvdc_{i}' for i in range(self.nc.hvdc_data.nelm)]
 
@@ -3247,6 +3561,22 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 self.nc.vsc_data.rates / self.nc.Sbase + 1e-20)
         losses_vsc = (self.Pt_vsc + self.Ifp_vsc * (Vdc_p_vsc - Vdc_n_vsc)) * self.nc.Sbase
 
+        # PFC ----------------------------------------------------------------------------------------------------------
+        Iq_pfc = self.Iq_pfc
+        Ir_pfc = self.Ir_pfc
+        Is_pfc = self.Is_pfc
+        Pq_pfc = self.Pq_pfc
+        Pr_pfc = self.Pr_pfc
+        Ps_pfc = self.Ps_pfc
+        Vr_pfc = self.Vr_pfc
+        Vs_pfc = self.Vs_pfc
+        KCL_pfc = Iq_pfc + Ir_pfc + Is_pfc
+        PB_pfc = - Vr_pfc *  Ir_pfc + Vs_pfc * Is_pfc
+        P_Vr_pfc = Vr_pfc *  Ir_pfc
+        P_Vs_pfc = Vs_pfc * Is_pfc
+        Vqr_pfc = self.Vm[self.nc.pfc_data.Q_dc] - Vr_pfc - self.Vm[self.nc.pfc_data.R_dc]
+        Vqs_pfc = self.Vm[self.nc.pfc_data.Q_dc] + Vs_pfc - self.Vm[self.nc.pfc_data.S_dc]
+
         # HVDC ---------------------------------------------------------------------------------------------------------
         Sf_hvdc = make_complex(self.Pf_hvdc, self.Qf_hvdc) * self.nc.Sbase
         St_hvdc = make_complex(self.Pt_hvdc, self.Qt_hvdc) * self.nc.Sbase
@@ -3271,7 +3601,13 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             T_vsc=self.nc.vsc_data.T,
             Pfp_vsc=Pfp_vsc,
             Pfn_vsc=Pfn_vsc,
-            St_vsc=St_vsc)
+            St_vsc=St_vsc,
+            Q_dc_pfc=self.nc.pfc_data.Q_dc,
+            R_dc_pfc=self.nc.pfc_data.R_dc,
+            S_dc_pfc=self.nc.pfc_data.S_dc,
+            Pq_pfc=Pq_pfc,
+            Pr_pfc=Pr_pfc,
+            Ps_pfc=Ps_pfc)
 
         m2 = self.nc.active_branch_data.tap_module.copy()
         tau2 = self.nc.active_branch_data.tap_angle.copy()
@@ -3297,6 +3633,20 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             It_vsc=It_vsc,
             losses_vsc=losses_vsc,
             loading_vsc=loading_vsc,
+            Iq_pfc=Iq_pfc,
+            Ir_pfc=Ir_pfc,
+            Is_pfc=Is_pfc,
+            Pq_pfc=Pq_pfc,
+            Pr_pfc=Pr_pfc,
+            Ps_pfc=Ps_pfc,
+            Vr_pfc=Vr_pfc,
+            Vs_pfc=Vs_pfc,
+            KCL_pfc=KCL_pfc,
+            PB_pfc=PB_pfc,
+            P_Vr_pfc=P_Vr_pfc,
+            P_Vs_pfc=P_Vs_pfc,
+            Vqr_pfc=Vqr_pfc,
+            Vqs_pfc=Vqs_pfc,
             Sf_hvdc=Sf_hvdc,
             St_hvdc=St_hvdc,
             losses_hvdc=losses_hvdc,
@@ -3306,3 +3656,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             iterations=iterations,
             elapsed=elapsed
         )
+
+
+

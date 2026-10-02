@@ -39,6 +39,20 @@ class NumericPowerFlowResults:
         "It_vsc",
         "losses_vsc",
         "loading_vsc",
+        "Iq_pfc",
+        "Ir_pfc",
+        "Is_pfc",
+        "Pq_pfc",
+        "Pr_pfc",
+        "Ps_pfc",
+        "Vr_pfc",
+        "Vs_pfc",
+        "KCL_pfc",
+        "PB_pfc",
+        "P_Vr_pfc",
+        "P_Vs_pfc",
+        "Vqr_pfc",
+        "Vqs_pfc",
         "Sf_hvdc",
         "St_hvdc",
         "losses_hvdc",
@@ -68,6 +82,20 @@ class NumericPowerFlowResults:
                  It_vsc: CxVec,
                  losses_vsc: Vec,
                  loading_vsc: Vec,
+                 Iq_pfc: Vec,
+                 Ir_pfc: Vec,
+                 Is_pfc: Vec,
+                 Pq_pfc: Vec,
+                 Pr_pfc: Vec,
+                 Ps_pfc: Vec,
+                 Vr_pfc: Vec,
+                 Vs_pfc: Vec,
+                 KCL_pfc: Vec,
+                 PB_pfc: Vec,
+                 P_Vr_pfc: Vec,
+                 P_Vs_pfc: Vec,
+                 Vqr_pfc: Vec,
+                 Vqs_pfc: Vec,
                  Sf_hvdc: CxVec,
                  St_hvdc: CxVec,
                  losses_hvdc: CxVec,
@@ -95,6 +123,20 @@ class NumericPowerFlowResults:
         :param If_vsc:
         :param It_vsc:
         :param losses_vsc:
+        :param Iq_pfc:
+        :param Ir_pfc:
+        :param Is_pfc:
+        :param Pq_pfc:
+        :param Pr_pfc:
+        :param Ps_pfc:
+        :param Vr_pfc:
+        :param Vs_pfc:
+        :param KCL_pfc:
+        :param PB_pfc:
+        :param P_Vr_pfc
+        :param P_Vs_pfc
+        :param Vqr_pfc:
+        :param Vqs_pfc:
         :param Sf_hvdc:
         :param St_hvdc:
         :param losses_hvdc:
@@ -127,6 +169,22 @@ class NumericPowerFlowResults:
         self.It_vsc = It_vsc
         self.losses_vsc = losses_vsc
         self.loading_vsc = loading_vsc
+
+        #PFC
+        self.Iq_pfc = Iq_pfc
+        self.Ir_pfc = Ir_pfc
+        self.Is_pfc = Is_pfc
+        self.Pq_pfc = Pq_pfc
+        self.Pr_pfc = Pr_pfc
+        self.Ps_pfc = Ps_pfc
+        self.Vr_pfc = Vr_pfc
+        self.Vs_pfc = Vs_pfc
+        self.KCL_pfc = KCL_pfc
+        self.PB_pfc = PB_pfc
+        self.P_Vr_pfc=P_Vr_pfc
+        self.P_Vs_pfc=P_Vs_pfc
+        self.Vqr_pfc = Vqr_pfc
+        self.Vqs_pfc = Vqs_pfc
 
         # Hvdc
         self.Sf_hvdc = Sf_hvdc
@@ -182,6 +240,20 @@ class PowerFlowResults(ResultsTemplate):
         ResultsProperty(name='If_vsc', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='It_vsc', tpe=CxVec, old_names=list(), expandable=False),
         ResultsProperty(name='loading_vsc', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="Iq_pfc", tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="Ir_pfc", tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="Is_pfc", tpe= Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="Pq_pfc", tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="Pr_pfc", tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="Ps_pfc", tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="Vr_pfc", tpe= Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="Vs_pfc", tpe= Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="KCL_pfc", tpe= Vec,old_names=list(), expandable=False),
+        ResultsProperty(name="PB_pfc", tpe = Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="P_Vr_pfc", tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="P_Vs_pfc", tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="Vqr_pfc", tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name="Vqs_pfc", tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='gen_p', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='gen_q', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='battery_p', tpe=Vec, old_names=list(), expandable=False),
@@ -194,6 +266,7 @@ class PowerFlowResults(ResultsTemplate):
         "branch_names",
         "hvdc_names",
         "vsc_names",
+        "pfc_names",
         "gen_names",
         "batt_names",
         "sh_names",
@@ -221,6 +294,20 @@ class PowerFlowResults(ResultsTemplate):
         "It_vsc",
         "losses_vsc",
         "loading_vsc",
+        "Iq_pfc",
+        "Ir_pfc",
+        "Is_pfc",
+        "Pq_pfc",
+        "Pr_pfc",
+        "Ps_pfc",
+        "Vr_pfc",
+        "Vs_pfc",
+        "KCL_pfc",
+        "PB_pfc",
+        "P_Vr_pfc",
+        "P_Vs_pfc",
+        "Vqr_pfc",
+        "Vqs_pfc",
         "gen_p",
         "gen_q",
         "battery_p",
@@ -236,6 +323,7 @@ class PowerFlowResults(ResultsTemplate):
             m: int,
             n_hvdc: int,
             n_vsc: int,
+            n_pfc:int,
             n_gen: int,
             n_batt: int,
             n_sh: int,
@@ -243,6 +331,7 @@ class PowerFlowResults(ResultsTemplate):
             branch_names: np.ndarray,
             hvdc_names: np.ndarray,
             vsc_names: np.ndarray,
+            pfc_names: np.ndarray,
             gen_names: np.ndarray,
             batt_names: np.ndarray,
             sh_names: np.ndarray,
@@ -305,7 +394,24 @@ class PowerFlowResults(ResultsTemplate):
                     ResultTypes.VscVdc,
                     ResultTypes.VscPowerTo,
                     ResultTypes.VscLosses,
+                    ResultTypes.VscIdc,
                 ],
+
+                ResultTypes.PfcResults: [
+                    ResultTypes.PfcCurrentQ,
+                    ResultTypes.PfcCurrentR,
+                    ResultTypes.PfcCurrentS,
+                    ResultTypes.PfcPowerQ,
+                    ResultTypes.PfcPowerR,
+                    ResultTypes.PfcPowerS,
+                    ResultTypes.PfcVr,
+                    ResultTypes.PfcVs,
+                    ResultTypes.PfcKCL,
+                    ResultTypes.PfcPB,
+                    ResultTypes.PfcInternalPowerVr_pfc,
+                    ResultTypes.PfcInternalPowerVs_pfc,
+                ],
+
                 ResultTypes.GeneratorResults: [
                     ResultTypes.GeneratorPower,
                     ResultTypes.GeneratorReactivePower,
@@ -340,6 +446,7 @@ class PowerFlowResults(ResultsTemplate):
         self.branch_names: StrVec = branch_names
         self.hvdc_names: StrVec = hvdc_names
         self.vsc_names: StrVec = vsc_names
+        self.pfc_names: StrVec = pfc_names
         self.gen_names = gen_names
         self.batt_names = batt_names
         self.sh_names = sh_names
@@ -374,6 +481,22 @@ class PowerFlowResults(ResultsTemplate):
         self.It_vsc = np.zeros(n_vsc, dtype=complex)
         self.losses_vsc = np.zeros(n_vsc, dtype=float)
         self.loading_vsc = np.zeros(n_vsc, dtype=float)
+
+        #PFC
+        self.Iq_pfc = np.zeros(n_pfc, dtype=float)
+        self.Ir_pfc = np.zeros(n_pfc, dtype=float)
+        self.Is_pfc = np.zeros(n_pfc, dtype=float)
+        self.Pq_pfc = np.zeros(n_pfc, dtype=float)
+        self.Pr_pfc = np.zeros(n_pfc, dtype=float)
+        self.Ps_pfc = np.zeros(n_pfc, dtype=float)
+        self.Vr_pfc = np.zeros(n_pfc, dtype=float)
+        self.Vs_pfc = np.zeros(n_pfc, dtype=float)
+        self.KCL_pfc = np.zeros(n_pfc, dtype=float)
+        self.PB_pfc = np.zeros(n_pfc, dtype=float)
+        self.P_Vr_pfc = np.zeros(n_pfc, dtype=float)
+        self.P_Vs_pfc = np.zeros(n_pfc, dtype=float)
+        self.Vqr_pfc = np.zeros(n_pfc, dtype=float)
+        self.Vqs_pfc = np.zeros(n_pfc, dtype=float)
 
         self.gen_p: Vec = np.zeros(n_gen)
         self.gen_q: Vec = np.zeros(n_gen)
@@ -444,7 +567,8 @@ class PowerFlowResults(ResultsTemplate):
                           b_idx: np.ndarray,
                           br_idx: np.ndarray,
                           hvdc_idx: np.ndarray,
-                          vsc_idx: np.ndarray) -> None:
+                          vsc_idx: np.ndarray,
+                          pfc_idx: np.ndarray) -> None:
         """
         Apply results from another island circuit to the circuit results represented
         here.
@@ -485,6 +609,22 @@ class PowerFlowResults(ResultsTemplate):
         self.It_vsc[vsc_idx] = results.It_vsc
         self.losses_vsc[vsc_idx] = results.losses_vsc
         self.loading_vsc[vsc_idx] = results.loading_vsc
+
+        #PFC
+        self.Iq_pfc[pfc_idx] = results.Iq_pfc
+        self.Ir_pfc[pfc_idx] = results.Ir_pfc
+        self.Is_pfc[pfc_idx] = results.Is_pfc
+        self.Pq_pfc[pfc_idx] = results.Pq_pfc
+        self.Pr_pfc[pfc_idx] = results.Pr_pfc
+        self.Ps_pfc[pfc_idx] = results.Ps_pfc
+        self.Vr_pfc[pfc_idx] = results.Vr_pfc
+        self.Vs_pfc[pfc_idx] = results.Vs_pfc
+        self.KCL_pfc[pfc_idx] = results.KCL_pfc
+        self.PB_pfc[pfc_idx] = results.PB_pfc
+        self.P_Vr_pfc[pfc_idx] = results.P_Vr_pfc
+        self.P_Vs_pfc[pfc_idx] = results.P_Vs_pfc
+        self.Vqr_pfc[pfc_idx] = results.Vqr_pfc
+        self.Vqs_pfc[pfc_idx] = results.Vqs_pfc
 
     def get_report_dataframe(self, island_idx=0):
         """
@@ -908,6 +1048,107 @@ class PowerFlowResults(ResultsTemplate):
                                 title=result_type.value,
                                 ylabel='(MW)',
                                 units='(MW)')
+
+        elif result_type == ResultTypes.VscIdc:
+
+            return ResultsTable(data=self.If_vsc,
+                                index=self.vsc_names,
+                                idx_device_type=DeviceType.VscDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(p.u.)',
+                                units='(p.u.)')
+
+        elif result_type == ResultTypes.PfcVr:
+
+            return ResultsTable(data=self.Vr_pfc,
+                                index=self.pfc_names,
+                                idx_device_type=DeviceType.PfcDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(p.u.)',
+                                units='(p.u.)')
+
+        elif result_type == ResultTypes.PfcVs:
+
+            return ResultsTable(data=self.Vs_pfc,
+                                index=self.pfc_names,
+                                idx_device_type=DeviceType.PfcDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(p.u.)',
+                                units='(p.u.)')
+
+
+        elif result_type == ResultTypes.PfcPB:
+
+            return ResultsTable(data=self.PB_pfc,
+                                index=self.pfc_names,
+                                idx_device_type=DeviceType.PfcDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(MW)',
+                                units='(MW)')
+
+
+        elif result_type == ResultTypes.PfcInternalPowerVr_pfc:
+
+            return ResultsTable(data=self.P_Vr_pfc,
+                                index=self.pfc_names,
+                                idx_device_type=DeviceType.PfcDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(MW)',
+                                units='(MW)')
+
+        elif result_type == ResultTypes.PfcInternalPowerVs_pfc:
+
+            return ResultsTable(data=self.P_Vs_pfc,
+                                index=self.pfc_names,
+                                idx_device_type=DeviceType.PfcDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(MW)',
+                                units='(MW)')
+
+
+        elif result_type == ResultTypes.PfcCurrentQ:
+
+            return ResultsTable(data=self.Iq_pfc,
+                                index=self.pfc_names,
+                                idx_device_type=DeviceType.PfcDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(pu)',
+                                units='(pu)')
+
+        elif result_type == ResultTypes.PfcCurrentR:
+            return ResultsTable(data=self.Ir_pfc,
+                                index=self.pfc_names,
+                                idx_device_type=DeviceType.PfcDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(pu)',
+                                units='(pu)')
+
+        elif result_type == ResultTypes.PfcCurrentS:
+            return ResultsTable(data=self.Is_pfc,
+                                index=self.pfc_names,
+                                idx_device_type=DeviceType.PfcDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(pu)',
+                                units='(pu)')
+
 
         elif result_type == ResultTypes.InterAreaExchange:
             index = [a + '->' for a in self.area_names]

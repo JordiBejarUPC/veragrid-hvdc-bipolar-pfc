@@ -14,6 +14,7 @@ from VeraGridEngine.Devices.Branches.transformerNw import TransformerNW, Impedan
 from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGridEngine.Devices.Branches.upfc import UPFC
 from VeraGridEngine.Devices.Branches.vsc import VSC
+from VeraGridEngine.Devices.Branches.pfc import PFC
 from VeraGridEngine.Devices.Branches.winding import Winding
 from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.Devices.Branches.tap_changer import TapChanger

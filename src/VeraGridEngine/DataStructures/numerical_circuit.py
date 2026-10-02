@@ -25,6 +25,7 @@ from VeraGridEngine.DataStructures.bus_data import BusData
 from VeraGridEngine.DataStructures.generator_data import GeneratorData
 from VeraGridEngine.DataStructures.hvdc_data import HvdcData
 from VeraGridEngine.DataStructures.vsc_data import VscData
+from VeraGridEngine.DataStructures.pfc_data import PfcData
 from VeraGridEngine.DataStructures.load_data import LoadData
 from VeraGridEngine.DataStructures.shunt_data import ShuntData
 from VeraGridEngine.DataStructures.fluid_node_data import FluidNodeData
@@ -248,6 +249,7 @@ class DataStructType(Enum):
     LOADDATA = 6
     SHUNTDATA = 7
     VSCDATA = 8
+    PFCDATA = 9
     NOSTRUCT = 0
 
 
@@ -261,6 +263,7 @@ class NumericalCircuit:
                  nbr: int,
                  nhvdc: int,
                  nvsc: int,
+                 npfc: int,
                  nload: int,
                  ngen: int,
                  nbatt: int,
@@ -278,6 +281,7 @@ class NumericalCircuit:
         :param nbr: Number of calculation Branches
         :param nhvdc: Number of calculation hvdc devices
         :param nvsc: Number of calculation vsc devices
+        :param npfc: Number of calculation pfc devices
         :param nload:  Number of calculation load devices
         :param ngen:  Number of calculation generator devices
         :param nbatt:  Number of calculation battery devices
@@ -296,6 +300,7 @@ class NumericalCircuit:
         self.nshunt: int = nshunt
         self.nhvdc: int = nhvdc
         self.nvsc: int = nvsc
+        self.npfc: int = npfc
 
         self.nfluidnode: int = nfluidnode
         self.nfluidturbine: int = nfluidturbine
@@ -313,6 +318,7 @@ class NumericalCircuit:
         self.active_branch_data: ActiveBranchData = ActiveBranchData(nelm=nbr, nbus=nbus)
         self.hvdc_data: HvdcData = HvdcData(nelm=nhvdc, nbus=nbus)
         self.vsc_data: VscData = VscData(nelm=nvsc, nbus=nbus)
+        self.pfc_data: PfcData = PfcData(nelm=npfc, nbus=nbus)
 
         self.load_data: LoadData = LoadData(nelm=nload, nbus=nbus)
         self.battery_data: BatteryData = BatteryData(nelm=nbatt, nbus=nbus)
@@ -422,6 +428,7 @@ class NumericalCircuit:
         self.nbr = len(self.passive_branch_data)
         self.nhvdc = len(self.hvdc_data)
         self.nvsc = len(self.vsc_data)
+        self.npfc = len(self.pfc_data)
         self.nload = len(self.load_data)
         self.ngen = len(self.generator_data)
         self.nbatt = len(self.battery_data)
@@ -436,6 +443,7 @@ class NumericalCircuit:
                               nbr=self.nbr,
                               nhvdc=self.nhvdc,
                               nvsc=self.nvsc,
+                              npfc=self.npfc,
                               nload=self.nload,
                               ngen=self.ngen,
                               nbatt=self.nbatt,
@@ -453,6 +461,7 @@ class NumericalCircuit:
         nc.active_branch_data = self.active_branch_data.copy()
         nc.hvdc_data = self.hvdc_data.copy()
         nc.vsc_data = self.vsc_data.copy()
+        nc.pfc_data = self.pfc_data.copy()
         nc.load_data = self.load_data.copy()
         nc.shunt_data = self.shunt_data.copy()
         nc.generator_data = self.generator_data.copy()
@@ -496,6 +505,9 @@ class NumericalCircuit:
 
         for i, idtag in enumerate(self.vsc_data.idtag):
             self.structs_idtag_dict[str(idtag)] = (DataStructType.VSCDATA, i)
+
+        for i, idtag in enumerate(self.pfc_data.idtag):
+            self.structs_idtag_dict[str(idtag)] = (DataStructType.PFCDATA, i)
 
         for i, idtag in enumerate(self.bus_data.idtag):
             self.structs_idtag_dict[str(idtag)] = (DataStructType.BUSDATA, i)
@@ -550,6 +562,9 @@ class NumericalCircuit:
 
             elif structure == DataStructType.VSCDATA:
                 self.vsc_data.active[idx] = status
+
+            elif structure == DataStructType.PFCDATA:
+                self.pfc_data.active[idx] = status
 
     def set_con_or_ra_status(self,
                              event_list: List[Contingency | RemedialAction],
@@ -700,6 +715,15 @@ class NumericalCircuit:
                         self.vsc_data.active[idx] = int(not bool(cnt.value))
                     else:
                         self.vsc_data.active[idx] = int(cnt.value)
+                else:
+                    print(f'Unknown contingency property {cnt.prop} at {cnt.name} {cnt.idtag}')
+
+            elif structure == DataStructType.PFCDATA:
+                if cnt.prop == ContingencyOperationTypes.Active:
+                    if revert:
+                        self.pfc_data.active[idx] = int(not bool(cnt.value))
+                    else:
+                        self.pfc_data.active[idx] = int(cnt.value)
                 else:
                     print(f'Unknown contingency property {cnt.prop} at {cnt.name} {cnt.idtag}')
 
@@ -900,11 +924,12 @@ class NumericalCircuit:
         if consider_hvdc_as_island_links:
 
             # We want to consider HVDC lines as part of the graph for ACOPF simulations
-            i, j, data, n_elm = tp.build_branches_C_coo_3(
+            i, j, data, n_elm = tp.build_branches_C_coo_4_pfc(
                 bus_active=self.bus_data.active,
                 F1=self.passive_branch_data.F, T1=self.passive_branch_data.T, active1=self.passive_branch_data.active,
                 F2=self.vsc_data.F, T2=self.vsc_data.T, FN2=self.vsc_data.F_dcn, active2=self.vsc_data.active,
                 F3=self.hvdc_data.F, T3=self.hvdc_data.T, active3=self.hvdc_data.active,
+                Q=self.pfc_data.Q_dc, R=self.pfc_data.R_dc,S=self.pfc_data.S_dc, active4=self.pfc_data.active
             )
         else:
 
@@ -913,10 +938,11 @@ class NumericalCircuit:
                 bus_active=self.bus_data.active,
                 F1=self.passive_branch_data.F, T1=self.passive_branch_data.T, active1=self.passive_branch_data.active,
                 F2=self.vsc_data.F, T2=self.vsc_data.T, FN2=self.vsc_data.F_dcn, active2=self.vsc_data.active,
+                Q=self.pfc_data.Q_dc, R=self.pfc_data.R_dc,S=self.pfc_data.S_dc, active3=self.pfc_data.active
             )
 
         C = sp.coo_matrix((data, (i, j)), shape=(n_elm, self.bus_data.nbus), dtype=int)
-
+        Cdense = C.todense()
         return (C.T @ C).tocsc()
 
     def process_reducible_branches(self) -> int:
@@ -964,6 +990,7 @@ class NumericalCircuit:
             self.passive_branch_data.remap(self.__bus_map_arr)
             self.active_branch_data.remap(self.__bus_map_arr)
             self.vsc_data.remap(self.__bus_map_arr)
+            self.pfc_data.remap(self.__bus_map_arr)
             self.hvdc_data.remap(self.__bus_map_arr)
             self.load_data.remap(self.__bus_map_arr)
             self.generator_data.remap(self.__bus_map_arr)
@@ -1007,6 +1034,11 @@ class NumericalCircuit:
                                                F=self.vsc_data.F,
                                                T=self.vsc_data.T)
 
+        pfc_idx = tp.get_island_branch_indices(bus_map=bus_map,
+                                               elm_active=self.pfc_data.active,
+                                               F=self.pfc_data.F,
+                                               T=self.pfc_data.T)
+
         load_idx = tp.get_island_monopole_indices(bus_map=bus_map,
                                                   elm_active=self.load_data.active,
                                                   elm_bus=self.load_data.bus_idx)
@@ -1028,6 +1060,7 @@ class NumericalCircuit:
             nbr=len(br_idx),
             nhvdc=len(hvdc_idx),
             nvsc=len(vsc_idx),
+            npfc=len(pfc_idx),
             nload=len(load_idx),
             ngen=len(gen_idx),
             nbatt=len(batt_idx),
@@ -1055,6 +1088,7 @@ class NumericalCircuit:
         nc.generator_data = self.generator_data.slice(elm_idx=gen_idx, bus_idx=bus_idx, bus_map=bus_map)
         nc.shunt_data = self.shunt_data.slice(elm_idx=shunt_idx, bus_idx=bus_idx, bus_map=bus_map)
         nc.vsc_data = self.vsc_data.slice(elm_idx=vsc_idx, bus_idx=bus_idx, bus_map=bus_map, logger=logger)
+        nc.pfc_data = self.pfc_data.slice(elm_idx=pfc_idx, bus_idx=bus_idx, bus_map=bus_map, logger=logger)
         nc.hvdc_data = self.hvdc_data.slice(elm_idx=hvdc_idx, bus_idx=bus_idx, bus_map=bus_map, logger=logger)
 
         # Correct bus types because of generators moving around due to the topology processing
@@ -1095,6 +1129,7 @@ class NumericalCircuit:
                         br_idx: IntVec,
                         hvdc_idx: IntVec,
                         vsc_idx: IntVec,
+                        pfc_idx: IntVec,
                         load_idx: IntVec,
                         gen_idx: IntVec,
                         batt_idx: IntVec,
@@ -1114,6 +1149,7 @@ class NumericalCircuit:
             nbr=len(br_idx),
             nhvdc=len(hvdc_idx),
             nvsc=len(vsc_idx),
+            npfc=len(pfc_idx),
             nload=len(load_idx),
             ngen=len(gen_idx),
             nbatt=len(batt_idx),
@@ -1137,6 +1173,7 @@ class NumericalCircuit:
         nc.generator_data = self.generator_data.slice(elm_idx=gen_idx, bus_idx=bus_idx, bus_map=bus_map)
         nc.shunt_data = self.shunt_data.slice(elm_idx=shunt_idx, bus_idx=bus_idx, bus_map=bus_map)
         nc.vsc_data = self.vsc_data.slice(elm_idx=vsc_idx, bus_idx=bus_idx, bus_map=bus_map, logger=logger)
+        nc.pfc_data = self.pfc_data.slice(elm_idx=pfc_idx, bus_idx=bus_idx, bus_map=bus_map, logger=logger)
         nc.hvdc_data = self.hvdc_data.slice(elm_idx=hvdc_idx, bus_idx=bus_idx, bus_map=bus_map, logger=logger)
 
         if self.topology_performed:
@@ -1203,6 +1240,11 @@ class NumericalCircuit:
                                                    self.vsc_data.F, self.vsc_data.T,
                                                    nc_2.vsc_data.F, nc_2.vsc_data.T)
 
+        pfc_idx_1, pfc_idx_2 = self._get_common_indices_by_idtag(self.pfc_data.idtag, nc_2.pfc_data.idtag)
+        pfc_idx_1, pfc_idx_2 = _filter_branch_like(pfc_idx_1, pfc_idx_2,
+                                                   self.pfc_data.F, self.pfc_data.T,
+                                                   nc_2.pfc_data.F, nc_2.pfc_data.T)
+
         load_idx_1, load_idx_2 = self._get_common_indices_by_idtag(self.load_data.idtag, nc_2.load_data.idtag)
         load_idx_1, load_idx_2 = _filter_monopole_like(load_idx_1, load_idx_2,
                                                        self.load_data.bus_idx, nc_2.load_data.bus_idx)
@@ -1227,10 +1269,10 @@ class NumericalCircuit:
 
         logger = Logger()
         return (
-            self._slice_explicit(bus_idx=bus_idx_1, br_idx=br_idx_1, hvdc_idx=hvdc_idx_1, vsc_idx=vsc_idx_1,
+            self._slice_explicit(bus_idx=bus_idx_1, br_idx=br_idx_1, hvdc_idx=hvdc_idx_1, vsc_idx=vsc_idx_1, pfc_idx=pfc_idx_1,
                                  load_idx=load_idx_1, gen_idx=gen_idx_1, batt_idx=batt_idx_1,
                                  shunt_idx=shunt_idx_1, logger=logger),
-            nc_2._slice_explicit(bus_idx=bus_idx_2, br_idx=br_idx_2, hvdc_idx=hvdc_idx_2, vsc_idx=vsc_idx_2,
+            nc_2._slice_explicit(bus_idx=bus_idx_2, br_idx=br_idx_2, hvdc_idx=hvdc_idx_2, vsc_idx=vsc_idx_2, pfc_idx=pfc_idx_2,
                                  load_idx=load_idx_2, gen_idx=gen_idx_2, batt_idx=batt_idx_2,
                                  shunt_idx=shunt_idx_2, logger=logger),
         )
@@ -1382,7 +1424,7 @@ class NumericalCircuit:
         """
         sum_ratings = 0.0
 
-        for struct in [self.passive_branch_data, self.hvdc_data, self.vsc_data]:
+        for struct in [self.passive_branch_data, self.hvdc_data, self.vsc_data, self.pfc_data]:
 
             inter_area_branches = struct.get_inter_areas(bus_idx_from=bus_a1_idx, bus_idx_to=bus_a2_idx)
             for k, sense in inter_area_branches:

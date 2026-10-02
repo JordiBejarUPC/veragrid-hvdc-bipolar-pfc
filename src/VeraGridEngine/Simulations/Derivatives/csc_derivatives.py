@@ -2463,7 +2463,7 @@ def dLossvsc_dIfp_csc(nvsc: int, u_vsc_ifp: IntVec, Udc: Vec) -> CSC:
 def dUdcIfp_dVm_csc(n_eq: int, nbus: int, i_u_vm: IntVec, k_sel: IntVec, factor: Vec,
                     Va: Vec, Fdcp: IntVec, Fdcn: IntVec) -> CSC:
     """
-    d/dVm block of the equations of the shape Udc * Ifp - g(Udc) = 0 
+    d/dVm block of the equations of the shape Udc * Ifp - g(Udc) = 0
     with Udc = Vm[Fdcp] * cos(Va[Fdcp]) - Vm[Fdcn] * cos(Va[Fdcn]), i.e. V diff
     The whole voltage sensitivity collapses to a per-equation factor:
         d/dVm[Fdcp] = +factor * cos(Va[Fdcp])

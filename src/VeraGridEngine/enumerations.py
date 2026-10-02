@@ -907,6 +907,46 @@ class ConverterControlType(str, Enum):
         except KeyError:
             return s
 
+class PfcControlType(str, Enum):
+    """
+    Pfc control types
+    """
+    Pq_pfc = ('Pq_pfc', 1)
+    Pr_pfc = ('Pr_pfc', 2)
+    Ps_pfc = ('Ps_pfc', 3)
+    Iq_pfc = ('Iq_pfc', 4)
+    Ir_pfc = ('Ir_pfc', 5)
+    Is_pfc = ('Is_pfc', 6)
+    Vr_pfc = ('Vr_pfc', 7)
+    Vs_pfc = ('Vs_pfc', 8)
+
+    def __new__(cls, value: str, code: int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.code = code
+        return obj
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    def idx(self) -> int:
+        return self.code
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return PfcControlType[s]
+        except KeyError:
+            return s
+
     @classmethod
     def list(cls):
         """
@@ -1564,6 +1604,7 @@ class DeviceType(Enum):
     HVDCLineDevice = 'HVDC Line'
     DCLineDevice = 'DC line'
     VscDevice = 'VSC'
+    PfcDevice = 'PFC'
     BatteryDevice = 'Battery'
     LoadDevice = 'Load'
     CurrentInjectionDevice = 'Current injection'
@@ -2512,12 +2553,31 @@ class ResultTypes(Enum):
     VscPowerFromNegative = 'Vsc power "from" negative pole'
     VscPdc = 'Vsc Pdc'
     VscVdc = 'Vsc Vdc'
+    VscIdc = 'Vsc Idc'
     VscLoading = 'Vsc loading'
 
     VscPowerTo = 'Vsc power "to"'
     VscPowerToA = 'Vsc power "to" A'
     VscPowerToB = 'Vsc power "to" B'
     VscPowerToC = 'Vsc power "to" C'
+
+
+    PfcKCL = "Pfc KCL"
+    PfcPB = "Pfc internal power balance (no losses)"
+
+    PfcPowerQ = "Pfc power 'Q'"
+    PfcPowerR = "Pfc power 'R'"
+    PfcPowerS = "Pfc power 'S'"
+
+    PfcCurrentQ = "Pfc current 'Q'"
+    PfcCurrentR = "Pfc current 'R'"
+    PfcCurrentS = "Pfc current 'S'"
+
+    PfcVr = "Pfc voltage 'Vr_pfc'"
+    PfcVs = "Pfc voltage 'Vs_pfc'"
+
+    PfcInternalPowerVr_pfc = "Pfc internal power 'Vr_pfc'"
+    PfcInternalPowerVs_pfc = "Pfc internal power 'Vs_pfc'"
 
     # StochasticPowerFlowDriver
     BusVoltageAverage = 'Bus voltage avg'
@@ -2852,6 +2912,7 @@ class ResultTypes(Enum):
     BranchResults = 'Branch'
     HvdcResults = 'Hvdc'
     VscResults = 'Vsc'
+    PfcResults = 'Pfc'
     AreaResults = 'Area'
     ZoneResults = 'Zone'
     SubstationResults = 'Substation'

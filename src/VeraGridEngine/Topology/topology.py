@@ -284,7 +284,8 @@ def build_reducible_branches_C_coo(F: IntVec, T: IntVec, reducible: IntVec, acti
 @nb.njit(cache=True)
 def build_branches_C_coo_2(bus_active: IntVec,
                            F1: IntVec, T1: IntVec, active1: BoolVec,
-                           F2: IntVec, T2: IntVec, FN2: IntVec, active2: BoolVec):
+                           F2: IntVec, T2: IntVec, FN2: IntVec, active2: BoolVec,
+                           Q: IntVec, R: IntVec, S: IntVec, active3: BoolVec):
     """
     Build the COO coordinates of the C matrix
     :param bus_active: array of bus active values
@@ -295,6 +296,10 @@ def build_branches_C_coo_2(bus_active: IntVec,
     :param T2: VSC to buses indices array
     :param FN2: VSC from negative buses indices array
     :param active2: VSC active array
+    :param Q: PFC q buses indices array
+    :param R: PFC r buses indices array
+    :param S: PFC s buses indices array
+    :param active3: PFC active array
     :return:
     """
 
@@ -309,7 +314,7 @@ def build_branches_C_coo_2(bus_active: IntVec,
                     C[k, f] = 1
                     C[k, t] = 1
     """
-    nelm = len(F1) + 2 * len(F2)
+    nelm = len(F1) + 2 * len(F2) + 2 * len(Q)
     i: IntVec = np.empty(nelm * 2, dtype=np.int64)
     j: IntVec = np.empty(nelm * 2, dtype=np.int64)
     data: IntVec = np.empty(nelm * 2, dtype=np.int64)
@@ -371,14 +376,49 @@ def build_branches_C_coo_2(bus_active: IntVec,
 
         br_count += 2
 
+    # PFC
+    for k in range(len(R)):
+        if active3[k]:
+            q = Q[k]
+            r = R[k]
+            s = S[k]
+            if bus_active[q] and bus_active[r] and q > -1 and r > -1:
+                # C[k, r] = 1
+                i[ii] = br_count
+                j[ii] = q
+                data[ii] = 1
+                ii += 1
+
+                # C[k, s] = 1
+                i[ii] = br_count
+                j[ii] = r
+                data[ii] = 1
+                ii += 1
+
+            if bus_active[q] and bus_active[s] and q > -1 and s > -1:
+                # C[k, r] = 1
+                i[ii] = br_count + 1
+                j[ii] = q
+                data[ii] = 1
+                ii += 1
+
+                # C[k, t] = 1
+                i[ii] = br_count + 1
+                j[ii] = s
+                data[ii] = 1
+                ii += 1
+
+        br_count += 2
+
     return i[:ii], j[:ii], data[:ii], nelm
 
 
-@nb.njit(cache=True)
-def build_branches_C_coo_3(bus_active: IntVec,
+#@nb.njit(cache=True)
+def build_branches_C_coo_4_pfc(bus_active: IntVec,
                            F1: IntVec, T1: IntVec, active1: BoolVec,
                            F2: IntVec, T2: IntVec, FN2: IntVec, active2: BoolVec,
-                           F3: IntVec, T3: IntVec, active3: BoolVec):
+                           F3: IntVec, T3: IntVec, active3: BoolVec,
+                           Q: IntVec, R: IntVec, S: IntVec, active4: BoolVec):
     """
     Build the COO coordinates of the C matrix
     :param bus_active: array of bus active values
@@ -392,6 +432,11 @@ def build_branches_C_coo_3(bus_active: IntVec,
     :param F3: HVDC from bus indices array
     :param T3: HVDC to bus indices array
     :param active3: HVDC active array
+    :param Q: PFC q buses indices array
+    :param R: PFC r buses indices array
+    :param S: PFC s buses indices array
+    :param T: PFC t buses indices array
+    :param active4: PFC active array
     :return: i, j, data, nelm to build C(nelm, nbus)
     """
 
@@ -406,7 +451,7 @@ def build_branches_C_coo_3(bus_active: IntVec,
                     C[k, f] = 1
                     C[k, t] = 1
     """
-    nelm = len(F1) + 2 * len(F2) + len(F3)
+    nelm = len(F1) + 2 * len(F2) + len(F3) + 2 * len(Q)
     i: IntVec = np.empty(nelm * 2, dtype=np.int64)
     j: IntVec = np.empty(nelm * 2, dtype=np.int64)
     data: IntVec = np.empty(nelm * 2, dtype=np.int64)
@@ -485,6 +530,40 @@ def build_branches_C_coo_3(bus_active: IntVec,
                 data[ii] = 1
                 ii += 1
         br_count += 1
+
+    # PFC
+    for k in range(len(Q)):
+        if active4[k]:
+            q = Q[k]
+            r = R[k]
+            s = S[k]
+            if bus_active[q] and bus_active[r] and q > -1 and r > -1:
+                # C[k, r] = 1
+                i[ii] = br_count
+                j[ii] = q
+                data[ii] = 1
+                ii += 1
+
+                # C[k, s] = 1
+                i[ii] = br_count
+                j[ii] = r
+                data[ii] = 1
+                ii += 1
+
+            if bus_active[q] and bus_active[s] and q > -1 and s > -1:
+                # C[k, r] = 1
+                i[ii] = br_count + 1
+                j[ii] = q
+                data[ii] = 1
+                ii += 1
+
+                # C[k, t] = 1
+                i[ii] = br_count + 1
+                j[ii] = s
+                data[ii] = 1
+                ii += 1
+
+        br_count += 2
 
     return i[:ii], j[:ii], data[:ii], nelm
 

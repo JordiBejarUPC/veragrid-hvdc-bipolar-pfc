@@ -14,7 +14,7 @@ from VeraGridEngine.basic_structures import Logger, IntVec
 from VeraGridEngine.Devices.Profiles import AnyProfile, PROFILE_INSTANCE_TYPES
 from VeraGridEngine.enumerations import (DeviceType, PrpCat, TimeFrame, BuildStatus, WindingsConnection,
                                          TapModuleControl, TapPhaseControl, SubObjectType, ConverterControlType,
-                                         HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
+                                         PfcControlType,HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
                                          CpfParametrization, CpfStopAt, InvestmentEvaluationMethod, SolverType,
                                          InvestmentsEvaluationObjectives, NodalCapacityMethod, TimeGrouping,
                                          ZonalGrouping, MIPSolvers, AcOpfMode, VoltageLevelTypes, BranchGroupTypes,
@@ -61,6 +61,7 @@ GCPROP_TYPES = Union[
     Type[ContingencyOperationTypes],
     Type[BranchGroupTypes],
     Type[ConverterControlType],
+    Type[PfcControlType],
     Type[WindingType],
     Type[MethodShortCircuit],
     Type[PhasesShortCircuit],

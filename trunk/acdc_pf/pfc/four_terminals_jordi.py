@@ -95,7 +95,7 @@ for key, data in d_buses.items():
     is_grounded = data[3]
     is_slack = data[4]
     if "_0" in bus_name:
-        busi = gce.Bus(name=bus_name, Vnom=v_nom, is_slack=is_slack, is_dc=is_dc, is_grounded=is_grounded, Vm0=0.0000001, Va0=0.000001)
+        busi = gce.Bus(name=bus_name, Vnom=v_nom, is_slack=is_slack, is_dc=is_dc, is_grounded=is_grounded, Vm0=0.00000000001, Va0=0.0000000001)
 
     elif "_-" in bus_name:
         busi = gce.Bus(name=bus_name, Vnom=v_nom, is_slack=is_slack, is_dc=is_dc, is_grounded=is_grounded, Va0=math.pi)
@@ -197,7 +197,7 @@ grid.add_vsc(gce.VSC(name="VSC_3+",
                      alpha3=c,
                      control1=ConverterControlType.Pac,
                      control2=ConverterControlType.Qac,
-                     control1_val=1800,
+                     control1_val=1500,
                      control2_val=0.0))
 
 grid.add_vsc(gce.VSC(name="VSC_4+",
@@ -260,7 +260,7 @@ grid.add_vsc(gce.VSC(name="VSC_3-",
                      alpha3=c,
                      control1=ConverterControlType.Pac,
                      control2=ConverterControlType.Qac,
-                     control1_val=1800,
+                     control1_val=1500,
                      control2_val=0.0))
 
 grid.add_vsc(gce.VSC(name="VSC_4-",
