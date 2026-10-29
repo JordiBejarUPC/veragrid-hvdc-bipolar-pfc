@@ -1,0 +1,205 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+import numpy as np
+
+from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices import Line
+from VeraGridEngine.Devices import Bus
+from VeraGridEngine.Devices import Generator
+from VeraGridEngine.Devices import Load
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions, PowerFlowDriver
+from VeraGridEngine.enumerations import BranchImpedanceMode
+
+Sbase = 100  # MVA
+
+
+def test_tolerance_lf_higher():
+    test_name = "test_tolerance_lf_higher"
+    grid = MultiCircuit(name=test_name)
+    grid.Sbase = Sbase
+    grid.time_profile = None
+    grid.logger = Logger()
+
+    # Create buses
+    Bus0 = Bus(name="Bus0", Vnom=25, is_slack=True)
+    Bus1 = Bus(name="Bus1", Vnom=25)
+
+    grid.add_bus(Bus0)
+    grid.add_bus(Bus1)
+
+    # Create load
+    grid.add_load(Bus1, Load(name="Load0", P=1.0, Q=0.4))
+
+    # Create slack bus
+    grid.add_generator(Bus0, Generator(name="Utility"))
+
+    # Create cable (r and x should be in pu)
+    grid.add_line(Line(bus_from=Bus0,
+                       bus_to=Bus1,
+                       name="Cable1",
+                       r=0.01,
+                       x=0.05,
+                       tolerance=10))
+
+    # Run non-linear power flow
+    options = PowerFlowOptions(verbose=True,
+                               branch_impedance_tolerance_mode=BranchImpedanceMode.Upper)
+
+    power_flow = PowerFlowDriver(grid, options)
+    power_flow.run()
+
+    # Check solution
+    losses = 1000 * power_flow.results.losses[0]
+    solution = complex(0.128, 0.58)  # Expected solution from VeraGrid
+    # Tested on ETAP 16.1.0 and pandapower
+
+    print("\n=================================================================")
+    print(f"Test: {test_name}")
+    print("=================================================================\n")
+    print(f"Results:  {losses}")
+    print(f"Solution: {solution}")
+    print()
+
+    print("Buses:")
+    for i, b in enumerate(grid.buses):
+        print(f" - bus[{i}]: {b}")
+    print()
+
+    print("Branches:")
+    branches = grid.get_branches()
+    for b in branches:
+        print(f" - {b}:")
+        print(f"   R = {round(b.R, 4)} pu")
+        print(f"   X = {round(b.X, 4)} pu")
+        print(f"   X/R = {round(b.X / b.R, 2)}")
+    print()
+
+    print("Voltages:")
+    for i in range(len(grid.buses)):
+        print(
+            f" - {grid.buses[i]}: voltage={power_flow.results.voltage[i]} pu"
+        )
+    print()
+
+    print("Losses:")
+    for i in range(len(branches)):
+        print(
+            f" - {branches[i]}: losses={power_flow.results.losses[i]} MVA"
+        )
+    print()
+
+    print("Loadings (power):")
+    for i in range(len(branches)):
+        print(
+            f" - {branches[i]}: loading={power_flow.results.Sf[i]} MVA"
+        )
+    print()
+
+    print("Loadings (current):")
+    for i in range(len(branches)):
+        print(
+            f" - {branches[i]}: loading={power_flow.results.If[i]} pu"
+        )
+    print()
+
+    assert np.allclose(losses, solution, atol=1e-3)
+
+
+def test_tolerance_lf_lower():
+    test_name = "test_tolerance_lf_lower"
+    grid = MultiCircuit(name=test_name)
+    grid.Sbase = Sbase
+    grid.time_profile = None
+    grid.logger = Logger()
+
+    # Create buses
+    Bus0 = Bus(name="Bus0", Vnom=25, is_slack=True)
+    Bus1 = Bus(name="Bus1", Vnom=25)
+
+    grid.add_bus(Bus0)
+    grid.add_bus(Bus1)
+
+    # Create load
+    grid.add_load(Bus1, Load(name="Load0", P=1.0, Q=0.4))
+
+    # Create slack bus
+    grid.add_generator(Bus0, Generator(name="Utility"))
+
+    # Create cable (r and x should be in pu)
+    grid.add_line(Line(bus_from=Bus0,
+                       bus_to=Bus1,
+                       name="Cable1",
+                       r=0.01,
+                       x=0.05,
+                       tolerance=10))
+
+    # Run non-linear power flow
+    options = PowerFlowOptions(verbose=True,
+                               branch_impedance_tolerance_mode=BranchImpedanceMode.Lower)
+
+    power_flow = PowerFlowDriver(grid, options)
+    power_flow.run()
+
+    # Check solution
+    losses = 1000 * power_flow.results.losses[0]
+    solution = complex(0.104, 0.58)  # Expected solution from VeraGrid
+    # Tested on ETAP 16.1.0 and pandapower
+
+    print("\n=================================================================")
+    print(f"Test: {test_name}")
+    print("=================================================================\n")
+    print(f"Results:  {losses}")
+    print(f"Solution: {solution}")
+    print()
+
+    print("Buses:")
+    for i, b in enumerate(grid.buses):
+        print(f" - bus[{i}]: {b}")
+    print()
+
+    print("Branches:")
+    branches = grid.get_branches()
+    for b in branches:
+        print(f" - {b}:")
+        print(f"   R = {round(b.R, 4)} pu")
+        print(f"   X = {round(b.X, 4)} pu")
+        print(f"   X/R = {round(b.X / b.R, 2)}")
+    print()
+
+    print("Voltages:")
+    for i in range(len(grid.buses)):
+        print(
+            f" - {grid.buses[i]}: voltage={power_flow.results.voltage[i]} pu"
+        )
+    print()
+
+    print("Losses:")
+    for i in range(len(branches)):
+        print(
+            f" - {branches[i]}: losses={power_flow.results.losses[i]} MVA"
+        )
+    print()
+
+    print("Loadings (power):")
+    for i in range(len(branches)):
+        print(
+            f" - {branches[i]}: loading={power_flow.results.Sf[i]} MVA"
+        )
+    print()
+
+    print("Loadings (current):")
+    for i in range(len(branches)):
+        print(
+            f" - {branches[i]}: loading={power_flow.results.If[i]} pu"
+        )
+    print()
+
+    assert np.allclose(losses, solution, atol=1e-3)
+
+
+if __name__ == '__main__':
+    test_tolerance_lf_higher()
+    test_tolerance_lf_lower()

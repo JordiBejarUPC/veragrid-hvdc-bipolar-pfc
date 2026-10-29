@@ -1,0 +1,187 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
+from typing import List, Dict
+from VeraGridEngine.IO.ucte.devices.ucte_node import UcteNode
+from VeraGridEngine.IO.ucte.devices.ucte_comment import UcteComment
+from VeraGridEngine.IO.ucte.devices.ucte_line import UcteLine
+from VeraGridEngine.IO.ucte.devices.ucte_transformer import UcteTransformer
+from VeraGridEngine.IO.ucte.devices.ucte_transformer_regulation import UcteTransformerRegulation
+from VeraGridEngine.IO.ucte.devices.ucte_transformer_tap_table import UcteTransformerTapTable
+from VeraGridEngine.IO.ucte.devices.ucte_exchange_power import UcteExchangePower
+from VeraGridEngine.basic_structures import Logger
+
+
+class UcteCircuit:
+    """
+    UCTE circuit class
+    """
+
+    def __init__(self) -> None:
+        """
+
+        """
+        self.comments: List[UcteComment] = list()
+        self.nodes: List[UcteNode] = list()
+        self.lines: List[UcteLine] = list()
+        self.transformers: List[UcteTransformer] = list()
+        self.regulations: List[UcteTransformerRegulation] = list()
+        self.transformer_tap_tables: List[UcteTransformerTapTable] = list()
+        self.exchange_powers: List[UcteExchangePower] = list()
+
+        self.regulations_dict: Dict[str, UcteTransformerRegulation] = dict()
+        self.transformer_tap_tables_dict: Dict[str, List[UcteTransformerTapTable]] = dict()
+
+    @staticmethod
+    def check_file_extension(f_name: str) -> bool:
+        """
+        Check that file extension is ok
+        :param f_name: file name
+        :return: is ok?
+        """
+        fname2 = f_name.lower()
+        return fname2.endswith(".ucte") or fname2.endswith(".uct")
+
+    def parse_file(self, files: List[str], logger: Logger = None):
+        """
+        parse a list of UCTE files
+        :param files: list of UCTE files
+        :param logger: logger object
+        :return:
+        """
+
+        if logger is None:
+            logger = Logger()
+
+        for file_path in files:
+
+            if self.check_file_extension(file_path):
+                current_block = None
+                current_country = ""
+
+                with open(file_path, "r") as file:
+                    for line in file:
+                        if line.startswith("##"):
+                            if line.startswith("##C"):
+                                current_block = "comments"
+                            elif line.startswith("##N"):
+                                current_block = "nodes"
+                            elif line.startswith("##Z"):
+                                current_block = "nodes"
+                                current_country = line[3:].strip() if line[2] == "Z" else line[2:].strip()
+                            elif line.startswith("##L"):
+                                current_block = "lines"
+                            elif line.startswith("##TT"):
+                                current_block = "special_transformers"
+                            elif line.startswith("##T"):
+                                current_block = "transformers"
+                            elif line.startswith("##R"):
+                                current_block = "regulations"
+                            elif line.startswith("##E"):
+                                current_block = "exchange_powers"
+                            else:
+                                pass
+
+                        else:
+                            if current_block == "comments":
+                                comment = UcteComment()
+                                comment.parse(line)
+                                self.comments.append(comment)
+
+                            elif current_block == "nodes":
+                                node = UcteNode()
+                                node.current_country = current_country
+                                node.parse(line, logger)
+                                self.nodes.append(node)
+
+                            elif current_block == "lines":
+                                line_obj = UcteLine()
+                                line_obj.parse(line, logger)
+                                self.lines.append(line_obj)
+
+                            elif current_block == "transformers":
+                                transformer = UcteTransformer()
+                                transformer.parse(line, logger)
+                                self.transformers.append(transformer)
+
+                            elif current_block == "regulations":
+                                regulation = UcteTransformerRegulation()
+                                regulation.parse(line, logger)
+                                self.regulations.append(regulation)
+                                self.regulations_dict[regulation.get_primary_key()] = regulation
+
+                            elif current_block == "special_transformers":
+                                special_transformer = UcteTransformerTapTable()
+                                special_transformer.parse(line, logger)
+                                self.transformer_tap_tables.append(special_transformer)
+                                key = special_transformer.get_primary_key()
+                                self.transformer_tap_tables_dict.setdefault(key, list()).append(special_transformer)
+
+                            elif current_block == "exchange_powers":
+                                exchange = UcteExchangePower()
+                                exchange.parse(line, logger)
+                                self.exchange_powers.append(exchange)
+            else:
+                logger.add_error("Passed non-ucte file to UCTE reading process",
+                                 value=file_path)
+
+        self.normalize(logger)
+
+    def normalize(self, logger: Logger):
+        """
+        Normalize optional data after parsing.
+        """
+        for node in self.nodes:
+            node.normalize(logger)
+
+        node_voltage_by_code = {node.node_code: node.voltage for node in self.nodes}
+
+        for regulation in self.regulations:
+            regulation.normalize(node_voltage_by_code.get(regulation.node2, None), logger)
+
+        for tables in self.transformer_tap_tables_dict.values():
+            tables.sort(key=lambda table: table.tap_position)
+
+    def get_transformer_regulation(self, elm: UcteTransformer) -> UcteTransformerRegulation | None:
+        """
+
+        :param elm:
+        :return:
+        """
+        key = elm.get_primary_key()
+        return self.regulations_dict.get(key, None)
+
+    def get_transformers_tap_table(self, elm: UcteTransformer) -> List[UcteTransformerTapTable]:
+        """
+
+        :param elm:
+        :return:
+        """
+        key = elm.get_primary_key()
+        return self.transformer_tap_tables_dict.get(key, list())
+
+    def summary(self):
+        """
+        Print grid summary
+        """
+        print(f"Comments: {len(self.comments)}")
+        print(f"Nodes: {len(self.nodes)}")
+        print(f"Lines: {len(self.lines)}")
+        print(f"Transformers: {len(self.transformers)}")
+        print(f"Regulations: {len(self.regulations)}")
+        print(f"Special Transformers: {len(self.transformer_tap_tables)}")
+        print(f"Exchange Powers: {len(self.exchange_powers)}")
+
+    def fuse_comments(self):
+        """
+        fuse comments as one
+        :return:
+        """
+        val = ""
+        for cmnt in self.comments:
+            val += cmnt.content + "\n"
+
+        return val

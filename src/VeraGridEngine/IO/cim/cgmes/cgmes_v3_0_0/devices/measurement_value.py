@@ -1,0 +1,23 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
+import datetime
+from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.io_point import IOPoint
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
+
+class MeasurementValue(IOPoint):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='timeStamp', class_type=datetime.datetime, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The time when the value was last updated.''', profiles=[CgmesProfileType.OP]),
+		CgmesProperty(property_name='sensorAccuracy', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Percentage on a defined base.   For example, specify as 100 to indicate at the defined base.''', profiles=[CgmesProfileType.OP]),
+	)
+	__slots__ = ('timeStamp', 'sensorAccuracy')
+	def __init__(self, rdfid='', tpe='MeasurementValue'):
+		IOPoint.__init__(self, rdfid, tpe)
+
+		self.timeStamp: datetime.datetime | None = None
+		self.sensorAccuracy: float = None

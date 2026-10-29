@@ -1,0 +1,77 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.  
+# SPDX-License-Identifier: MPL-2.0
+
+from typing import Union, Tuple
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
+from VeraGridEngine.enumerations import PrpCat
+
+
+class ContingencyGroup(EditableDevice):
+    """
+    The Contingency group
+    """
+    __slots__ = (
+        'category',
+        '_active',
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(
+            prop_name='category',
+            units='',
+            tpe=str,
+            definition='Some tag to category the contingency group',
+            cat=[PrpCat.REL],
+        ),
+        GCProp(
+            prop_name='active',
+            units='',
+            tpe=bool,
+            definition='Is the contingency group active for consideration?',
+            cat=[PrpCat.REL],
+        ),
+    )
+
+    def __init__(self, idtag: Union[str, None] = None, name="ContingencyGroup", category='', active: bool = True):
+        """
+        Contingency group
+        :param idtag: Unique identifier
+        :param name: contingency group name
+        :param category: tag to category the group
+        :param active: Is the contingency group active for consideration?
+        """
+
+        EditableDevice.__init__(self,
+                                name=name,
+                                idtag=idtag,
+                                code='',
+                                device_type=DeviceType.ContingencyGroupDevice)
+
+        # Contingency type
+        self.category = category
+
+        self.active = bool(active)
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def active(self) -> bool:
+        """
+        Get ``active``.
+
+        :return: bool
+        """
+        return self._active
+
+    @active.setter
+    def active(self, val: bool) -> None:
+        """
+        Set ``active``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._active = bool(val)
+

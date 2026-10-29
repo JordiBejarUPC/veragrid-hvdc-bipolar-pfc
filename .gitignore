@@ -1,0 +1,34 @@
+# Entornos virtuales
+.venv/
+.venv*/
+venv/
+ENV/
+
+# Archivos de compilaci�n y empaquetado
+build/
+dist/
+*.egg-info/
+*.so
+*.dll
+*.pyd
+*.exe
+
+# Carpetas pesadas y temporales de VeraGrid
+precomputed_builds/
+private_tests/
+__pycache__/
+*.pyc
+
+# IDEs
+.idea/
+.vscode/
+
+# --- Excluded from the paper repository ---
+/src/trunk/Extra/
+/src/trunk/grids/
+/src/trunk/old/
+
+# Generated outputs of the case studies
+/src/trunk/Paper_CaseStudies/**/*.veragrid
+/src/trunk/Paper_CaseStudies/**/*.xlsx
+/src/trunk/Paper_CaseStudies/**/*.csv

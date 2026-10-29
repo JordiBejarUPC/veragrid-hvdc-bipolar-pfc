@@ -1,0 +1,39 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.power_system_resource import PowerSystemResource
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import ControlAreaTypeKind, UnitSymbol, CgmesProfileType
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.control_area_generating_unit import ControlAreaGeneratingUnit
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.energy_area import EnergyArea
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.tie_flow import TieFlow
+
+class ControlArea(PowerSystemResource):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='type', class_type=ControlAreaTypeKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The primary type of control area definition used to determine if this is used for automatic generation control, for planning interchange control, or other purposes.   A control area specified with primary type of automatic generation control could still be forecast and used as an interchange area in power flow analysis.''', mandatory=True, profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='TieFlow', class_type='TieFlow', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The tie flows associated with the control area.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='ControlAreaGeneratingUnit', class_type='ControlAreaGeneratingUnit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The generating unit specifications for the control area.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='EnergyArea', class_type='EnergyArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The energy area that is forecast from this control area specification.''', mandatory=True, profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='netInterchange', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', mandatory=True, profiles=[CgmesProfileType.SSH]),
+		CgmesProperty(property_name='pTolerance', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[CgmesProfileType.SSH]),
+	)
+	__slots__ = ('type', 'TieFlow', 'ControlAreaGeneratingUnit', 'EnergyArea', 'netInterchange', 'pTolerance')
+	def __init__(self, rdfid='', tpe='ControlArea'):
+		PowerSystemResource.__init__(self, rdfid, tpe)
+
+		self.type: ControlAreaTypeKind = None
+
+		self.TieFlow: TieFlow | None = None
+
+		self.ControlAreaGeneratingUnit: ControlAreaGeneratingUnit | None = None
+
+		self.EnergyArea: EnergyArea | None = None
+		self.netInterchange: float = None
+		self.pTolerance: float = None

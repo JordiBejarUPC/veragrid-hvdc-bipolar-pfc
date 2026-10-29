@@ -1,0 +1,430 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+from typing import Dict, List, Tuple
+from uuid import uuid4, UUID
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
+from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
+from VeraGridEngine.data_logger import DataLogger
+
+
+def str2num(val: str):
+    """
+    Try to convert to number, else keep as string
+    :param val: String value
+    :return: int, float or string
+    """
+    try:
+        return int(val)
+    except ValueError:
+        try:
+            return float(val)
+        except ValueError:
+            return val
+
+
+def index_find(string, start, end):
+    """
+    version of substring that matches
+    :param string: string
+    :param start: string to start splitting
+    :param end: string to end splitting
+    :return: string between start and end
+    """
+    return string.partition(start)[2].partition(end)[0]
+
+
+def get_new_rdfid():
+    """
+
+    :return:
+    """
+    return str(uuid4())
+
+
+def rfid2uuid(val):
+    """
+
+    :param val:
+    :return:
+    """
+    return val.replace('-', '').replace('_', '')
+
+
+def form_rdfid(idtag: str) -> str:
+    """
+    Converts a simple string, eg. idtag (without hyphens or underscores)
+    to a UUID format.
+
+    Args:
+        idtag (str): The input idtag without hyphens or underscores.
+
+    Returns:
+        str: The corresponding UUID idtag with hyphens.
+    """
+    # Add hyphens to the simple idtag to create a valid UUID
+    formatted_uuid = f"{idtag[:8]}-{idtag[8:12]}-{idtag[12:16]}-{idtag[16:20]}-{idtag[20:]}"
+    try:
+        # Validate and return the UUID
+        UUID(formatted_uuid)
+        return formatted_uuid
+    except ValueError:
+        # Handle invalid input (e.g., incorrect length)
+        return "Invalid input: Not a valid UUID"
+
+
+class Base:
+    """
+    Base
+    """
+    __slots__ = (
+        "rdfid",
+        "uuid",
+        "tpe",
+        "class_replacements",
+        "resources",
+        "references_to_me",
+        "missing_references",
+        "declared_properties",
+        "parsed_properties",
+        "boundary_set",
+        "used",
+    )
+    LOCAL_CGMES_PROPERTIES: Tuple[CgmesProperty, ...] = tuple()
+    CLASS_REGISTERED_PROPERTIES: Dict[str, CgmesProperty] = dict()
+
+    def __init__(self, rdfid: str, tpe, resources=None, class_replacements=None):
+        """
+        General CIM object container
+        :param rdfid:
+        :param tpe: type of the object (class)
+        :param resources:
+        :param class_replacements:
+        """
+
+        # pick the object id
+        if class_replacements is None:
+            class_replacements = dict()
+
+        if resources is None:
+            resources = list()
+
+        rdfid = rdfid.strip()
+        self.rdfid = rdfid if rdfid != '' else get_new_rdfid()
+        self.uuid = rfid2uuid(self.rdfid)
+
+        # store the object type
+        self.tpe = tpe
+
+        self.class_replacements: Dict = class_replacements
+        self.resources: List = resources
+
+        # dictionary of objects that reference this object
+        self.references_to_me = dict()
+
+        # dictionary of missing references (those provided but not used)
+        self.missing_references = dict()
+
+        # Register CIM properties at class level once (PSSe-like schema cache behavior).
+        # Each instance shares the same property schema dictionary for its concrete class.
+        cls: type = type(self)
+        if "CLASS_REGISTERED_PROPERTIES" not in cls.__dict__:
+            declared_props: Dict[str, CgmesProperty] = dict()
+            for base_cls in reversed(cls.__mro__):
+                local_props: Tuple[CgmesProperty, ...] | None = getattr(base_cls, "LOCAL_CGMES_PROPERTIES", None)
+                if isinstance(local_props, tuple):
+                    for prop in local_props:
+                        declared_props[prop.property_name] = prop
+            cls.CLASS_REGISTERED_PROPERTIES = declared_props
+
+        self.declared_properties: Dict[str, CgmesProperty] = cls.CLASS_REGISTERED_PROPERTIES
+
+        self.parsed_properties = dict()
+
+        self.boundary_set = False
+
+        self.used = False
+
+    def can_keep(self):
+        """
+        Can I keep this object?
+        :return:
+        """
+        return self.used  # and not self.boundary_set
+
+    def has_references(self) -> bool:
+        """
+        Determine if there are references to this object
+        :return: Bool
+        """
+        return len(self.references_to_me) > 0
+
+    def parse_dict(self, data: Dict[str, str], logger: DataLogger) -> None:
+        """
+
+        :param data:
+        :param logger:
+        """
+        self.parsed_properties = data
+        declared_properties: Dict[str, CgmesProperty] = self.declared_properties
+
+        for prop_name, prop_value in data.items():
+            prop = declared_properties.get(prop_name, None)
+            if prop is not None:
+                try:
+                    self.store_parsed_property_value(prop_name=prop_name, prop_value=prop_value)
+                except AttributeError:
+                    if not self.boundary_set:
+                        logger.add_error("Declared property has no storage in CGMES class",
+                                         device_class=self.tpe,
+                                         device_property=prop_name,
+                                         device=self.rdfid)
+            else:
+                if not self.boundary_set:
+                    logger.add_error("Missing object property",
+                                     device_class=self.tpe,
+                                     device_property=prop_name,
+                                     device=self.rdfid)
+
+    def store_parsed_property_value(self, prop_name: str, prop_value: object) -> None:
+        """
+        Store one raw parsed property value on a declared attribute slot.
+
+        This method exists for two reasons:
+
+        1. During CGMES import, object materialization is a very hot path. Every
+           parsed property of every parsed object is stored once before later
+           typing and reference resolution happen in ``find_references()``.
+        2. The storage path must stay compatible with fully slotted generated
+           CGMES classes. Unknown properties are filtered before this method is
+           called, so at this point we are writing only to a declared attribute.
+           Using ``object.__setattr__`` keeps that write explicit and avoids the
+           generic ``setattr()`` helper.
+
+        :param prop_name: Declared CGMES property name
+        :param prop_value: Raw parsed XML value
+        :return: Nothing
+        """
+        object.__setattr__(self, prop_name, prop_value)
+
+    def set_declared_property_value(self, prop_name: str, prop_value: object) -> None:
+        """
+        Store one value into a declared CGMES property.
+
+        :param prop_name: Declared property name
+        :param prop_value: Value to store
+        :return: Nothing
+        """
+        try:
+            object.__setattr__(self, prop_name, prop_value)
+        except AttributeError:
+            pass
+
+    def get_declared_property_value(self, prop_name: str) -> object:
+        """
+        Read one declared CGMES property value.
+
+        :param prop_name: Declared property name
+        :return: Stored value
+        """
+        return getattr(self, prop_name)
+
+    def get_declared_property_names(self) -> List[str]:
+        """
+        Get the declared CGMES property names for the concrete class.
+
+        :return: Declared property names
+        """
+        return [prop_name for prop_name in self.declared_properties.keys()]
+
+    def get_declared_property_map(self) -> Dict[str, object]:
+        """
+        Build a dictionary with the declared property values of the object.
+
+        :return: Dictionary of declared property values
+        """
+        property_map: Dict[str, object] = dict()
+        for property_name in self.get_declared_property_names():
+            property_map[property_name] = getattr(self, property_name)
+        return property_map
+
+    def __repr__(self):
+        return self.rdfid
+
+    def __str__(self):
+        return self.tpe + ':' + self.rdfid
+
+    def __hash__(self):
+        # alternatively, return hash(repr(self))
+        # handle X nodes Check if the last character is 'X'
+        hex_string = self.uuid
+        if hex_string[-1] == 'X':
+            hex_string_without_X = hex_string[:-1]  # Remove the last character
+        else:
+            hex_string_without_X = hex_string  # No 'X', keep the original string
+
+        try:
+            return int(hex_string_without_X, 16)  # hex string to int
+        except ValueError:
+            # an illegal value like 3c3b5330e94e444e965b688e0d1a88ebLASLACLG makes the previous crash
+            return hash(repr(self))
+
+    def __lt__(self, other):
+        return self.__hash__() < other.__hash__()
+
+    def __eq__(self, other):
+        return self.rdfid == other.rdfid
+
+    def check(self, logger: DataLogger):
+        """
+        Check specific OCL rules
+        :param logger: Logger instance
+        :return: true is ok false otherwise
+        """
+        return True
+
+    def add_reference(self, obj, attr_name, logger: DataLogger):
+        """
+        Adds a categorized reference to this object
+        :param obj:
+        :param attr_name:
+        :param logger:
+        :return:
+        """
+        if attr_name in self.get_declared_property_names():
+            if obj.tpe in self.references_to_me:
+                self.references_to_me[obj.tpe].add(obj)
+            else:
+                self.references_to_me[obj.tpe] = {obj}
+            if attr_name is None:
+                return
+            current_value = self.get_declared_property_value(prop_name=attr_name)
+
+            if current_value is None:
+                self.set_declared_property_value(prop_name=attr_name, prop_value=obj)
+            elif isinstance(current_value, list):
+                current_value.append(obj)
+            else:
+                self.set_declared_property_value(prop_name=attr_name, prop_value=[current_value, obj])
+        else:
+            logger.add_error("Cannot add reference", device_class=self.tpe, device_property=attr_name)
+
+
+    def register_property(self, name: str,
+                          class_type: object,
+                          multiplier: UnitMultiplier = UnitMultiplier.none,
+                          unit: UnitSymbol = UnitSymbol.none,
+                          description: str = '',
+                          max_chars=65536,
+                          mandatory=False,
+                          comment='',
+                          out_of_the_standard=False,
+                          profiles: List[CgmesProfileType] = ()):
+        """
+        Disabled runtime API. Use class-level LOCAL_CGMES_PROPERTIES declarations.
+        """
+        raise RuntimeError("Base.register_property() is disabled. Use class-level LOCAL_CGMES_PROPERTIES.")
+
+    def get_properties(self) -> List[CgmesProperty]:
+        return [p for name, p in self.declared_properties.items()]
+
+    def get_xml(self, level=0, profiles: List[CgmesProfileType] = [CgmesProfileType.EQ]) -> Dict[CgmesProfileType, str]:
+
+        """
+        Returns an XML representation of the object
+        Args:
+            level:
+            profiles
+        Returns:
+
+        """
+
+        """
+        <cim:IEC61970CIMVersion rdf:ID="version">
+            <cim:IEC61970CIMVersion.version>IEC61970CIM16v29a</cim:IEC61970CIMVersion.version>
+            <cim:IEC61970CIMVersion.date>2015-07-15</cim:IEC61970CIMVersion.date>
+        </cim:IEC61970CIMVersion>
+        """
+        data = dict()
+        for profile in profiles:
+            l1 = '  ' * level  # start/end tabbing
+            l2 = '  ' * (level + 1)  # middle tabbing
+
+            # header
+            xml = l1 + '<cim:' + self.tpe + ' rdf:ID="' + self.rdfid + '">\n'
+
+            for prop_name, prop in self.declared_properties.items():
+
+                if profile in prop.profiles:
+                    value = getattr(self, prop_name)
+
+                    v = str(value).replace(' ', '_')
+
+                    # eventually replace the class of the property, because CIM is so well designed...
+                    if prop in self.class_replacements.keys():
+                        cls = self.class_replacements[prop]
+                    else:
+                        cls = self.tpe
+
+                    if prop.class_type not in [bool, int, float, str]:
+                        xml += l2 + '<cim:' + cls + '.' + prop_name + ' rdf:resource="#' + v + '" />\n'
+                    else:
+                        xml += l2 + '<cim:' + cls + '.' + prop_name + '>' + v + '</cim:' + cls + '.' + prop_name + '>\n'
+
+            # closing
+            xml += l1 + '</cim:' + self.tpe + '>\n'
+
+            data[profile] = xml
+
+        return data
+
+    def get_dict(self) -> Dict[str, any]:
+        """
+        Get dictionary with the data
+        :return: Dictionary
+        """
+        res = dict()
+        for property_name, cim_prop in self.declared_properties.items():
+            res[property_name] = getattr(self, property_name)
+
+        return res
+
+    def get_all_properties(self) -> List[str]:
+        """
+        Get the list of properties of this object
+        """
+        res = list()
+        for prop_name in self.get_declared_property_names():
+            obj = getattr(self, prop_name)
+            T = type(obj)
+            if T not in [list, dict]:
+                res.append(prop_name)
+        return res
+
+    def detect_circular_references(self, visited):
+        """
+        Get path, leading to a circular reference
+        :param visited: list of visited elements' rdfid (used for recursion)
+        :return: path of circular references
+        """
+        visited.append(self.rdfid)
+
+        for prop in self.get_all_properties():
+
+            value = getattr(self, prop)
+
+            if hasattr(value, 'rdfid'):
+                if value.rdfid in visited:
+                    visited.append(value.rdfid)
+                    return True
+                else:
+                    is_loop = value.detect_circular_references(visited=visited)
+
+                    if is_loop:
+                        return True
+            else:
+                pass
+
+        return False

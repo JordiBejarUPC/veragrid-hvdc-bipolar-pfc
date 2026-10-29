@@ -1,0 +1,1056 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+import numpy as np
+from typing import Tuple, Union, TYPE_CHECKING
+
+from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Devices.Substation.substation import Substation
+from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
+from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.enumerations import BuildStatus, DeviceType, PrpCat, ParamPowerFlowReferenceType
+from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
+from VeraGridEngine.Devices.Aggregation.branch_group import BranchGroup
+from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
+
+if TYPE_CHECKING:
+    from VeraGridEngine.Devices.types import CONNECTION_TYPE
+
+
+class BranchParent(DynamicDevice):
+    """
+    This class serves to represent the basic branch
+    All other branches inherit from this one
+    """
+
+    __slots__ = (
+        '_bus_from',
+        '_bus_to',
+        '_active',
+        '_active_prof',
+        '_temp_base',
+        '_temp_oper',
+        '_temp_oper_prof',
+        '_alpha',
+        '_reducible',
+        'contingency_enabled',
+        '_monitor_loading',
+        '_mttf',
+        '_mttr',
+        '_Cost',
+        '_Cost_prof',
+        '_capex',
+        '_opex',
+        'build_status',
+        '_design_rate',
+        '_rate',
+        '_rate_prof',
+        '_contingency_factor',
+        '_contingency_factor_prof',
+        '_protection_rating_factor',
+        '_protection_rating_factor_prof',
+        'color',
+        '_bus_from_pos',
+        '_bus_to_pos',
+        'group',
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(
+            prop_name='bus_from',
+            units="",
+            tpe=DeviceType.BusDevice,
+            definition='Name of the bus at the "from" side',
+            editable=False,
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='bus_to',
+            units="",
+            tpe=DeviceType.BusDevice,
+            definition='Name of the bus at the "to" side',
+            editable=False,
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='active',
+            units="",
+            tpe=bool,
+            definition='Is active?',
+            profile_name="active_prof",
+            cat=[PrpCat.PF],
+            dyn_ref=ParamPowerFlowReferenceType.device_active,
+        ),
+        GCProp(
+            prop_name='reducible',
+            units="",
+            tpe=bool,
+            definition='Is the branch to be reduced by the topology preprocessor?',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='design_rate',
+            units="MVA",
+            tpe=float,
+            definition='Design thermal rating power that is not modified for operational reasons or otherwise',
+            cat=[PrpCat.TP, PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='rate',
+            units="MVA",
+            tpe=float,
+            definition='Operational thermal rating power',
+            profile_name="rate_prof",
+            cat=[PrpCat.PF, PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.branch_rate_mva,
+        ),
+        GCProp(
+            prop_name='contingency_factor',
+            units="p.u.",
+            tpe=float,
+            definition='Rating multiplier for contingencies',
+            profile_name="contingency_factor_prof",
+            cat=[PrpCat.CON, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='protection_rating_factor',
+            units="p.u.",
+            tpe=float,
+            definition='Rating multiplier that indicates the maximum flow before the protections tripping',
+            profile_name="protection_rating_factor_prof",
+            cat=[PrpCat.CON],
+        ),
+        GCProp(
+            prop_name='monitor_loading',
+            units="",
+            tpe=bool,
+            definition="Monitor this device loading for OPF, NTC or contingency studies.",
+            cat=[PrpCat.CON, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='mttf',
+            units="h",
+            tpe=float,
+            definition="Mean time to failure",
+            cat=[PrpCat.REL],
+        ),
+        GCProp(
+            prop_name='mttr',
+            units="h",
+            tpe=float,
+            definition="Mean time to repair",
+            cat=[PrpCat.REL],
+        ),
+        GCProp(
+            prop_name='Cost',
+            units="e/MWh",
+            tpe=float,
+            definition="Cost of overloads. Used in OPF",
+            profile_name="Cost_prof",
+            old_names=("overload_cost",),
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='capex',
+            units="e/MW",
+            tpe=float,
+            definition="Cost of investment. Used in expansion planning.",
+            cat=[PrpCat.INV],
+        ),
+        GCProp(
+            prop_name='opex',
+            units="e/MWh",
+            tpe=float,
+            definition="Cost of operation. Used in expansion planning.",
+            cat=[PrpCat.INV],
+        ),
+        GCProp(
+            prop_name='group',
+            units="",
+            tpe=DeviceType.BranchGroupDevice,
+            definition="Group where this branch belongs",
+            cat=[PrpCat.CON, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='color',
+            units='',
+            tpe=str,
+            definition='Color to paint the element in the map diagram',
+            is_color=True,
+        ),
+        GCProp(
+            prop_name='bus_from_pos',
+            units='',
+            tpe=int,
+            definition='Aid to locate devices on a busbar',
+            display=False,
+        ),
+        GCProp(
+            prop_name='bus_to_pos',
+            units='',
+            tpe=int,
+            definition='Aid to locate devices on a busbar',
+            display=False,
+        ),
+        GCProp(
+            prop_name='temp_base',
+            units='ºC',
+            tpe=float,
+            definition='Base temperature at which R was measured.',
+            cat=[PrpCat.PF],
+            dyn_ref=ParamPowerFlowReferenceType.branch_temp_base_deg_c,
+        ),
+        GCProp(
+            prop_name='temp_oper',
+            units='ºC',
+            tpe=float,
+            definition='Operation temperature to modify R.',
+            profile_name='temp_oper_prof',
+            cat=[PrpCat.PF],
+            dyn_ref=ParamPowerFlowReferenceType.branch_temp_oper_deg_c,
+        ),
+        GCProp(
+            prop_name='alpha',
+            units='1/ºC',
+            tpe=float,
+            definition='Thermal coefficient to modify R,around a reference temperature using a linear '
+                          'approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,'
+                          'Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330',
+            cat=[PrpCat.PF],
+            dyn_ref=ParamPowerFlowReferenceType.branch_alpha_per_deg_c,
+        ),
+    )
+
+    def __init__(self,
+                 name: str,
+                 idtag: Union[str, None],
+                 code: str,
+                 bus_from: Union[Bus, None],
+                 bus_to: Union[Bus, None],
+                 active: bool,
+                 reducible: bool,
+                 design_rate: float,
+                 rate: float,
+                 contingency_factor: float,
+                 protection_rating_factor: float,
+                 contingency_enabled: bool,
+                 monitor_loading: bool,
+                 mttf: float,
+                 mttr: float,
+                 build_status: BuildStatus,
+                 capex: float,
+                 opex: float,
+                 cost: float,
+                 temp_base: float,
+                 temp_oper: float,
+                 alpha: float,
+                 device_type: DeviceType,
+                 color: str | None = None):
+        """
+
+        :param name: name of the branch
+        :param idtag: UUID code
+        :param code: secondary id
+        :param bus_from: Name of the bus at the "from" side
+        :param bus_to: Name of the bus at the "to" side
+        :param active: Is active?
+        :param design_rate: Rate that is not manipulated for operational reasons or otherwise (MVA)
+        :param rate: Branch operational rating (MVA)
+        :param contingency_factor: Factor to multiply the rating in case of contingency
+        :param contingency_enabled: Enabled contingency (Legacy, better use contingency objects)
+        :param monitor_loading: Monitor loading (Legacy)
+        :param mttf: Mean time to failure
+        :param mttr: Mean time to repair
+        :param build_status: Branch build status. Used in expansion planning.
+        :param capex: Cost of investment. (e/MW)
+        :param opex: Cost of operation. (e/MWh)
+        :param cost: Cost of overloads. Used in OPF (e/MWh)
+        :param device_type: device_type (passed on)
+        :param color: Color of the branch
+        """
+
+        DynamicDevice.__init__(self,
+                               name=name,
+                               idtag=idtag,
+                               code=code,
+                               device_type=device_type,
+                               build_status=build_status)
+
+        # connectivity
+        if bus_from is None:
+            self._bus_from = None
+        elif isinstance(bus_from, Bus):
+            self._bus_from = bus_from
+        else:
+            raise Exception(f"Bus from is a strange value {bus_from}")
+
+        if bus_to is None:
+            self._bus_to = None
+        elif isinstance(bus_to, Bus):
+            self._bus_to = bus_to
+        else:
+            raise Exception(f"Bus from is a strange value {bus_from}")
+
+        self.active = bool(active)
+        self._active_prof = ProfileBool(default_value=self.active)
+
+        # Conductor base and operating temperatures in ºC
+        self.temp_base = float(temp_base)
+        self.temp_oper = float(temp_oper)
+        self._temp_oper_prof = ProfileFloat(default_value=self.temp_oper)
+
+        # Conductor thermal constant (1/ºC)
+        self.alpha = float(alpha)
+
+        self.reducible = bool(reducible)
+
+        self.contingency_enabled: bool = contingency_enabled
+
+        self.monitor_loading: bool = monitor_loading
+
+        self.mttf = mttf
+
+        self.mttr = mttr
+
+        self.Cost = cost
+
+        self._Cost_prof = ProfileFloat(default_value=cost)
+
+        self.capex = capex
+
+        self.opex = opex
+
+        self._design_rate = design_rate
+
+        # line rating in MVA
+        if not isinstance(rate, Union[float, int]):
+            raise ValueError("Rate must be a float")
+        self._rate = float(rate)
+        self._rate_prof = ProfileFloat(default_value=rate)
+
+        if not isinstance(contingency_factor, Union[float, int]):
+            raise ValueError("contingency_factor must be a float")
+        self._contingency_factor = float(contingency_factor)
+        self._contingency_factor_prof = ProfileFloat(default_value=contingency_factor)
+
+        if not isinstance(protection_rating_factor, Union[float, int]):
+            raise ValueError("protection_rating_factor must be a float")
+        self._protection_rating_factor = float(protection_rating_factor)
+        self._protection_rating_factor_prof = ProfileFloat(default_value=protection_rating_factor)
+
+        self.color = color if color is not None else "#909090"  # light gray
+
+        self.bus_from_pos: int = 0
+        self.bus_to_pos: int = 0
+
+        # group of this branch
+        self.group: Union[BranchGroup, None] = None
+
+    @property
+    def bus_from(self) -> Bus:
+        """
+        Bus
+        :return: Bus
+        """
+        return self._bus_from
+
+    @bus_from.setter
+    def bus_from(self, val: Bus):
+        if val is None:
+            self._bus_from = val
+        else:
+            if isinstance(val, Bus):
+                self._bus_from = val
+            else:
+                raise Exception(str(type(val)) + 'not supported to be set into a _bus_from')
+
+    @property
+    def bus_to(self) -> Bus:
+        """
+        Bus
+        :return: Bus
+        """
+        return self._bus_to
+
+    @bus_to.setter
+    def bus_to(self, val: Bus):
+        if val is None:
+            self._bus_to = val
+        else:
+            if isinstance(val, Bus):
+                self._bus_to = val
+            else:
+                raise Exception(str(type(val)) + 'not supported to be set into a _bus_to')
+
+    @property
+    def active_prof(self) -> ProfileBool:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._active_prof
+
+    @active_prof.setter
+    def active_prof(self, val: Union[ProfileBool, np.ndarray]):
+        if isinstance(val, ProfileBool):
+            self._active_prof = val
+        elif isinstance(val, np.ndarray):
+            self._active_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a active_prof')
+
+    def get_active_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.active, self.active_prof, t)
+
+    @property
+    def rate_prof(self) -> ProfileFloat:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._rate_prof
+
+    @rate_prof.setter
+    def rate_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
+            self._rate_prof = val
+        elif isinstance(val, np.ndarray):
+            self._rate_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a rate_prof')
+
+    def get_rate_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.rate, self.rate_prof, t)
+
+    @property
+    def contingency_factor_prof(self) -> ProfileFloat:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._contingency_factor_prof
+
+    @contingency_factor_prof.setter
+    def contingency_factor_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
+            self._contingency_factor_prof = val
+        elif isinstance(val, np.ndarray):
+            self._contingency_factor_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a contingency_factor_prof')
+
+    def get_contingency_factor_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.contingency_factor, self.contingency_factor_prof, t)
+
+    @property
+    def protection_rating_factor_prof(self) -> ProfileFloat:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._protection_rating_factor_prof
+
+    @protection_rating_factor_prof.setter
+    def protection_rating_factor_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
+            self._protection_rating_factor_prof = val
+        elif isinstance(val, np.ndarray):
+            self._protection_rating_factor_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a protection_rating_factor_prof')
+
+    def get_protection_rating_factor_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.protection_rating_factor, self.protection_rating_factor_prof, t)
+
+    @property
+    def Cost_prof(self) -> ProfileFloat:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._Cost_prof
+
+    @Cost_prof.setter
+    def Cost_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
+            self._Cost_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Cost_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Cost_prof')
+
+    def get_Cost_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Cost, self.Cost_prof, t)
+
+    @property
+    def temp_oper_prof(self) -> ProfileFloat:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._temp_oper_prof
+
+    @temp_oper_prof.setter
+    def temp_oper_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
+            self._temp_oper_prof = val
+        elif isinstance(val, np.ndarray):
+            self._temp_oper_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a temp_oper_prof')
+
+    def get_temp_oper_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.temp_oper, self._temp_oper_prof, t)
+
+    @property
+    def design_rate(self):
+        """
+        Rate (MVA)
+        :return:
+        """
+        return self._design_rate
+
+    @design_rate.setter
+    def design_rate(self, val: float):
+        val = float(val)
+        if isinstance(val, float):
+            self._design_rate = val
+        else:
+            raise ValueError(f'{val} is not a float')
+
+    @property
+    def rate(self):
+        """
+        Rate (MVA)
+        :return:
+        """
+        return self._rate
+
+    @rate.setter
+    def rate(self, val: float):
+        val = float(val)
+        if isinstance(val, float):
+            self._rate = val
+        else:
+            raise ValueError(f'{val} is not a float')
+
+    @property
+    def contingency_factor(self):
+        """
+        Rate (MVA)
+        :return:
+        """
+        return self._contingency_factor
+
+    @contingency_factor.setter
+    def contingency_factor(self, val: float):
+        val = float(val)
+        if isinstance(val, float):
+            self._contingency_factor = val
+        else:
+            raise ValueError(f'{val} is not a float')
+
+    @property
+    def protection_rating_factor(self):
+        """
+        Rate (MVA)
+        :return:
+        """
+        return self._protection_rating_factor
+
+    @protection_rating_factor.setter
+    def protection_rating_factor(self, val: float):
+        val = float(val)
+        if isinstance(val, float):
+            self._protection_rating_factor = val
+        else:
+            raise ValueError(f'{val} is not a float')
+
+    def get_max_bus_nominal_voltage(self):
+        """
+        GEt the maximum nominal voltage
+        :return:
+        """
+        return max(self.bus_from.Vnom, self.bus_to.Vnom)
+
+    def get_min_bus_nominal_voltage(self):
+        """
+        Get the minimum nominal voltage
+        :return:
+        """
+        return min(self.bus_from.Vnom, self.bus_to.Vnom)
+
+    def get_sorted_buses_voltages(self):
+        """
+        Get the sorted bus voltages
+        :return: high voltage, low voltage
+        """
+        bus_f_v = self.bus_from.Vnom
+        bus_t_v = self.bus_to.Vnom
+        if bus_f_v > bus_t_v:
+            return bus_f_v, bus_t_v
+        else:
+            return bus_t_v, bus_f_v
+
+    def get_buses_sorted_by_voltage(self):
+        """
+        Get the sorted buses
+        :return: HV bus, LV bus
+        """
+        bus_f_v = self.bus_from.Vnom
+        bus_t_v = self.bus_to.Vnom
+        if bus_f_v >= bus_t_v:
+            return self.bus_from, self.bus_to
+        else:
+            return self.bus_to, self.bus_from
+
+    def get_virtual_taps(self) -> Tuple[float, float]:
+        """
+        Get the branch virtual taps
+
+        The virtual taps generate when a line nominal voltage ate the two connection buses differ
+
+        Returns:
+            **tap_f** (float, 1.0): Virtual tap at the *from* side
+            **tap_t** (float, 1.0): Virtual tap at the *to* side
+        """
+        # resolve how the transformer is actually connected and set the virtual taps
+        bus_f_v = self.bus_from.Vnom
+        bus_t_v = self.bus_to.Vnom
+
+        if bus_f_v == bus_t_v:
+            return 1.0, 1.0
+        else:
+            if bus_f_v > 0.0 and bus_t_v > 0.0:
+                return 1.0, bus_f_v / bus_t_v
+            else:
+                return 1.0, 1.0
+
+    def get_coordinates(self):
+        """
+        Get the line defining coordinates
+        """
+        return [self.bus_from.get_coordinates(), self.bus_to.get_coordinates()]
+
+    def convertible_to_vsc(self):
+        """
+        Is this line convertible to VSC?
+        :return:
+        """
+        if self.bus_to is not None and self.bus_from is not None:
+            # connectivity:
+            # for the later primitives to make sense, the "bus from" must be AC and the "bus to" must be DC
+            if self.bus_from.is_dc and not self.bus_to.is_dc:  # this is the correct sense
+                return True
+            elif not self.bus_from.is_dc and self.bus_to.is_dc:  # opposite sense, revert
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    @property
+    def Vf(self) -> float:
+        """
+        Get the voltage "from" (kV)
+        :return: get the nominal voltage from
+        """
+        return self.bus_from.Vnom
+
+    @property
+    def Vt(self) -> float:
+        """
+        Get the voltage "to" (kV)
+        :return: get the nominal voltage to
+        """
+        return self.bus_to.Vnom
+
+    def should_this_be_a_transformer(self, branch_connection_voltage_tolerance: float = 0.1,
+                                     logger: Logger | None = None) -> bool:
+        """
+        Check if this line should be a transformer
+        :param branch_connection_voltage_tolerance:
+        :param logger: Logger
+        :return: should this be a transformer?
+        """
+        if self.bus_to is not None and self.bus_from is not None:
+            V1 = min(self.bus_to.Vnom, self.bus_from.Vnom)
+            V2 = max(self.bus_to.Vnom, self.bus_from.Vnom)
+            if V2 > 0:
+                per = V1 / V2
+
+                if per < (1.0 - branch_connection_voltage_tolerance):
+                    if logger is not None:
+                        logger.add_warning(
+                            msg="Converted line to transformer due to excessive nominal voltage difference",
+                            device=self.idtag,
+                            value=per)
+                    return True
+                else:
+                    return False
+            else:
+                return V1 != V2
+        else:
+            return False
+
+    def get_substation_from(self) -> Union[Substation, None]:
+        """
+        Try to get the substation at the From side
+        :return: Union[Substation, None]
+        """
+        if self.bus_from is not None:
+            return self.bus_from.substation
+        else:
+            return None
+
+    def get_substation_to(self) -> Union[Substation, None]:
+        """
+        Try to get the substation at the To side
+        :return: Union[Substation, None]
+        """
+        if self.bus_to is not None:
+            return self.bus_to.substation
+        else:
+            return None
+
+    def get_voltage_level_from(self) -> Union[VoltageLevel, None]:
+        """
+        Try to get the voltage level at the From side
+        :return: Union[VoltageLevel, None]
+        """
+        if self.bus_from is not None:
+            return self.bus_from.voltage_level
+        else:
+            return None
+
+    def get_voltage_level_to(self) -> Union[VoltageLevel, None]:
+        """
+        Try to get the voltage level at the To side
+        :return: Union[VoltageLevel, None]
+        """
+        if self.bus_to is not None:
+            return self.bus_to.voltage_level
+        else:
+            return None
+
+    def get_from_and_to_objects(self) -> Tuple[CONNECTION_TYPE, CONNECTION_TYPE, bool]:
+        """
+        Get the from and to connection objects of the branch
+        :return: Object from, Object to, is it ok?
+        """
+
+        # Pick the right bus
+        bus_from = self.bus_from
+        bus_to = self.bus_to
+        ok = bus_from is not None and bus_to is not None
+        return bus_from, bus_to, ok
+
+    def get_weight(self) -> float:
+        """
+        Get a weight of this line for graph purposes
+        :return: weight value
+        """
+        return 1.0
+
+    def get_bus_pos(self, bus: Bus) -> int:
+        """
+        Get the bus specified position
+        :param bus:
+        :return:
+        """
+        if bus == self.bus_from:
+            return self.bus_from_pos
+        elif bus == self.bus_to:
+            return self.bus_to_pos
+        else:
+            return 0
+
+    def reassign_bus(self, old_bus: Bus, new_bus: Bus):
+        """
+        Re-assign a bus
+        :param old_bus: bus where this branch is supposedly connected (either from or to)
+        :param new_bus: new bus to connect to
+        """
+        if self.bus_from == old_bus:
+            self.bus_from = new_bus
+
+        elif self.bus_to == old_bus:
+            self.bus_to = new_bus
+        else:
+            pass
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def active(self) -> bool:
+        """
+        Get ``active``.
+
+        :return: bool
+        """
+        return self._active
+
+    @active.setter
+    def active(self, val: bool) -> None:
+        """
+        Set ``active``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._active = bool(val)
+
+    @property
+    def reducible(self) -> bool:
+        """
+        Get ``reducible``.
+
+        :return: bool
+        """
+        return self._reducible
+
+    @reducible.setter
+    def reducible(self, val: bool) -> None:
+        """
+        Set ``reducible``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._reducible = bool(val)
+
+    @property
+    def monitor_loading(self) -> bool:
+        """
+        Get ``monitor_loading``.
+
+        :return: bool
+        """
+        return self._monitor_loading
+
+    @monitor_loading.setter
+    def monitor_loading(self, val: bool) -> None:
+        """
+        Set ``monitor_loading``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._monitor_loading = bool(val)
+
+    @property
+    def mttf(self) -> float:
+        """
+        Get ``mttf``.
+
+        :return: float
+        """
+        return self._mttf
+
+    @mttf.setter
+    def mttf(self, val: float) -> None:
+        """
+        Set ``mttf``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._mttf = float(val)
+
+    @property
+    def mttr(self) -> float:
+        """
+        Get ``mttr``.
+
+        :return: float
+        """
+        return self._mttr
+
+    @mttr.setter
+    def mttr(self, val: float) -> None:
+        """
+        Set ``mttr``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._mttr = float(val)
+
+    @property
+    def Cost(self) -> float:
+        """
+        Get ``Cost``.
+
+        :return: float
+        """
+        return self._Cost
+
+    @Cost.setter
+    def Cost(self, val: float) -> None:
+        """
+        Set ``Cost``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Cost = float(val)
+
+    @property
+    def capex(self) -> float:
+        """
+        Get ``capex``.
+
+        :return: float
+        """
+        return self._capex
+
+    @capex.setter
+    def capex(self, val: float) -> None:
+        """
+        Set ``capex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._capex = float(val)
+
+    @property
+    def opex(self) -> float:
+        """
+        Get ``opex``.
+
+        :return: float
+        """
+        return self._opex
+
+    @opex.setter
+    def opex(self, val: float) -> None:
+        """
+        Set ``opex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._opex = float(val)
+
+    @property
+    def bus_from_pos(self) -> int:
+        """
+        Get ``bus_from_pos``.
+
+        :return: int
+        """
+        return self._bus_from_pos
+
+    @bus_from_pos.setter
+    def bus_from_pos(self, val: int) -> None:
+        """
+        Set ``bus_from_pos``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._bus_from_pos = int(val)
+
+    @property
+    def bus_to_pos(self) -> int:
+        """
+        Get ``bus_to_pos``.
+
+        :return: int
+        """
+        return self._bus_to_pos
+
+    @bus_to_pos.setter
+    def bus_to_pos(self, val: int) -> None:
+        """
+        Set ``bus_to_pos``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._bus_to_pos = int(val)
+
+    @property
+    def temp_base(self) -> float:
+        """
+        Get ``temp_base``.
+
+        :return: float
+        """
+        return self._temp_base
+
+    @temp_base.setter
+    def temp_base(self, val: float) -> None:
+        """
+        Set ``temp_base``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._temp_base = float(val)
+
+    @property
+    def temp_oper(self) -> float:
+        """
+        Get ``temp_oper``.
+
+        :return: float
+        """
+        return self._temp_oper
+
+    @temp_oper.setter
+    def temp_oper(self, val: float) -> None:
+        """
+        Set ``temp_oper``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._temp_oper = float(val)
+
+    @property
+    def alpha(self) -> float:
+        """
+        Get ``alpha``.
+
+        :return: float
+        """
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, val: float) -> None:
+        """
+        Set ``alpha``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._alpha = float(val)

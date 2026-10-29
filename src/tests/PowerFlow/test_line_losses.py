@@ -1,0 +1,261 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+import numpy as np
+from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices import Bus
+from VeraGridEngine.Devices import Load
+from VeraGridEngine.Devices import Generator
+from VeraGridEngine.Devices import Line
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions, PowerFlowDriver
+
+
+def test_line_losses_1():
+    """
+    Basic line losses test.
+    """
+    test_name = "test_line_losses_1"
+    grid = MultiCircuit(name=test_name)
+    Sbase = 100  # MVA
+    grid.Sbase = Sbase
+    grid.time_profile = None
+    grid.logger = Logger()
+
+    # Create buses
+    Bus0 = Bus(name="Bus0", Vnom=25, is_slack=True)
+    Bus1 = Bus(name="Bus1", Vnom=25)
+
+    grid.add_bus(Bus0)
+    grid.add_bus(Bus1)
+
+    # Create load
+    grid.add_load(Bus1, Load(name="Load0", P=1.0, Q=0.4))
+
+    # Create slack bus
+    grid.add_generator(Bus0, Generator(name="Utility"))
+
+    # Create cable (r and x should be in pu)
+    grid.add_line(Line(bus_from=Bus0, bus_to=Bus1, name="Cable1", r=0.01, x=0.05))
+
+    # Run non-linear load flow
+    options = PowerFlowOptions(verbose=True)
+
+    power_flow = PowerFlowDriver(grid, options)
+    power_flow.run()
+
+    # Check solution
+    approx_losses = 1000 * power_flow.results.losses[0]
+    solution = complex(0.116, 0.58)  # Expected solution from VeraGrid
+    # Tested on ETAP 16.1.0 and pandapower
+
+    print("\n=================================================================")
+    print(f"Test: {test_name}")
+    print("=================================================================\n")
+    print(f"Results:  {approx_losses}")
+    print(f"Solution: {solution}")
+    print()
+
+    print("Buses:")
+    for i, b in enumerate(grid.buses):
+        print(f" - bus[{i}]: {b}")
+    print()
+
+    print("Branches:")
+    branches = grid.get_branches()
+    for b in branches:
+        print(f" - {b}:")
+        print(f"   R = {round(b.R, 4)} pu")
+        print(f"   X = {round(b.X, 4)} pu")
+        print(f"   X/R = {round(b.X / b.R, 2)}")
+    print()
+
+    print("Voltages:")
+    for i in range(len(grid.buses)):
+        print(f" - {grid.buses[i]}: voltage={power_flow.results.voltage[i]} pu")
+    print()
+
+    print("Losses:")
+    for i in range(len(branches)):
+        print(f" - {branches[i]}: losses={power_flow.results.losses[i]} MVA")
+    print()
+
+    print("Loadings (power):")
+    for i in range(len(branches)):
+        print(f" - {branches[i]}: loading={power_flow.results.Sf[i]} MVA")
+    print()
+
+    print("Loadings (current):")
+    for i in range(len(branches)):
+        print(f" - {branches[i]}: loading={power_flow.results.If[i]} pu")
+    print()
+
+    assert np.allclose(approx_losses, solution, atol=1e-3)
+
+
+def test_line_losses_2():
+    """
+    Basic line losses test, with the impedance split into 2 series Branches.
+    """
+    test_name = "test_line_losses_2"
+    grid = MultiCircuit(name=test_name)
+    Sbase = 100  # MVA
+    grid.Sbase = Sbase
+    grid.time_profile = None
+    grid.logger = Logger()
+
+    # Create buses
+    Bus0 = Bus(name="Bus0", Vnom=25, is_slack=True)
+    Bus1 = Bus(name="Bus1", Vnom=25)
+    Bus2 = Bus(name="Bus1", Vnom=25)
+
+    for b in Bus0, Bus1, Bus2:
+        grid.add_bus(b)
+
+    # Create load
+    grid.add_load(Bus2, Load(name="Load0", P=1.0, Q=0.4))
+
+    # Create slack bus
+    grid.add_generator(Bus0, Generator(name="Utility"))
+
+    # Create cable (r and x should be in pu)
+    grid.add_line(Line(bus_from=Bus0, bus_to=Bus1, name="Cable0", r=0.005, x=0.025))
+    grid.add_line(Line(bus_from=Bus1, bus_to=Bus2, name="Cable1", r=0.005, x=0.025))
+
+    # Run non-linear load flow
+    options = PowerFlowOptions(verbose=True)
+
+    power_flow = PowerFlowDriver(grid, options)
+    power_flow.run()
+
+    # Check solution
+    approx_losses = 1000 * sum(power_flow.results.losses)
+    solution = complex(0.116, 0.58)  # Expected solution from VeraGrid
+    # Tested on ETAP 16.1.0 and pandapower
+
+    print("\n=================================================================")
+    print(f"Test: {test_name}")
+    print("=================================================================\n")
+    print(f"Results:  {approx_losses}")
+    print(f"Solution: {solution}")
+    print()
+
+    print("Buses:")
+    for i, b in enumerate(grid.buses):
+        print(f" - bus[{i}]: {b}")
+    print()
+
+    print("Branches:")
+    branches = grid.get_branches()
+    for b in branches:
+        print(f" - {b}:")
+        print(f"   R = {round(b.R, 4)} pu")
+        print(f"   X = {round(b.X, 4)} pu")
+        print(f"   X/R = {round(b.X / b.R, 2)}")
+    print()
+
+    print("Voltages:")
+    for i in range(len(grid.buses)):
+        print(f" - {grid.buses[i]}: voltage={power_flow.results.voltage[i]} pu")
+    print()
+
+    print("Losses:")
+    for i in range(len(branches)):
+        print(f" - {branches[i]}: losses={power_flow.results.losses[i]} MVA")
+    print()
+
+    print("Loadings (power):")
+    for i in range(len(branches)):
+        print(f" - {branches[i]}: loading={power_flow.results.Sf[i]} MVA")
+    print()
+
+    print("Loadings (current):")
+    for i in range(len(branches)):
+        print(f" - {branches[i]}: loading={power_flow.results.If[i]} pu")
+    print()
+
+    assert np.allclose(approx_losses, solution, atol=1e-3)
+
+
+def test_line_losses_3():
+    """
+    Basic line losses test, with the impedance split into 2 parallel Branches.
+    """
+    test_name = "test_line_losses_3"
+    grid = MultiCircuit(name=test_name)
+    Sbase = 100  # MVA
+    grid.Sbase = Sbase
+    grid.time_profile = None
+    grid.logger = Logger()
+
+    # Create buses
+    Bus0 = Bus(name="Bus0", Vnom=25, is_slack=True)
+    Bus1 = Bus(name="Bus1", Vnom=25)
+
+    for b in Bus0, Bus1:
+        grid.add_bus(b)
+
+    # Create load
+    grid.add_load(Bus1, Load(name="Load0", P=1.0, Q=0.4))
+
+    # Create slack bus
+    grid.add_generator(Bus0, Generator(name="Utility"))
+
+    # Create cable (r and x should be in pu)
+    grid.add_line(Line(bus_from=Bus0, bus_to=Bus1, name="Cable0", r=0.02, x=0.1))
+    grid.add_line(Line(bus_from=Bus0, bus_to=Bus1, name="Cable1", r=0.02, x=0.1))
+
+    # Run non-linear load flow
+    options = PowerFlowOptions(verbose=True)
+
+    power_flow = PowerFlowDriver(grid, options)
+    power_flow.run()
+
+    # Check solution
+    approx_losses = 1000 * sum(power_flow.results.losses)
+    solution = complex(0.116, 0.58)  # Expected solution from VeraGrid
+    # Tested on ETAP 16.1.0 and pandapower
+
+    print("\n=================================================================")
+    print(f"Test: {test_name}")
+    print("=================================================================\n")
+    print(f"Results:  {approx_losses}")
+    print(f"Solution: {solution}")
+    print()
+
+    print("Buses:")
+    for i, b in enumerate(grid.buses):
+        print(f" - bus[{i}]: {b}")
+    print()
+
+    print("Branches:")
+    branches = grid.get_branches()
+    for b in branches:
+        print(f" - {b}:")
+        print(f"   R = {round(b.R, 4)} pu")
+        print(f"   X = {round(b.X, 4)} pu")
+        print(f"   X/R = {round(b.X / b.R, 2)}")
+    print()
+
+    print("Voltages:")
+    for i in range(len(grid.buses)):
+        print(f" - {grid.buses[i]}: voltage={power_flow.results.voltage[i]} pu")
+    print()
+
+    print("Losses:")
+    for i in range(len(branches)):
+        print(f" - {branches[i]}: losses={power_flow.results.losses[i]} MVA")
+    print()
+
+    print("Loadings (power):")
+    for i in range(len(branches)):
+        print(f" - {branches[i]}: loading={power_flow.results.Sf[i]} MVA")
+    print()
+
+    print("Loadings (current):")
+    for i in range(len(branches)):
+        print(f" - {branches[i]}: loading={power_flow.results.If[i]} pu")
+    print()
+
+    assert np.allclose(approx_losses, solution, atol=1e-3)

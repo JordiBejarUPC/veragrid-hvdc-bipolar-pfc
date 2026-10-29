@@ -1,0 +1,154 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+import math
+
+from VeraGridEngine.IO.ucte.devices.ucte_base import (
+    sub_float,
+    sub_int,
+    sub_optional_float,
+    sub_optional_str,
+    sub_str,
+    try_float,
+    try_int,
+    try_optional_float,
+    ucte_split,
+)
+from VeraGridEngine.basic_structures import Logger
+
+
+class UcteTransformer:
+    """
+    UcteTransformer
+    """
+    def __init__(self):
+        self.node1 = ""  # 0-7: Node 1 code (non-regulated winding)
+        self.node2 = ""  # 9-16: Node 2 code (regulated winding)
+        self.order_code = ""  # 18: Order code
+        self.status = 0  # 20: Status
+        self.rated_voltage1 = 0.0  # 22-26: Rated voltage 1 (kV)
+        self.rated_voltage2 = 0.0  # 28-32: Rated voltage 2 (kV)
+        self.nominal_power = 0.0  # 34-38: Nominal power (MVA)
+        self.resistance = 0.0  # 40-45: Resistance (Ω)
+        self.reactance = 0.0  # 47-52: Reactance (Ω)
+        self.susceptance = 0.0  # 54-61: Susceptance (µS)
+        self.conductance = math.nan  # 63-68: Conductance (µS)
+        self.current_limit = math.nan  # 70-75: Current limit (A)
+        self.name = ""
+
+    def get_primary_key(self):
+        """
+        Get a transformer primary key
+        :return:
+        """
+        return f"{self.node1}_{self.node2}_{self.order_code}"
+
+    def is_active_and_reducible(self, logger: Logger) -> tuple[bool, bool]:
+        """
+        Returns if this line is active and/or reducible
+        :return: active, reducible
+        """
+
+        """
+        Status
+        0:real element in operation (R, X only positive values permitted)
+        8: real element out of operation (R, X only positive values permitted)
+        1:equivalent element in operation
+        9:equivalent element out of operation        
+        2:busbar coupler in operation (definition: R=0, X=0, B=0)
+        7:busbar coupler out of operation (definition: R=0, X=0, B=0)
+        """
+        if self.status == 0:
+            return True, False
+        elif self.status == 8:
+            return False, False
+        elif self.status == 1:
+            return True, False
+        elif self.status == 9:
+            return False, False
+        elif self.status == 2:
+            return True, True
+        elif self.status == 7:
+            return False, True
+        else:
+            logger.add_error(msg="Unrecognized status",
+                             value=str(self.status),
+                             expected_value="0, 1, 2, 7, 8, 9",
+                             device_class="Transformer")
+            return True, False
+
+    def parse(self, line, logger: Logger):
+        """
+
+        :param line:
+        :param logger:
+        :return:
+        """
+
+        device = "Transformer"
+        if len(line) >= 89:
+
+            self.node1 = sub_str(line, 0, 8, device, "node1", logger)
+            self.node2 = sub_str(line, 9, 17, device, "node2", logger)
+            self.order_code = sub_str(line, 18, 19, device, "order_code", logger)
+            self.status = sub_int(line, 20, 21, device, "status", logger)
+            self.rated_voltage1 = sub_float(line, 22, 27, device, "rated_voltage1", logger)
+            self.rated_voltage2 = sub_float(line, 28, 33, device, "rated_voltage2", logger)
+            self.nominal_power = sub_float(line, 34, 39, device, "nominal_power", logger)
+            self.resistance = sub_float(line, 40, 46, device, "resistance", logger)
+            self.reactance = sub_float(line, 47, 53, device, "reactance", logger)
+            self.susceptance = sub_float(line, 54, 62, device, "susceptance", logger)
+            self.conductance = sub_optional_float(line, 63, 69, device, "conductance", logger)
+            self.current_limit = sub_optional_float(line, 70, 76, device, "current_limit", logger)
+            self.name = sub_optional_str(line, 77, 88)
+        else:
+            logger.add_warning(f"Non canonical line length ",
+                               device_class=device,
+                               value=len(line),
+                               expected_value=89)
+
+            chunks = ucte_split(line, prefix_lengths=(8, 8, 1), total_fields=13, greedy_tail=True,
+                                skip_all_separators=True)
+
+            if len(chunks) >= 1:
+                self.node1 = chunks[0].strip()
+
+            if len(chunks) >= 2:
+                self.node2 = chunks[1].strip()
+
+            if len(chunks) >= 3:
+                self.order_code = chunks[2].strip()
+
+            if len(chunks) >= 4:
+                self.status = try_int(chunks[3].strip(), device, "status", logger)
+
+            if len(chunks) >= 5:
+                self.rated_voltage1 = try_float(chunks[4].strip(), device, "rated_voltage1", logger)
+
+            if len(chunks) >= 6:
+                self.rated_voltage2 = try_float(chunks[5].strip(), device, "rated_voltage2", logger)
+
+            if len(chunks) >= 7:
+                self.nominal_power = try_float(chunks[6].strip(), device, "nominal_power", logger)
+
+            if len(chunks) >= 8:
+                self.resistance = try_float(chunks[7].strip(), device, "resistance", logger)
+
+            if len(chunks) >= 9:
+                self.reactance = try_float(chunks[8].strip(), device, "reactance", logger)
+
+            if len(chunks) >= 10:
+                self.susceptance = try_float(chunks[9].strip(), device, "susceptance", logger)
+
+            if len(chunks) >= 11:
+                self.conductance = try_optional_float(chunks[10].strip(), device, "conductance", logger)
+
+            if len(chunks) >= 12:
+                self.current_limit = try_optional_float(chunks[11].strip(), device, "current_limit", logger)
+
+            if len(chunks) >= 13:
+                self.name = chunks[12].strip()
+
+        if math.isfinite(self.current_limit) and self.current_limit < 0:
+            self.current_limit = math.nan

@@ -1,0 +1,866 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.  
+# SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
+import pandas as pd
+import numpy as np
+from typing import Tuple, Union
+from matplotlib import pyplot as plt
+
+from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
+from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.enumerations import HvdcControlType, PrpCat
+from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
+from VeraGridEngine.Devices.Branches.line_locations import LineLocations
+
+
+def firing_angles_to_reactive_limits(P: float, alphamin: float, alphamax: float) -> Tuple[float, float]:
+    """
+    Convert firing angles to reactive power limits
+    :param P: Active power (MW)
+    :param alphamin: minimum firing angle (rad)
+    :param alphamax: Maximum firing angle (rad)
+    :return: Qmin (MVAr), Qmax (MVAr)
+    """
+    # minimum reactive power calculated under assumption of no overlap angle
+    # i.e. power factor equals to tan(alpha)
+    Qmin = P * np.tan(alphamin)
+
+    # maximum reactive power calculated when overlap angle reaches max
+    # value (60 deg). I.e.
+    #      cos(phi) = 1/2*(cos(alpha)+cos(delta))
+    #      Q = P*tan(phi)
+    phi = np.arccos(0.5 * (np.cos(alphamax) + np.cos(np.deg2rad(60))))
+    Qmax = P * np.tan(phi)
+    # if Qmin < 0:
+    #     Qmin = -Qmin
+    #
+    # if Qmax < 0:
+    #     Qmax = -Qmax
+
+    return Qmin, Qmax
+
+
+def getFromAndToPowerAt(Pset: float, theta_f: float, theta_t: float,
+                        Vnf: float, Vnt: float, v_set_f: float, v_set_t: float,
+                        Sbase: float, r1: float, angle_droop: float, rate: float,
+                        free: bool, in_pu: bool = False):
+    """
+    Compute the power and losses
+    :param Pset: set power in MW
+    :param theta_f: angle from (rad)
+    :param theta_t: angle to (rad)
+    :param Vnf: nominal voltage from (kV)
+    :param Vnt: nominal voltage to (kV)
+    :param v_set_f: control voltage from (p.u.)
+    :param v_set_t: control voltage to (p.u.)
+    :param Sbase: base power MVA
+    :param r1: line resistance (ohm)
+    :param angle_droop: angle droop control (MW/deg)
+    :param rate: Rate (MW)
+    :param free: is free to use the angle droop?
+    :param in_pu: return power in per unit? otherwise the power comes in MW
+    :return: Pf, Pt, losses (in MW or p.u. depending on `in_pu`)
+    """
+
+    if not free:
+
+        # simply copy the set power value
+        Pcalc = Pset
+
+    elif free:
+
+        # compute the angular difference in degrees (0.017453292f -> pi/180)
+        # theta_f and theta_t are in rad
+        # for the control not to be oscillatory, the angle difference must be the opposite (to - from)
+        dtheta = np.rad2deg(theta_t - theta_f)
+
+        # compute the desired control power flow
+        Pcalc = Pset + angle_droop * dtheta  # this is in MW
+
+        # rate truncation
+        if Pcalc > rate:
+            Pcalc = rate
+
+        elif Pcalc < -rate:
+            Pcalc = -rate
+
+    else:
+        Pcalc = 0
+
+    # depending on the value of Pcalc, assign the from and to values
+    if Pcalc > 0:
+        # from ->  to
+        I = Pcalc / (Vnf * v_set_f)  # current in kA
+        loss = r1 * I * I  # losses in MW
+        Pf = - Pcalc
+        Pt = Pcalc - loss
+
+    elif Pcalc < 0:
+        # to -> from
+        I = Pcalc / (Vnt * v_set_t)  # current in kA
+        loss = r1 * I * I  # losses in MW
+        Pf = - Pcalc - loss
+        Pt = Pcalc  # is negative
+
+    else:
+        Pf = 0
+        Pt = 0
+        loss = 0
+
+    # convert to p.u.
+    if in_pu:
+        Pf /= Sbase
+        Pt /= Sbase
+        loss /= Sbase
+
+    return Pf, Pt, loss
+
+
+class HvdcLine(BranchParent):
+    """
+    HvdcLine
+    """
+    __slots__ = (
+        '_length',
+        '_dispatchable',
+        '_Pset',
+        '_r',
+        '_dc_link_voltage',
+        '_angle_droop',
+        'loss_factor',
+        'mttf',
+        'mttr',
+        '_Vset_f',
+        '_Vset_t',
+        '_min_firing_angle_f',
+        '_max_firing_angle_f',
+        '_min_firing_angle_t',
+        '_max_firing_angle_t',
+        'capex',
+        'opex',
+        'build_status',
+        'control_mode',
+        '_Pset_prof',
+        '_active_prof',
+        '_Vset_f_prof',
+        '_Vset_t_prof',
+        '_angle_droop_prof',
+        '_locations',
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(
+            prop_name='dispatchable',
+            units='',
+            tpe=bool,
+            definition='Is the line power optimizable?',
+            cat=[PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='control_mode',
+            units='-',
+            tpe=HvdcControlType,
+            definition='Control type.',
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='Pset',
+            units='MW',
+            tpe=float,
+            definition='Set power flow.',
+            profile_name='Pset_prof',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='r',
+            units='Ohm',
+            tpe=float,
+            definition='line resistance.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='dc_link_voltage',
+            units='kV',
+            tpe=float,
+            definition='line voltage (only for compatibility, not used in calcs.)',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='angle_droop',
+            units='MW/deg',
+            tpe=float,
+            definition='Power/angle rate control',
+            profile_name='angle_droop_prof',
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='Vset_f',
+            units='p.u.',
+            tpe=float,
+            definition='Set voltage at the from side',
+            profile_name='Vset_f_prof',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='Vset_t',
+            units='p.u.',
+            tpe=float,
+            definition='Set voltage at the to side',
+            profile_name='Vset_t_prof',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='min_firing_angle_f',
+            units='rad',
+            tpe=float,
+            definition='minimum firing angle at the "from" side.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='max_firing_angle_f',
+            units='rad',
+            tpe=float,
+            definition='maximum firing angle at the "from" side.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='min_firing_angle_t',
+            units='rad',
+            tpe=float,
+            definition='minimum firing angle at the "to" side.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='max_firing_angle_t',
+            units='rad',
+            tpe=float,
+            definition='maximum firing angle at the "to" side.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='length',
+            units='km',
+            tpe=float,
+            definition='Length of the branch (not used for calculation)',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='locations',
+            units='',
+            tpe=SubObjectType.LineLocations,
+            definition='',
+            editable=False,
+            cat=[PrpCat.TP],
+        ),
+    )
+
+    def __init__(self,
+                 bus_from: Bus = None,
+                 bus_to: Bus = None,
+                 name='HVDC Line',
+                 idtag=None,
+                 active=True,
+                 code='',
+                 design_rate: float=9999.0,
+                 rate=9999.0,
+                 Pset=0.0,
+                 r=1e-20,
+                 loss_factor=0.0,
+                 Vset_f=1.0,
+                 Vset_t=1.0,
+                 length=1.0,
+                 mttf=0.0,
+                 mttr=0.0,
+                 overload_cost=1000.0,
+                 min_firing_angle_f=-1.0, max_firing_angle_f=1.0,
+                 min_firing_angle_t=-1.0, max_firing_angle_t=1.0,
+                 contingency_factor=1.0, protection_rating_factor: float = 1.4,
+                 control_mode: HvdcControlType = HvdcControlType.type_1_Pset,
+                 dispatchable=True, angle_droop=0,
+                 capex=0, opex=0,
+                 build_status: BuildStatus = BuildStatus.Commissioned,
+                 dc_link_voltage: float = 200.0):
+        """
+        HVDC Line model
+        :param bus_from: Bus from
+        :param bus_to:  Bus to
+        :param name: name of the line
+        :param idtag:  id tag of the line
+        :param active:  Is the line active?
+        :param code: Secondary code for compatibility
+        :param design_rate: Design rate (MVA)
+        :param rate:  Line rate in MVA
+        :param Pset:  Active power set point
+        :param r: Line resistance (Ohm)
+        :param loss_factor:  Losses factor (p.u.)
+        :param Vset_f: Voltage set point at the "from" side
+        :param Vset_t: Voltage set point at the "to" side
+        :param length: line length in km
+        :param mttf: Mean time to failure in hours
+        :param mttr: Mean time to recovery in hours
+        :param overload_cost: cost of a line overload in EUR/MW
+        :param min_firing_angle_f: minimum firing angle at the "from" side
+        :param max_firing_angle_f: maximum firing angle at the "from" side
+        :param min_firing_angle_t: minimum firing angle at the "to" side
+        :param max_firing_angle_t: maximum firing angle at the "to" side
+        :param contingency_factor: factor used for contingency studies
+        :param protection_rating_factor: Rating used for protection tripping limit
+        :param control_mode: HvdcControlType
+        :param dispatchable: is this line dispatchable?
+        :param angle_droop: INELFE angle-droop constant
+        :param capex: Capital expenditures (€)
+        :param opex: Operational expenditures (€)
+        :param build_status: BuildStatus
+        :param dc_link_voltage: line voltage (only for compatibility, not used in calcs.) (kV)
+        """
+
+        BranchParent.__init__(self,
+                              name=name,
+                              idtag=idtag,
+                              code=code,
+                              bus_from=bus_from,
+                              bus_to=bus_to,
+                              active=active,
+                              reducible=False,
+                              design_rate=design_rate,
+                              rate=rate,
+                              contingency_factor=contingency_factor,
+                              protection_rating_factor=protection_rating_factor,
+                              contingency_enabled=True,
+                              monitor_loading=True,
+                              mttf=mttf,
+                              mttr=mttr,
+                              build_status=build_status,
+                              capex=capex,
+                              opex=opex,
+                              cost=overload_cost,
+                              temp_base=25,
+                              temp_oper=25,
+                              alpha=0.0033,
+                              device_type=DeviceType.HVDCLineDevice)
+
+        # line length in km
+        self._length = float(length)
+
+        self.dispatchable = bool(dispatchable)
+
+        self.Pset = float(Pset)
+
+        self.r = float(r)
+
+        self.dc_link_voltage = float(dc_link_voltage)
+
+        self.angle_droop = float(angle_droop)
+
+        self.loss_factor = float(loss_factor)
+
+        self.mttf = float(mttf)
+
+        self.mttr = float(mttr)
+
+        self.Vset_f = float(Vset_f)
+        self.Vset_t = float(Vset_t)
+
+        # converter / inverter firing angles
+        self.min_firing_angle_f = float(min_firing_angle_f)
+        self.max_firing_angle_f = float(max_firing_angle_f)
+        self.min_firing_angle_t = float(min_firing_angle_t)
+        self.max_firing_angle_t = float(max_firing_angle_t)
+
+        self.capex = float(capex)
+
+        self.opex = float(opex)
+
+        self.build_status = build_status
+
+        self.control_mode: HvdcControlType = control_mode
+
+        self._Pset_prof: ProfileFloat = ProfileFloat(default_value=Pset)
+        self._active_prof: ProfileBool = ProfileBool(default_value=active)
+        self._Vset_f_prof: ProfileFloat = ProfileFloat(default_value=Vset_f)
+        self._Vset_t_prof: ProfileFloat = ProfileFloat(default_value=Vset_t)
+        self._angle_droop_prof: ProfileFloat = ProfileFloat(default_value=angle_droop)
+
+        # Line locations
+        self._locations: LineLocations = LineLocations()
+
+    @property
+    def Pset_prof(self) -> ProfileFloat:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._Pset_prof
+
+    @Pset_prof.setter
+    def Pset_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
+            self._Pset_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Pset_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Pset_prof')
+
+    def get_Pset_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pset, self.Pset_prof, t)
+
+    @property
+    def angle_droop_prof(self) -> ProfileFloat:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._angle_droop_prof
+
+    @angle_droop_prof.setter
+    def angle_droop_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
+            self._angle_droop_prof = val
+        elif isinstance(val, np.ndarray):
+            self._angle_droop_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a angle_droop_prof')
+
+    def get_angle_droop_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.angle_droop, self.angle_droop_prof, t)
+
+    @property
+    def Vset_f_prof(self) -> ProfileFloat:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._Vset_f_prof
+
+    @Vset_f_prof.setter
+    def Vset_f_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
+            self._Vset_f_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Vset_f_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Vset_f_prof')
+
+    def get_Vset_f_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Vset_f, self.Vset_f_prof, t)
+
+    @property
+    def Vset_t_prof(self) -> ProfileFloat:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._Vset_t_prof
+
+    @Vset_t_prof.setter
+    def Vset_t_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
+            self._Vset_t_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Vset_t_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Vset_t_prof')
+
+    def get_Vset_t_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Vset_t, self.Vset_t_prof, t)
+
+    @property
+    def locations(self) -> LineLocations:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._locations
+
+    @locations.setter
+    def locations(self, val: Union[LineLocations, np.ndarray]):
+        if isinstance(val, LineLocations):
+            self._locations = val
+        elif isinstance(val, np.ndarray):
+            self._locations.set(data=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a locations')
+
+    @property
+    def length(self) -> float:
+        """
+        Line length in km
+        :return: float
+        """
+        return self._length
+
+    @length.setter
+    def length(self, val: float):
+        val = float(val)
+        if isinstance(val, float):
+            if val > 0.0:
+
+                if self._length != 0:
+                    factor = np.round(val / self._length, 6)  # new length / old length
+
+                    self.r *= factor
+
+                self._length = val
+            else:
+                # print('The length cannot be zero, ignoring value')
+                pass
+        else:
+            raise Exception('The length must be a float value')
+
+    def get_from_and_to_power(self, theta_f, theta_t, Sbase, in_pu=False):
+        """
+        Get the power set at both ends accounting for meaningful losses
+        :return: power from, power to
+        """
+        if self.active:
+            Pf, Pt, losses = getFromAndToPowerAt(Pset=self.Pset,
+                                                 theta_f=theta_f,
+                                                 theta_t=theta_t,
+                                                 Vnf=self.bus_from.Vnom,
+                                                 Vnt=self.bus_to.Vnom,
+                                                 v_set_f=self.Vset_f,
+                                                 v_set_t=self.Vset_t,
+                                                 Sbase=Sbase,
+                                                 r1=self.r,
+                                                 angle_droop=self.angle_droop,
+                                                 rate=self.rate,
+                                                 free=self.control_mode == HvdcControlType.type_0_free.idx(),
+                                                 in_pu=in_pu)
+
+            return Pf, Pt, losses
+        else:
+            return 0, 0, 0
+
+    def get_from_and_to_power_at(self, t, theta_f, theta_t, Sbase, in_pu=False):
+        """
+        Get the power set at both ends accounting for meaningful losses
+        :return: power from, power to
+        """
+        if self.active_prof[t]:
+            Pf, Pt, losses = getFromAndToPowerAt(Pset=self.Pset_prof[t],
+                                                 theta_f=theta_f,
+                                                 theta_t=theta_t,
+                                                 Vnf=self.bus_from.Vnom,
+                                                 Vnt=self.bus_to.Vnom,
+                                                 v_set_f=self.Vset_f_prof[t],
+                                                 v_set_t=self.Vset_t_prof[t],
+                                                 Sbase=Sbase,
+                                                 r1=self.r,
+                                                 angle_droop=self.angle_droop,
+                                                 rate=self.rate_prof[t],
+                                                 free=self.control_mode == HvdcControlType.type_0_free.idx(),
+                                                 in_pu=in_pu)
+
+            return Pf, Pt, losses
+        else:
+            return 0, 0, 0
+
+    def get_save_data(self):
+        """
+        Return the data that matches the edit_headers
+        :return:
+        """
+        data = list()
+        for name, properties in self.registered_properties.items():
+            obj = getattr(self, name)
+
+            if properties.tpe == DeviceType.BusDevice:
+                obj = obj.idtag
+
+            elif properties.tpe not in [str, float, int, bool]:
+                obj = str(obj)
+
+            data.append(obj)
+        return data
+
+    def get_max_bus_nominal_voltage(self):
+        return max(self.bus_from.Vnom, self.bus_to.Vnom)
+
+    def get_min_bus_nominal_voltage(self):
+        return min(self.bus_from.Vnom, self.bus_to.Vnom)
+
+    def plot_profiles(self, time_series=None, my_index=0, show_fig=True):
+        """
+        Plot the time series results of this object
+        :param time_series: TimeSeries Instance
+        :param my_index: index of this object in the simulation
+        :param show_fig: Show the figure?
+        """
+
+        if time_series is not None:
+            fig = plt.figure(figsize=(12, 8))
+
+            ax_1 = fig.add_subplot(211)
+            ax_2 = fig.add_subplot(212, sharex=ax_1)
+
+            x = time_series.results.time_array
+
+            # loading
+            y = self.Pset_prof.toarray() / (self.rate_prof.toarray() + 1e-9) * 100.0
+            df = pd.DataFrame(data=y, index=x, columns=[self.name])
+            ax_1.set_title('Loading', fontsize=14)
+            ax_1.set_ylabel('Loading [%]', fontsize=11)
+            df.plot(ax=ax_1)
+
+            # losses
+            y = self.Pset_prof.toarray() * self.loss_factor
+            df = pd.DataFrame(data=y, index=x, columns=[self.name])
+            ax_2.set_title('Losses', fontsize=14)
+            ax_2.set_ylabel('Losses [MVA]', fontsize=11)
+            df.plot(ax=ax_2)
+
+            plt.legend()
+            fig.suptitle(self.name, fontsize=20)
+
+        if show_fig:
+            plt.show()
+
+    def get_coordinates(self):
+        """
+        Get the branch defining coordinates
+        """
+        return [self.bus_from.get_coordinates(), self.bus_to.get_coordinates()]
+
+    def get_q_limits(self, P: float) -> Tuple[float, float, float, float]:
+        """
+        Get reactive power limits
+        :param P: Pset value
+        :return: Qmin_f, Qmax_f, Qmin_t, Qmax_t
+        """
+        Qmin_f, Qmax_f = firing_angles_to_reactive_limits(P, self.min_firing_angle_f, self.max_firing_angle_f)
+
+        Qmin_t, Qmax_t = firing_angles_to_reactive_limits(P, self.min_firing_angle_t, self.max_firing_angle_t)
+
+        return Qmin_f, Qmax_f, Qmin_t, Qmax_t
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def dispatchable(self) -> bool:
+        """
+        Get ``dispatchable``.
+
+        :return: bool
+        """
+        return self._dispatchable
+
+    @dispatchable.setter
+    def dispatchable(self, val: bool) -> None:
+        """
+        Set ``dispatchable``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._dispatchable = bool(val)
+
+    @property
+    def Pset(self) -> float:
+        """
+        Get ``Pset``.
+
+        :return: float
+        """
+        return self._Pset
+
+    @Pset.setter
+    def Pset(self, val: float) -> None:
+        """
+        Set ``Pset``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pset = float(val)
+
+    @property
+    def r(self) -> float:
+        """
+        Get ``r``.
+
+        :return: float
+        """
+        return self._r
+
+    @r.setter
+    def r(self, val: float) -> None:
+        """
+        Set ``r``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._r = float(val)
+
+    @property
+    def dc_link_voltage(self) -> float:
+        """
+        Get ``dc_link_voltage``.
+
+        :return: float
+        """
+        return self._dc_link_voltage
+
+    @dc_link_voltage.setter
+    def dc_link_voltage(self, val: float) -> None:
+        """
+        Set ``dc_link_voltage``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._dc_link_voltage = float(val)
+
+    @property
+    def angle_droop(self) -> float:
+        """
+        Get ``angle_droop``.
+
+        :return: float
+        """
+        return self._angle_droop
+
+    @angle_droop.setter
+    def angle_droop(self, val: float) -> None:
+        """
+        Set ``angle_droop``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._angle_droop = float(val)
+
+    @property
+    def Vset_f(self) -> float:
+        """
+        Get ``Vset_f``.
+
+        :return: float
+        """
+        return self._Vset_f
+
+    @Vset_f.setter
+    def Vset_f(self, val: float) -> None:
+        """
+        Set ``Vset_f``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vset_f = float(val)
+
+    @property
+    def Vset_t(self) -> float:
+        """
+        Get ``Vset_t``.
+
+        :return: float
+        """
+        return self._Vset_t
+
+    @Vset_t.setter
+    def Vset_t(self, val: float) -> None:
+        """
+        Set ``Vset_t``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vset_t = float(val)
+
+    @property
+    def min_firing_angle_f(self) -> float:
+        """
+        Get ``min_firing_angle_f``.
+
+        :return: float
+        """
+        return self._min_firing_angle_f
+
+    @min_firing_angle_f.setter
+    def min_firing_angle_f(self, val: float) -> None:
+        """
+        Set ``min_firing_angle_f``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._min_firing_angle_f = float(val)
+
+    @property
+    def max_firing_angle_f(self) -> float:
+        """
+        Get ``max_firing_angle_f``.
+
+        :return: float
+        """
+        return self._max_firing_angle_f
+
+    @max_firing_angle_f.setter
+    def max_firing_angle_f(self, val: float) -> None:
+        """
+        Set ``max_firing_angle_f``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._max_firing_angle_f = float(val)
+
+    @property
+    def min_firing_angle_t(self) -> float:
+        """
+        Get ``min_firing_angle_t``.
+
+        :return: float
+        """
+        return self._min_firing_angle_t
+
+    @min_firing_angle_t.setter
+    def min_firing_angle_t(self, val: float) -> None:
+        """
+        Set ``min_firing_angle_t``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._min_firing_angle_t = float(val)
+
+    @property
+    def max_firing_angle_t(self) -> float:
+        """
+        Get ``max_firing_angle_t``.
+
+        :return: float
+        """
+        return self._max_firing_angle_t
+
+    @max_firing_angle_t.setter
+    def max_firing_angle_t(self, val: float) -> None:
+        """
+        Set ``max_firing_angle_t``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._max_firing_angle_t = float(val)

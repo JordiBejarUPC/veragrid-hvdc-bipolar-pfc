@@ -1,0 +1,198 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.  
+# SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+import numpy as np
+from typing import Union, TYPE_CHECKING, Tuple
+from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
+from VeraGridEngine.enumerations import DeviceType, SubObjectType, BuildStatus, PrpCat
+from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
+from VeraGridEngine.Devices.Branches.line_locations import LineLocations
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
+
+if TYPE_CHECKING:
+    from VeraGridEngine.Devices.types import CONNECTION_TYPE
+
+
+class FluidPath(PhysicalDevice):
+    __slots__ = (
+        'source',
+        'target',
+        '_min_flow',
+        '_max_flow',
+        'color',
+        '_locations',
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(
+            prop_name='source',
+            units="",
+            tpe=DeviceType.FluidNodeDevice,
+            definition="Source node",
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='target',
+            units="",
+            tpe=DeviceType.FluidNodeDevice,
+            definition="Target node",
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='min_flow',
+            units="m3/s",
+            tpe=float,
+            definition="Minimum flow",
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='max_flow',
+            units="m3/s",
+            tpe=float,
+            definition="Maximum flow",
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='locations',
+            units='',
+            tpe=SubObjectType.LineLocations,
+            definition='Locations',
+            editable=False,
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='color',
+            units='',
+            tpe=str,
+            definition='Color to paint the device in the map diagram',
+            is_color=True,
+            cat=[PrpCat.TP],
+        ),
+    )
+
+    def __init__(self,
+                 name: str = '',
+                 idtag: Union[str, None] = None,
+                 code: str = '',
+                 source: FluidNode = None,
+                 target: FluidNode = None,
+                 min_flow: float = 0.0,
+                 max_flow: float = 0.0,
+                 color: str | None = None,
+                 build_status: BuildStatus = BuildStatus.Commissioned ):
+        """
+        Fluid path
+        :param name:Name of the fluid transporter
+        :param idtag: UUID
+        :param code: secondary ID
+        :param source: source of fluid (direction matters)
+        :param target: target for the fluid (direction matters)
+        :param min_flow: minimum flow (m3/s)
+        :param max_flow: maximum flow (m3/s)
+        :param color: color of the fluid
+        """
+        PhysicalDevice.__init__(self,
+                                name=name,
+                                idtag=idtag,
+                                code=code,
+                                device_type=DeviceType.FluidPathDevice,
+                                build_status=build_status)
+
+        self.source = source
+        self.target = target
+        self.min_flow = float(min_flow)
+        self.max_flow = float(max_flow)
+
+        self.color = color if color is not None else "#00aad4"  # nice blue color
+
+        # Line locations
+        self._locations: LineLocations = LineLocations()
+
+
+    def copy(self):
+        """
+        Make a deep copy of this object
+        :return: Copy of this object
+        """
+
+        # make a new instance (separated object in memory)
+        fluid_path = FluidPath()
+
+        fluid_path.source = self.source
+        fluid_path.target = self.target
+        fluid_path.min_flow = self.min_flow
+        fluid_path.max_flow = self.max_flow
+
+        return fluid_path
+
+    @property
+    def locations(self) -> LineLocations:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._locations
+
+    @locations.setter
+    def locations(self, val: Union[LineLocations, np.ndarray]):
+        if isinstance(val, LineLocations):
+            self._locations = val
+        elif isinstance(val, np.ndarray):
+            self._locations.set(data=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a locations')
+
+    def get_from_and_to_objects(self) -> Tuple[CONNECTION_TYPE, CONNECTION_TYPE, bool]:
+        """
+        Get the from and to connection objects of the branch
+        :return: Object from, Object to, is it ok?
+        """
+
+        # Pick the right bus
+        bus_from = self.source
+        bus_to = self.target
+
+        ok = bus_from is not None and bus_to is not None
+        return bus_from, bus_to, ok
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def min_flow(self) -> float:
+        """
+        Get ``min_flow``.
+
+        :return: float
+        """
+        return self._min_flow
+
+    @min_flow.setter
+    def min_flow(self, val: float) -> None:
+        """
+        Set ``min_flow``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._min_flow = float(val)
+
+    @property
+    def max_flow(self) -> float:
+        """
+        Get ``max_flow``.
+
+        :return: float
+        """
+        return self._max_flow
+
+    @max_flow.setter
+    def max_flow(self, val: float) -> None:
+        """
+        Set ``max_flow``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._max_flow = float(val)

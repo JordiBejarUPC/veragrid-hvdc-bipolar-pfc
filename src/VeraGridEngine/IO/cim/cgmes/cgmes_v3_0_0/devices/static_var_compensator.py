@@ -1,0 +1,29 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.  
+# SPDX-License-Identifier: MPL-2.0
+
+from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.regulating_cond_eq import RegulatingCondEq
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, SVCControlMode, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
+
+class StaticVarCompensator(RegulatingCondEq):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='capacitiveRating', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', mandatory=True, profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='inductiveRating', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', mandatory=True, profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='slope', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.VPerVAr, description='''Voltage variation with reactive power.''', mandatory=True, profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='sVCControlMode', class_type=SVCControlMode, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''SVC control mode.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='voltageSetPoint', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[CgmesProfileType.EQ]),
+		CgmesProperty(property_name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', mandatory=True, profiles=[CgmesProfileType.SSH]),
+	)
+	__slots__ = ('capacitiveRating', 'inductiveRating', 'slope', 'sVCControlMode', 'voltageSetPoint', 'q')
+	def __init__(self, rdfid='', tpe='StaticVarCompensator'):
+		RegulatingCondEq.__init__(self, rdfid, tpe)
+
+		self.capacitiveRating: float = None
+		self.inductiveRating: float = None
+		self.slope: float = None
+		self.sVCControlMode: SVCControlMode = None
+		self.voltageSetPoint: float = None
+		self.q: float = None

@@ -1,0 +1,171 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+from typing import TYPE_CHECKING, Union
+from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtWidgets import QMenu
+from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
+from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
+from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
+from VeraGridEngine.Devices.Branches.switch import Switch
+from VeraGridEngine.enumerations import DynamicSimulationMode
+
+if TYPE_CHECKING:  # Only imports the below statements during type checking
+    from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
+
+
+class SwitchGraphicItem(LineGraphicTemplateItem):
+
+    def __init__(self, from_port: Union[BarTerminalItem, RoundTerminalItem],
+                 to_port: Union[BarTerminalItem, RoundTerminalItem, None],
+                 editor: SchematicWidget,
+                 width=5,
+                 api_object: Switch = None,
+                 draw_labels: bool = True):
+        """
+
+        :param from_port:
+        :param to_port:
+        :param editor:
+        :param width:
+        :param api_object:
+        :param draw_labels:
+        """
+        LineGraphicTemplateItem.__init__(self=self,
+                                         from_port=from_port,
+                                         to_port=to_port,
+                                         editor=editor,
+                                         width=width,
+                                         api_object=api_object,
+                                         draw_labels=draw_labels)
+
+    @property
+    def api_object(self) -> Switch:
+        return self._api_object
+
+    def open_device_editor(self) -> bool:
+        """
+        Open the generic device editor for this switch.
+
+        :return: ``True`` when the editor was opened.
+        """
+        dialog = TemplateDeviceEditor(api_object=self.api_object, circuit=self.editor.circuit)
+        dialog.exec()
+        return True
+
+    def contextMenuEvent(self, event):
+        """
+        Show context menu
+        @param event:
+        @return:
+        """
+        if self.api_object is not None:
+            menu = QMenu()
+            menu.addSection(translate_context_menu_text("Line"))
+
+            pe = menu.addAction(translate_context_menu_text("Active"))
+            pe.setCheckable(True)
+            pe.setChecked(self.api_object.active)
+            pe.triggered.connect(self.enable_disable_toggle)
+
+            add_menu_entry(menu=menu,
+                           text=translate_context_menu_text("Draw labels"),
+                           function_ptr=self.enable_disable_label_drawing,
+                           checkeable=True,
+                           checked_value=self.draw_labels)
+
+            add_menu_entry(menu=menu,
+                           text=translate_context_menu_text("Editor"),
+                           function_ptr=self.edit,
+                           icon_path=":/Icons/icons/edit.png")
+
+            add_menu_entry(menu=menu,
+                           text=translate_context_menu_text("RMS Editor"),
+                           function_ptr=self.edit_dynamic_rms,
+                           icon_path=":/Icons/icons/dyn_edit.png")
+
+            add_menu_entry(menu=menu,
+                           text=translate_context_menu_text("EMT Editor"),
+                           function_ptr=self.edit_dynamic_emt,
+                           icon_path=":/Icons/icons/dyn_emt_edit.png")
+
+            rabf = menu.addAction(translate_context_menu_text("Change bus"))
+            move_bus_icon = QIcon()
+            move_bus_icon.addPixmap(QPixmap(":/Icons/icons/move_bus.png"))
+            rabf.setIcon(move_bus_icon)
+            rabf.triggered.connect(self.change_bus)
+
+            menu.addSeparator()
+
+            ra6 = menu.addAction(translate_context_menu_text("Plot profiles"))
+            plot_icon = QIcon()
+            plot_icon.addPixmap(QPixmap(":/Icons/icons/plot.png"))
+            ra6.setIcon(plot_icon)
+            ra6.triggered.connect(self.plot_profiles)
+
+            ra4 = menu.addAction(translate_context_menu_text("Assign rate to profile"))
+            ra4_icon = QIcon()
+            ra4_icon.addPixmap(QPixmap(":/Icons/icons/assign_to_profile.png"))
+            ra4.setIcon(ra4_icon)
+            ra4.triggered.connect(self.assign_rate_to_profile)
+
+            ra5 = menu.addAction(translate_context_menu_text("Assign active state to profile"))
+            ra5_icon = QIcon()
+            ra5_icon.addPixmap(QPixmap(":/Icons/icons/assign_to_profile.png"))
+            ra5.setIcon(ra5_icon)
+            ra5.triggered.connect(self.assign_status_to_profile)
+
+            menu.addSeparator()
+            self.add_auto_route_style_menu(menu=menu)
+            menu.addSeparator()
+
+            ra2 = menu.addAction(translate_context_menu_text("Delete"))
+            del_icon = QIcon()
+            del_icon.addPixmap(QPixmap(":/Icons/icons/delete3.png"))
+            ra2.setIcon(del_icon)
+            ra2.triggered.connect(self.delete)
+
+            menu.exec_(event.screenPos())
+        else:
+            pass
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        """
+        Open the switch editor on double click.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        if self.api_object is not None:
+            self.open_device_editor()
+        else:
+            pass
+
+    def edit(self) -> None:
+        """
+        Open the appropriate editor dialogue.
+
+        :return: ``None``.
+        """
+        self.open_device_editor()
+
+    def edit_dynamic_rms(self) -> None:
+        """
+        Open the unified dynamic editor workspace for this switch in RMS mode.
+
+        :return: None.
+        """
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.RMS)
+
+    def edit_dynamic_emt(self) -> None:
+        """
+        Open the unified dynamic editor workspace for this switch in EMT mode.
+
+        :return: None.
+        """
+        self.editor.gui.open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                                            preferred_mode=DynamicSimulationMode.EMT)
