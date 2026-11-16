@@ -29,14 +29,24 @@ The formulation is implemented in [VeraGrid](https://github.com/SanPen/VeraGrid)
 | :--- | :--- |
 | 📂 **Case studies** | [`src/trunk/Paper_CaseStudies/`](src/trunk/Paper_CaseStudies/) |
 | ⚙️ **Power flow algorithm** | [`src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py`](src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py) |
+| 🧮 **Jacobian derivatives** | [`src/VeraGridEngine/Simulations/Derivatives/csc_derivatives.py`](src/VeraGridEngine/Simulations/Derivatives/csc_derivatives.py) |
+| ✅ **MATLAB/Simulink validation models** | [`src/trunk/Paper_CaseStudies/ValidationFilesMatlab/`](src/trunk/Paper_CaseStudies/ValidationFilesMatlab/) |
+| ⏱️ **Computational-time benchmarks** | [`src/trunk/Paper_CaseStudies/timing_analysis_data/`](src/trunk/Paper_CaseStudies/timing_analysis_data/) |
 
 ```text
 src/trunk/Paper_CaseStudies/
 ├── CaseStudy1_Bipolar.py                     # Case 1 · Point-to-point bipolar link
 ├── CaseStudy2_Bipolar_WithPfc.py             # Case 2 · Bipolar link with a PFC in each pole
 ├── CaseStudy3_4TerminalBipolarSystem.py      # Case 3 · 4-terminal meshed bipolar grid with PFCs
+├── CaseStudy3_4TerminalBipolarSystem_NOPFC.py  # Case 3 · same grid without PFCs (reference case)
 ├── grids/
 │   └── case300.m                             # IEEE 300-bus system (MATPOWER format), used in Case 3
+├── ValidationFilesMatlab/                    # MATLAB/Simulink models used to validate the results
+│   ├── data_CaseStudy1and2.m                 #   Parameters (and CSV export) for Cases 1 and 2
+│   ├── data_CaseStudy3.m                     #   Parameters for Case 3
+│   ├── CaseStudy1_Bipolar.slx                #   Simulink model of Case 1
+│   ├── CaseStudy2_Bipolar_WithPFC.slx        #   Simulink model of Case 2
+│   └── CaseStudy3_4TerminalBipolarSystem.slx #   Simulink model of the DC side of Case 3
 └── timing_analysis_data/                     # Computational-time benchmarks (100 runs per case)
     ├── CaseStudy1_Bipolar_timing.py
     ├── CaseStudy2_Bipolar_WithPfc_timing.py
@@ -50,6 +60,15 @@ src/trunk/Paper_CaseStudies/
 | **1** | `CaseStudy1_Bipolar.py` | Point-to-point bipolar link with DMR; 4 VSCs, 100 km cables | Base bipolar model; balanced operation by default, unbalanced by changing the pole set-points |
 | **2** | `CaseStudy2_Bipolar_WithPfc.py` | System of Case 1 with a PFC in the positive and in the negative pole | PFC current or voltage control in each pole |
 | **3** | `CaseStudy3_4TerminalBipolarSystem.py` | 4-terminal meshed bipolar grid (land and sea cables), two offshore wind farms, two IEEE 300-bus AC networks | Droop-controlled VSCs, asymmetric pole loading and PFCs in a large AC/DC system |
+| **3 (ref.)** | `CaseStudy3_4TerminalBipolarSystem_NOPFC.py` | Same system as Case 3 with the PFCs removed (lines 1-2 and 1-5 connected directly to bus 1 of each pole) | Natural current distribution, used as the baseline to quantify the effect of the PFCs |
+
+## Requirements
+
+| Component | Needed for | Version used for the paper |
+| :--- | :--- | :--- |
+| Python | All case studies and timing benchmarks | 3.11 (any version ≥ 3.10 with the packages below should work) |
+| Python packages in [`requirements.txt`](requirements.txt) | All Python scripts | NumPy 2.3, SciPy 1.16, pandas 2.3 |
+| MATLAB + Simulink + **Simscape Electrical** (Specialized Power Systems library) | Only the optional [MATLAB validation](#matlabsimulink-validation-models) | R2024b (the `.slx` files open in R2024b or newer) |
 
 ## Installation
 
@@ -90,16 +109,26 @@ cd src/trunk/Paper_CaseStudies
 python CaseStudy1_Bipolar.py
 python CaseStudy2_Bipolar_WithPfc.py
 python CaseStudy3_4TerminalBipolarSystem.py
+python CaseStudy3_4TerminalBipolarSystem_NOPFC.py   # Case 3 reference without PFCs
 ```
 
-Each script prints the convergence status, iterations and solution time, followed by bus voltages, branch flows, converter results and, where present, PFC results.
+Each script prints the Newton–Raphson iteration log, the convergence status, iterations and solution time, followed by bus voltages, branch flows, converter results and, where present, PFC results. All cases converge in 3–5 iterations with the default set-points.
+
+| Script | Files written next to the script |
+| :--- | :--- |
+| `CaseStudy1_Bipolar.py`, `CaseStudy2_Bipolar_WithPfc.py` | None (console output only) |
+| `CaseStudy3_4TerminalBipolarSystem.py` | `4TerminalBipolarSystem_droops_WithPFC.veragrid`, `CaseStudy3_DC_currents.xlsx` (sheets `DC lines`, `VSC Idc`, `PFC currents`) |
+| `CaseStudy3_4TerminalBipolarSystem_NOPFC.py` | `4TerminalBipolarSystem_droops_WithoutPFC.veragrid`, `CaseStudy3_DC_currents_WithoutPFC.xlsx` |
+
+> [!TIP]
+> The Case 3 scripts wait for keyboard input (see below). To run them non-interactively with the paper defaults, pipe empty lines into them, e.g. `printf '\n\n\n\n' | python CaseStudy3_4TerminalBipolarSystem.py` (bash) or `"`n`n`n`n" | python CaseStudy3_4TerminalBipolarSystem.py` (PowerShell).
 
 <details>
 <summary><b>Case 3 · connecting the external AC networks</b></summary>
 
 <br>
 
-Case 3 asks interactively which AC networks to connect at the two onshore points of interconnection (POI). To reproduce the paper, simply press <kbd>Enter</kbd> at every prompt:
+Case 3 (both with and without PFCs, and its timing script) asks interactively which AC networks to connect at the two onshore points of interconnection (POI). To reproduce the paper, simply press <kbd>Enter</kbd> at every prompt:
 
 | Prompt | Input |
 | :--- | :--- |
@@ -108,7 +137,7 @@ Case 3 asks interactively which AC networks to connect at the two onshore points
 | Path for AC network 2 (`.m` or `.veragrid`) | <kbd>Enter</kbd> (uses `grids/case300.m`) |
 | Bus name in AC network 2 to connect to the HVDC POI | <kbd>Enter</kbd> (uses bus `7049`) |
 
-The script also saves the complete model as `4TerminalBipolarSystem_droops_WithPFC.veragrid`. You can open that file in the VeraGrid GUI.
+The saved `.veragrid` model can be opened in the VeraGrid GUI.
 
 </details>
 
@@ -141,14 +170,51 @@ The available PFC control modes are:
 - **Converter losses:** quadratic model $P_{loss} = a + b\,I + c\,I^2$. The coefficients are taken from the CIGRE benchmark below and converted to per unit.
 - **Cables:** copper conductors with $\rho_{20} = 1.7241\times10^{-8}$ Ω·m, cross-sections of 2500 mm² (sea) and 3000 mm² (land).
 
+## MATLAB/Simulink validation models
+
+The power flow results were validated against time-domain simulations in MATLAB/Simulink. The models are in [`src/trunk/Paper_CaseStudies/ValidationFilesMatlab/`](src/trunk/Paper_CaseStudies/ValidationFilesMatlab/). They are built with the **Specialized Power Systems** blocks of Simscape Electrical (`powergui`, controlled voltage/current sources, series RLC branches and measurements). The steady state reached at the end of the simulation is compared with the VeraGrid solution.
+
+| VeraGrid script | Simulink model | Parameter script | Stop time |
+| :--- | :--- | :--- | :-: |
+| `CaseStudy1_Bipolar.py` | `CaseStudy1_Bipolar.slx` | `data_CaseStudy1and2.m` | 0.1 ms |
+| `CaseStudy2_Bipolar_WithPfc.py` | `CaseStudy2_Bipolar_WithPFC.slx` | `data_CaseStudy1and2.m` | 10 s |
+| `CaseStudy3_4TerminalBipolarSystem.py` | `CaseStudy3_4TerminalBipolarSystem.slx` (DC side) | `data_CaseStudy3.m` | 10 s |
+
+**Steps to reproduce the validation**
+
+1. Open MATLAB (R2024b or newer) and set the current folder to `src/trunk/Paper_CaseStudies/ValidationFilesMatlab/`.
+2. Run the parameter script of the case (`data_CaseStudy1and2.m` or `data_CaseStudy3.m`). It loads the variables the model reads from the base workspace (`Vb`, `VDC`, `Rbi`/`R`, `Vr_pfc_*`, `Vs_pfc_*`, the cable resistances `r0a … r5`, `Kdroop`, `Pdc_star`, …). The models do **not** load them on their own.
+3. Open the matching `.slx` model and press **Run**. The `Display` blocks show the steady-state values directly on the diagram, and the `To Workspace` blocks store the signals in the `out` object.
+4. Compare the steady-state voltages, currents and powers with the output of the corresponding Python script.
+
+> [!IMPORTANT]
+> The Simulink models do not solve a power flow. The converters are represented by controlled sources, and the PFCs by controlled voltage sources whose internal voltages (`Vr_pfc_pos`, `Vs_pfc_pos`, `Vr_pfc_neg`, `Vs_pfc_neg`, in V) are **taken from the VeraGrid solution** (`ResultTypes.PfcVr` / `PfcVs`, printed in kV by the Python scripts). The power set-points of the source blocks are entered directly in the models. If you change a scenario in Python, update those values in the `.m` script and in the `.slx` source blocks before re-running the validation.
+
 ## Computational time benchmarks
 
-The scripts in `timing_analysis_data/` solve each case 100 times and report the mean, standard deviation, minimum and maximum solution times. These are the figures quoted in the paper. Each script saves the assembled `.veragrid` model and an Excel report (`Summary`, `Bus_Voltages`, `Timing_Raw_Data`) next to itself.
+The scripts in `timing_analysis_data/` solve each case 100 times and report the mean, standard deviation, minimum and maximum solution times. These are the figures quoted in the paper. Absolute times depend on the hardware, so expect different values on another machine. The trend between cases should stay the same.
 
 ```bash
 cd src/trunk/Paper_CaseStudies/timing_analysis_data
 python CaseStudy1_Bipolar_timing.py
+python CaseStudy2_Bipolar_WithPfc_timing.py
+python CaseStudy3_4TerminalBipolarSystem_timings.py   # asks for the AC networks: press Enter 4 times
 ```
+
+Each script writes the following next to itself:
+
+| Script | Model | Excel report (`Summary`, `Bus_Voltages`, `Timing_Raw_Data`) | Per-run plot |
+| :--- | :--- | :--- | :--- |
+| `CaseStudy1_Bipolar_timing.py` | `.veragrid` | `veragrid_case1_timing_results.xlsx` | `veragrid_case1_timing_per_run.png` |
+| `CaseStudy2_Bipolar_WithPfc_timing.py` | `.veragrid` | `veragrid_case2_timing_results.xlsx` | `veragrid_case2_timing_per_run.png` |
+| `CaseStudy3_4TerminalBipolarSystem_timings.py` | `.veragrid` | `veragrid_4terminal_case300_timing_results_v2.xlsx` | `veragrid_4terminal_case300_timing_per_run.png` |
+
+## Reproducing the paper: checklist
+
+1. Clone the repository, install `requirements.txt` and set `PYTHONPATH` to `src/` ([Installation](#installation)).
+2. Run Cases 1, 2 and 3 (with and without PFCs) with the default set-points. Press <kbd>Enter</kbd> at every Case 3 prompt ([Running the case studies](#running-the-case-studies)).
+3. Run the three timing scripts to obtain the computational-time figures ([Benchmarks](#computational-time-benchmarks)).
+4. *(Optional, requires MATLAB)* Run the Simulink models and compare the steady state with the VeraGrid results ([Validation](#matlabsimulink-validation-models)).
 
 ## 📄 Citation
 

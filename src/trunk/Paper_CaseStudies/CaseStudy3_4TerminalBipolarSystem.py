@@ -47,15 +47,14 @@ a_m2_sea = a_mm2_sea * 1e-6
 r_ohm_km_sea = r_ohm_m_sea * (d_m_sea / a_m2_sea) #ohm/km
 r_pu_km_sea = r_ohm_km_sea / Rb
 
-print("r_pu_km_sea:",r_pu_km_sea)
-print("r_pu_km_land:",r_pu_km_land)
-
-print("sea:",r_ohm_km_sea)
-print("land:",r_ohm_km_land)
+#Cable Current Ratings (per conductor, same value assumed for pole and DMR conductors)
+# Benchmark links rated +-525 kV, 2 GW bipole (1 GW per pole) -> I_rated = 2000 MW / (2 * 525 kV)
+I_rated_kA = {"land": 2000 / (2 * Ub),
+              "sea": 2000 / (2 * Ub)}
 
 # Distances in Km
 d0a = 10
-d0c = 10
+d0b = 10
 d1 = 300
 d2 = 300
 d3 = 400
@@ -64,7 +63,7 @@ d4b = 150
 d5 = 300
 
 # PFC Setpoints
-Is_set_A_pos = 1400 #A
+Is_set_A_pos = 400 #A
 Is_set_kA_pos = Is_set_A_pos/1000  #kA
 Is_set_pu_pos = Is_set_kA_pos / Ib
 
@@ -74,10 +73,10 @@ Is_set_pu_neg = Is_set_kA_neg / Ib
 
 # VSC Control Parameters
 Vdc_vsc = 1.0 #p.u.
-Pac_vsc3pos = 1500 #MW
-Pac_vsc4pos = 1500 #MW
-Pac_vsc3neg = 750 #MW
-Pac_vsc4neg = 750 #MW
+Pac_vsc3pos = 850 #MW
+Pac_vsc4pos = 950 #MW
+Pac_vsc3neg = 425 #MW
+Pac_vsc4neg = 475 #MW
 
 grid = gce.MultiCircuit(
     name="4TerminalsBipolarSystem",
@@ -92,7 +91,7 @@ d_buses = {
     4: ("Bus4_ac", Ub, False, False, True),
     # Positive pole DC buses
     5: ("Bus0a_dc_+", Ub, True, False, False),
-    6: ("Bus0c_dc_+", Ub, True, False, False),
+    6: ("Bus0b_dc_+", Ub, True, False, False),
     7: ("Bus1_dc_+", Ub, True, False, False),
     8: ("Bus2_dc_+", Ub, True, False, False),
     9: ("Bus3_dc_+", Ub, True, False, False),
@@ -100,7 +99,7 @@ d_buses = {
     11: ("Bus5_dc_+", Ub, True, False, False),
     # DMR pole DC buses
     12: ("Bus0a_dc_0", Ub, True, False, False),
-    13: ("Bus0c_dc_0", Ub, True, False, False),
+    13: ("Bus0b_dc_0", Ub, True, False, False),
     14: ("Bus1_dc_0", Ub, True, False, False),
     15: ("Bus2_dc_0", Ub, True, False, False),
     16: ("Bus3_dc_0", Ub, True, True, False),  # grounded bus
@@ -108,7 +107,7 @@ d_buses = {
     18: ("Bus5_dc_0", Ub, True, False, False),
     # Negative pole DC buses
     19: ("Bus0a_dc_-", Ub, True, False, False),
-    20: ("Bus0c_dc_-", Ub, True, False, False),
+    20: ("Bus0b_dc_-", Ub, True, False, False),
     21: ("Bus1_dc_-", Ub, True, False, False),
     22: ("Bus2_dc_-", Ub, True, False, False),
     23: ("Bus3_dc_-", Ub, True, False, False),
@@ -164,9 +163,9 @@ grid.add_pfc(gce.PFC(name="PFC-",
                      control1_val=-Is_set_pu_neg))
 
 #HVDC lines#
-d_lines = {1:(bus5,bus7,d0a, "dc_cable0a_+","land"), 2:(bus6, bus10, d0c, "dc_cable0c_+","land"), 3:(bus2r_pos, bus8, d1, "dc_cable1_+","sea"), 4:(bus7, bus9, d4a, "dc_cable4a_+","sea"), 5:(bus9, bus10, d4b, "dc_cable4b_+","sea"), 6:(bus2s_pos, bus11, d3, "dc_cable3_+","sea"), 7:(bus8, bus11, d2, "dc_cable2_+","sea"), 8:(bus10, bus11, d5, "dc_cable5_+","sea"),
-           9:(bus12,bus14,d0a, "dc_cable0a_0","land"), 10:(bus13,bus17,d0a, "dc_cable0c_0","land"), 11:(bus14, bus15, d1, "dc_cable1_0","sea"), 12:(bus14, bus16, d4a, "dc_cable4a_0","sea"), 13:(bus16, bus17, d4b, "dc_cable4b_0","sea"), 14:(bus14, bus18, d3, "dc_cable3_0","sea"), 15:(bus15, bus18, d2, "dc_cable2_0","sea"), 16:(bus17, bus18, d5, "dc_cable5_0","sea"),
-           17:(bus19,bus21,d0a, "dc_cable0a_-","land"), 18:(bus20, bus24, d0c, "dc_cable0c_-","land"), 19:(bus2r_neg, bus22, d1, "dc_cable1_-","sea"), 20:(bus21, bus23, d4a, "dc_cable4a_-","sea"), 21:(bus23, bus24, d4b, "dc_cable4b_-","sea"), 22:(bus2s_neg, bus25, d3, "dc_cable3_-","sea"), 23:(bus22, bus25, d2, "dc_cable2_-","sea"), 24:(bus24, bus25, d5, "dc_cable5_-","sea")
+d_lines = {1:(bus5,bus7,d0a, "dc_cable0a_+","land"), 2:(bus6, bus10, d0b, "dc_cable0b_+","land"), 3:(bus2r_pos, bus8, d1, "dc_cable1_+","sea"), 4:(bus7, bus9, d4a, "dc_cable4a_+","sea"), 5:(bus9, bus10, d4b, "dc_cable4b_+","sea"), 6:(bus2s_pos, bus11, d3, "dc_cable3_+","sea"), 7:(bus8, bus11, d2, "dc_cable2_+","sea"), 8:(bus10, bus11, d5, "dc_cable5_+","sea"),
+           9:(bus12,bus14,d0a, "dc_cable0a_0","land"), 10:(bus13,bus17,d0a, "dc_cable0b_0","land"), 11:(bus14, bus15, d1, "dc_cable1_0","sea"), 12:(bus14, bus16, d4a, "dc_cable4a_0","sea"), 13:(bus16, bus17, d4b, "dc_cable4b_0","sea"), 14:(bus14, bus18, d3, "dc_cable3_0","sea"), 15:(bus15, bus18, d2, "dc_cable2_0","sea"), 16:(bus17, bus18, d5, "dc_cable5_0","sea"),
+           17:(bus19,bus21,d0a, "dc_cable0a_-","land"), 18:(bus20, bus24, d0b, "dc_cable0b_-","land"), 19:(bus2r_neg, bus22, d1, "dc_cable1_-","sea"), 20:(bus21, bus23, d4a, "dc_cable4a_-","sea"), 21:(bus23, bus24, d4b, "dc_cable4b_-","sea"), 22:(bus2s_neg, bus25, d3, "dc_cable3_-","sea"), 23:(bus22, bus25, d2, "dc_cable2_-","sea"), 24:(bus24, bus25, d5, "dc_cable5_-","sea")
            }
 
 for key, data in d_lines.items():
@@ -505,3 +504,65 @@ print(results.mdl(result_type=ResultTypes.PfcCurrentR).get_data_frame()*Ib*1000)
 print(results.mdl(result_type=ResultTypes.PfcCurrentS).get_data_frame()*Ib*1000)
 
 
+# ---------------------------------------------------------------------------
+# Export DC currents to Excel
+# ---------------------------------------------------------------------------
+def values_by_name(table: pd.DataFrame, names: list) -> dict:
+    """Return {element name: value} from a results table, whatever its orientation."""
+    if table.index.isin(names).any():
+        sub = table.loc[table.index.isin(names)]
+    elif table.columns.isin(names).any():
+        sub = table.loc[:, table.columns.isin(names)].T
+    else:
+        raise KeyError("None of the requested element names were found in the results table")
+    return sub.iloc[:, 0].to_dict()
+
+
+POLE_LABELS = {"+": "Positive", "0": "DMR", "-": "Negative"}
+
+# DC line currents (from-side current; in a DC line I_to = -I_from)
+dc_line_names = [data[3] for data in d_lines.values()]
+i_from_pu = values_by_name(
+    results.mdl(result_type=ResultTypes.BranchActiveCurrentFrom).get_data_frame(),
+    dc_line_names,
+)
+
+line_rows = []
+for data in d_lines.values():
+    bus_from, bus_to, length_km, line_name, cable_type = data
+    i_kA = i_from_pu.get(line_name, np.nan) * Ib
+    line_rows.append({
+        "Line": line_name,
+        "Pole": POLE_LABELS[line_name.rsplit("_", 1)[1]],
+        "From bus": bus_from.name,
+        "To bus": bus_to.name,
+        "Length [km]": length_km,
+        "Cable": cable_type,
+        "I_from [A]": i_kA * 1000,
+        "I_from [kA]": i_kA,
+        "I_rated [kA]": I_rated_kA[cable_type],
+        "Loading [%]": abs(i_kA) / I_rated_kA[cable_type] * 100,
+    })
+df_dc_lines = pd.DataFrame(line_rows)
+
+# VSC DC currents [A]
+df_vsc_idc = results.mdl(result_type=ResultTypes.VscIdc).get_data_frame() * Ib * 1000
+
+# PFC terminal currents [A]
+df_pfc = pd.concat(
+    {
+        "I_q [A]": results.mdl(result_type=ResultTypes.PfcCurrentQ).get_data_frame() * Ib * 1000,
+        "I_r [A]": results.mdl(result_type=ResultTypes.PfcCurrentR).get_data_frame() * Ib * 1000,
+        "I_s [A]": results.mdl(result_type=ResultTypes.PfcCurrentS).get_data_frame() * Ib * 1000,
+    },
+    axis=1,
+)
+df_pfc.columns = [" ".join(str(level) for level in col).strip() for col in df_pfc.columns]
+
+excel_file = Path(__file__).with_name("CaseStudy3_DC_currents.xlsx")
+with pd.ExcelWriter(excel_file, engine="openpyxl") as writer:
+    df_dc_lines.to_excel(writer, sheet_name="DC lines", index=False)
+    df_vsc_idc.to_excel(writer, sheet_name="VSC Idc")
+    df_pfc.to_excel(writer, sheet_name="PFC currents")
+
+print(f"DC currents exported to: {excel_file}")

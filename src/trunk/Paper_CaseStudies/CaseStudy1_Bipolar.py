@@ -26,13 +26,12 @@ A = 2.5e-3 #m
 r_ohm_km =  (dcr_20/A)*1000 # ohm/km (Extracted from https://cse.cigre.org/cse-n032/enhanced-real-time-multi-terminal-hvdc-power-system-benchmark-models-with-performance-evaluation-strategies.pdf?tx_site_pdfdownload%5BaccessToken%5D=dummyToken&tx_site_pdfdownload%5Baction%5D=download&tx_site_pdfdownload%5Bcontroller%5D=Pdf&tx_site_pdfdownload%5BpdfProject%5D=11954&cHash=1af3d0cbb45897c40b04a67731cbd063)
 r_ohm = r_ohm_km*100 # ohm for a 100km line
 r = (r_ohm/Rb) #p.u. for a 100km line
-print(r_ohm_km)
-print(r_ohm)
+
 
 #VSC Control Parameters
 Vdc = 1.1 #p.u.
 Pdc_vsc3 = -1000 #MW
-Pdc_vsc4 = -1000 #MW
+Pdc_vsc4 = -750 #MW
 
 
 grid = gce.MultiCircuit(

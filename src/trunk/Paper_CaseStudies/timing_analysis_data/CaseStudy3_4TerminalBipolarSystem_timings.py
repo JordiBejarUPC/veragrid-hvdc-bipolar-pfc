@@ -52,14 +52,9 @@ a_m2_sea = a_mm2_sea * 1e-6
 r_ohm_km_sea = r_ohm_m_sea * (d_m_sea / a_m2_sea)  # ohm/km
 r_pu_km_sea = r_ohm_km_sea / Rb
 
-print("r_pu_km_sea:", r_pu_km_sea)
-print("r_pu_km_land:", r_pu_km_land)
-print("sea:", r_ohm_km_sea)
-print("land:", r_ohm_km_land)
-
 # Distances in Km
 d0a = 10
-d0c = 10
+d0b = 10
 d1 = 300
 d2 = 300
 d3 = 400
@@ -77,7 +72,7 @@ d_buses = {
     4: ("Bus4_ac", Ub, False, False, True),
     # Positive pole DC buses
     5: ("Bus0a_dc_+", Ub, True, False, False),
-    6: ("Bus0c_dc_+", Ub, True, False, False),
+    6: ("Bus0b_dc_+", Ub, True, False, False),
     7: ("Bus1_dc_+", Ub, True, False, False),
     8: ("Bus2_dc_+", Ub, True, False, False),
     9: ("Bus3_dc_+", Ub, True, False, False),
@@ -85,7 +80,7 @@ d_buses = {
     11: ("Bus5_dc_+", Ub, True, False, False),
     # DMR pole DC buses
     12: ("Bus0a_dc_0", Ub, True, False, False),
-    13: ("Bus0c_dc_0", Ub, True, False, False),
+    13: ("Bus0b_dc_0", Ub, True, False, False),
     14: ("Bus1_dc_0", Ub, True, False, False),
     15: ("Bus2_dc_0", Ub, True, False, False),
     16: ("Bus3_dc_0", Ub, True, True, False),  # grounded bus
@@ -93,7 +88,7 @@ d_buses = {
     18: ("Bus5_dc_0", Ub, True, False, False),
     # Negative pole DC buses
     19: ("Bus0a_dc_-", Ub, True, False, False),
-    20: ("Bus0c_dc_-", Ub, True, False, False),
+    20: ("Bus0b_dc_-", Ub, True, False, False),
     21: ("Bus1_dc_-", Ub, True, False, False),
     22: ("Bus2_dc_-", Ub, True, False, False),
     23: ("Bus3_dc_-", Ub, True, False, False),
@@ -177,7 +172,7 @@ grid.add_pfc(
         bus_dc_r=bus2r_pos,
         bus_dc_s=bus2s_pos,
         control1=PfcControlType.Is_pfc,
-        control1_val=1.4 / Ib,
+        control1_val=0.4 / Ib,
     )
 )
 
@@ -195,7 +190,7 @@ grid.add_pfc(
 # HVDC lines
 d_lines = {
     1: (bus5, bus7, d0a, "dc_cable0a_+", "land"),
-    2: (bus6, bus10, d0c, "dc_cable0c_+", "land"),
+    2: (bus6, bus10, d0b, "dc_cable0b_+", "land"),
     3: (bus2r_pos, bus8, d1, "dc_cable1_+", "sea"),
     4: (bus7, bus9, d4a, "dc_cable4a_+", "sea"),
     5: (bus9, bus10, d4b, "dc_cable4b_+", "sea"),
@@ -203,7 +198,7 @@ d_lines = {
     7: (bus8, bus11, d2, "dc_cable2_+", "sea"),
     8: (bus10, bus11, d5, "dc_cable5_+", "sea"),
     9: (bus12, bus14, d0a, "dc_cable0a_0", "land"),
-    10: (bus13, bus17, d0a, "dc_cable0c_0", "land"),
+    10: (bus13, bus17, d0a, "dc_cable0b_0", "land"),
     11: (bus14, bus15, d1, "dc_cable1_0", "sea"),
     12: (bus14, bus16, d4a, "dc_cable4a_0", "sea"),
     13: (bus16, bus17, d4b, "dc_cable4b_0", "sea"),
@@ -211,7 +206,7 @@ d_lines = {
     15: (bus15, bus18, d2, "dc_cable2_0", "sea"),
     16: (bus17, bus18, d5, "dc_cable5_0", "sea"),
     17: (bus19, bus21, d0a, "dc_cable0a_-", "land"),
-    18: (bus20, bus24, d0c, "dc_cable0c_-", "land"),
+    18: (bus20, bus24, d0b, "dc_cable0b_-", "land"),
     19: (bus2r_neg, bus22, d1, "dc_cable1_-", "sea"),
     20: (bus21, bus23, d4a, "dc_cable4a_-", "sea"),
     21: (bus23, bus24, d4b, "dc_cable4b_-", "sea"),
@@ -406,7 +401,7 @@ grid.add_vsc(
         alpha3=c,
         control1=ConverterControlType.Pac,
         control2=ConverterControlType.Qac,
-        control1_val=1500,
+        control1_val=850,
         control2_val=0.0,
     )
 )
@@ -422,7 +417,7 @@ grid.add_vsc(
         alpha3=c,
         control1=ConverterControlType.Pac,
         control2=ConverterControlType.Qac,
-        control1_val=1500,
+        control1_val=950,
         control2_val=0.0,
     )
 )
@@ -485,7 +480,7 @@ grid.add_vsc(
         alpha3=c,
         control1=ConverterControlType.Pac,
         control2=ConverterControlType.Qac,
-        control1_val=750,
+        control1_val=425,
         control2_val=0.0,
     )
 )
@@ -501,7 +496,7 @@ grid.add_vsc(
         alpha3=c,
         control1=ConverterControlType.Pac,
         control2=ConverterControlType.Qac,
-        control1_val=750,
+        control1_val=475,
         control2_val=0.0,
     )
 )
@@ -544,6 +539,44 @@ print(f"Mean Time: {mean_time_ms:.3f} ms")
 print(f"Std Dev:   {std_time_ms:.3f} ms")
 print(f"Min Time:  {min_time_ms:.3f} ms")
 print(f"Max Time:  {max_time_ms:.3f} ms\n")
+
+# ---- Statistics over the last N runs (numba JIT compilation excluded) ----
+n_last = min(50, iterations)
+last_data = timing_data[-n_last:]
+mean_last_ms = last_data.mean() * 1000
+std_last_ms = last_data.std() * 1000
+min_last_ms = last_data.min() * 1000
+max_last_ms = last_data.max() * 1000
+
+print(f"=== TIMING BENCHMARK RESULTS (LAST {n_last} RUNS) ===")
+print(f"Mean Time: {mean_last_ms:.3f} ms")
+print(f"Std Dev:   {std_last_ms:.3f} ms")
+print(f"Min Time:  {min_last_ms:.3f} ms")
+print(f"Max Time:  {max_last_ms:.3f} ms\n")
+
+# ---- Plot: elapsed time per benchmark run ----
+run_idx = np.arange(1, iterations + 1)
+fig, ax = plt.subplots(figsize=(8, 4.5))
+ax.axvspan(iterations - n_last + 0.5, iterations + 0.5, color="#9AA4B2", alpha=0.18, lw=0,
+           label=f"Last {n_last} runs")
+ax.plot(run_idx, timing_data * 1000, color="#2F6FD0", lw=1.5, marker="o", ms=3,
+        label="Elapsed time per run")
+ax.axhline(mean_last_ms, color="#4A4F57", lw=1, ls="--",
+           label=f"Mean last {n_last}: {mean_last_ms:.2f} ms")
+ax.set_yscale("log")  # the first run includes the JIT compilation (orders of magnitude slower)
+ax.set_xlabel("Run number")
+ax.set_ylabel("Elapsed time [ms] (log scale)")
+ax.set_title("Power flow benchmark: elapsed time per run")
+ax.set_xlim(0.5, iterations + 0.5)
+ax.grid(True, which="major", color="#D9DDE3", lw=0.6)
+for side in ("top", "right"):
+    ax.spines[side].set_visible(False)
+ax.legend(frameon=False)
+fig.tight_layout()
+plot_filename = Path(__file__).resolve().parent / "veragrid_4terminal_case300_timing_per_run.png"
+fig.savefig(plot_filename, dpi=200)
+print(f"Timing plot saved as: {plot_filename}")
+plt.show()
 
 
 # ==========================================
@@ -630,11 +663,16 @@ summary_df = pd.DataFrame(
             "Benchmark_Std_ms": std_time_ms,
             "Benchmark_Min_ms": min_time_ms,
             "Benchmark_Max_ms": max_time_ms,
+            "Benchmark_LastN_Runs": n_last,
+            "Benchmark_LastN_Mean_ms": mean_last_ms,
+            "Benchmark_LastN_Std_ms": std_last_ms,
+            "Benchmark_LastN_Min_ms": min_last_ms,
+            "Benchmark_LastN_Max_ms": max_last_ms,
         }
     ]
 )
 
-excel_filename = Path(__file__).resolve().parent / "veragrid_4terminal_case300_timing_results.xlsx"
+excel_filename = Path(__file__).resolve().parent / "veragrid_4terminal_case300_timing_results_v2.xlsx"
 with pd.ExcelWriter(excel_filename, engine="openpyxl") as writer:
     summary_df.to_excel(writer, sheet_name="Summary", index=False)
     results.get_bus_df().to_excel(writer, sheet_name="Bus_Voltages")

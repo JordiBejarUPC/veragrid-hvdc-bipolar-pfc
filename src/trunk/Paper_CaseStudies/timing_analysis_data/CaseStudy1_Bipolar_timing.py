@@ -9,6 +9,7 @@ Case Study 1 (timing): Point-to-point bipolar HVDC link with DMR
 import math
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -200,6 +201,44 @@ print(f"Std Dev:   {std_time_ms:.3f} ms")
 print(f"Min Time:  {min_time_ms:.3f} ms")
 print(f"Max Time:  {max_time_ms:.3f} ms\n")
 
+# ---- Statistics over the last N runs (numba JIT compilation excluded) ----
+n_last = min(50, iterations)
+last_data = timing_data[-n_last:]
+mean_last_ms = last_data.mean() * 1000
+std_last_ms = last_data.std() * 1000
+min_last_ms = last_data.min() * 1000
+max_last_ms = last_data.max() * 1000
+
+print(f"=== TIMING BENCHMARK RESULTS (LAST {n_last} RUNS) ===")
+print(f"Mean Time: {mean_last_ms:.3f} ms")
+print(f"Std Dev:   {std_last_ms:.3f} ms")
+print(f"Min Time:  {min_last_ms:.3f} ms")
+print(f"Max Time:  {max_last_ms:.3f} ms\n")
+
+# ---- Plot: elapsed time per benchmark run ----
+run_idx = np.arange(1, iterations + 1)
+fig, ax = plt.subplots(figsize=(8, 4.5))
+ax.axvspan(iterations - n_last + 0.5, iterations + 0.5, color="#9AA4B2", alpha=0.18, lw=0,
+           label=f"Last {n_last} runs")
+ax.plot(run_idx, timing_data * 1000, color="#2F6FD0", lw=1.5, marker="o", ms=3,
+        label="Elapsed time per run")
+ax.axhline(mean_last_ms, color="#4A4F57", lw=1, ls="--",
+           label=f"Mean last {n_last}: {mean_last_ms:.2f} ms")
+ax.set_yscale("log")  # the first run includes the JIT compilation (orders of magnitude slower)
+ax.set_xlabel("Run number")
+ax.set_ylabel("Elapsed time [ms] (log scale)")
+ax.set_title("Power flow benchmark: elapsed time per run")
+ax.set_xlim(0.5, iterations + 0.5)
+ax.grid(True, which="major", color="#D9DDE3", lw=0.6)
+for side in ("top", "right"):
+    ax.spines[side].set_visible(False)
+ax.legend(frameon=False)
+fig.tight_layout()
+plot_filename = Path(__file__).resolve().parent / "veragrid_case1_timing_per_run.png"
+fig.savefig(plot_filename, dpi=200)
+print(f"Timing plot saved as: {plot_filename}")
+plt.show()
+
 
 # ==========================================
 # 4. DETAILED POWER FLOW & REPORTING
@@ -251,6 +290,11 @@ summary_df = pd.DataFrame(
             "Benchmark_Std_ms": std_time_ms,
             "Benchmark_Min_ms": min_time_ms,
             "Benchmark_Max_ms": max_time_ms,
+            "Benchmark_LastN_Runs": n_last,
+            "Benchmark_LastN_Mean_ms": mean_last_ms,
+            "Benchmark_LastN_Std_ms": std_last_ms,
+            "Benchmark_LastN_Min_ms": min_last_ms,
+            "Benchmark_LastN_Max_ms": max_last_ms,
         }
     ]
 )
