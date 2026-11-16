@@ -42,7 +42,7 @@ src/trunk/Paper_CaseStudies/
 ├── grids/
 │   └── case300.m                             # IEEE 300-bus system (MATPOWER format), used in Case 3
 ├── ValidationFilesMatlab/                    # MATLAB/Simulink models used to validate the results
-│   ├── data_CaseStudy1and2.m                 #   Parameters (and CSV export) for Cases 1 and 2
+│   ├── data_CaseStudy1and2.m                 #   Parameters for Cases 1 and 2
 │   ├── data_CaseStudy3.m                     #   Parameters for Case 3
 │   ├── CaseStudy1_Bipolar.slx                #   Simulink model of Case 1
 │   ├── CaseStudy2_Bipolar_WithPFC.slx        #   Simulink model of Case 2
@@ -57,16 +57,29 @@ src/trunk/Paper_CaseStudies/
 
 | # | Script | Test system | What it shows |
 | :-: | :--- | :--- | :--- |
-| **1** | `CaseStudy1_Bipolar.py` | Point-to-point bipolar link with DMR; 4 VSCs, 100 km cables | Base bipolar model; balanced operation by default, unbalanced by changing the pole set-points |
-| **2** | `CaseStudy2_Bipolar_WithPfc.py` | System of Case 1 with a PFC in the positive and in the negative pole | PFC current or voltage control in each pole |
-| **3** | `CaseStudy3_4TerminalBipolarSystem.py` | 4-terminal meshed bipolar grid (land and sea cables), two offshore wind farms, two IEEE 300-bus AC networks | Droop-controlled VSCs, asymmetric pole loading and PFCs in a large AC/DC system |
+| **1** | `CaseStudy1_Bipolar.py` | Point-to-point bipolar link with DMR; 4 VSCs, 100 km cables | Balanced and unbalanced bipolar operation and the resulting DMR return current |
+| **2** | `CaseStudy2_Bipolar_WithPfc.py` | System of Case 1 with two parallel conductors per pole and a PFC in each pole | PFC current rerouting between parallel conductors |
+| **3** | `CaseStudy3_4TerminalBipolarSystem.py` | PROSECCO benchmark: 4-terminal meshed bipolar grid (land and sea cables), two offshore wind farms, two IEEE 300-bus AC networks (600+ buses) | Droop-controlled VSCs, asymmetric pole dispatch and PFC congestion relief |
 | **3 (ref.)** | `CaseStudy3_4TerminalBipolarSystem_NOPFC.py` | Same system as Case 3 with the PFCs removed (lines 1-2 and 1-5 connected directly to bus 1 of each pole) | Natural current distribution, used as the baseline to quantify the effect of the PFCs |
+
+### Mapping to the paper
+
+| Paper result | How to reproduce it |
+| :--- | :--- |
+| **Table: Case Study 1 validation**, Fig. of Case 1 line currents | `CaseStudy1_Bipolar.py`. Balanced scenario: `Pdc_vsc3 = Pdc_vsc4 = -1000` MW. Unbalanced scenario: `Pdc_vsc4 = -750` MW. Simulink: `CaseStudy1_Bipolar.slx` |
+| **Table: PFC validation** at the OP ($I_2^+ = 1400$ A) | `CaseStudy2_Bipolar_WithPfc.py` with the default `Is_set_A = 1400`. Simulink: `CaseStudy2_Bipolar_WithPFC.slx` |
+| **Fig.: internal series voltages of PFC+** (sweep of $I_2^+$ between 0 and 1.73 kA) | `CaseStudy2_Bipolar_WithPfc.py`, changing `Is_set_A` across the range and reading `PfcVr` / `PfcVs`. The neutral duty cycle (NDC) is at ≈ 864 A, where both voltages are zero |
+| **Fig.: Case 2 branch currents** at the NDC and the OP | `CaseStudy2_Bipolar_WithPfc.py` with `Is_set_A ≈ 864` (NDC) and `Is_set_A = 1400` (OP) |
+| **Table: DC line loading without and with PFC** (Case 3) | "Without PFC" columns: `CaseStudy3_4TerminalBipolarSystem_NOPFC.py`. "With PFC" columns: `CaseStudy3_4TerminalBipolarSystem.py` (`Is_set_A_pos = 400`, `Is_set_A_neg = 500`). Both write the line currents and loading to an Excel file (sheet `DC lines`) |
+| **Fig.: convergence trajectories** | Printed by every case-study script (`It k, error …` lines) |
+| **Computation times** (mean over 50 runs) | Scripts in `timing_analysis_data/` (see [benchmarks](#computational-time-benchmarks)) |
 
 ## Requirements
 
 | Component | Needed for | Version used for the paper |
 | :--- | :--- | :--- |
 | Python | All case studies and timing benchmarks | 3.11 (any version ≥ 3.10 with the packages below should work) |
+| VeraGrid (included in this repository under `src/`) | All Python scripts | 6.3.8 with the bipolar and PFC extensions. Do **not** install VeraGrid from PyPI |
 | Python packages in [`requirements.txt`](requirements.txt) | All Python scripts | NumPy 2.3, SciPy 1.16, pandas 2.3 |
 | MATLAB + Simulink + **Simscape Electrical** (Specialized Power Systems library) | Only the optional [MATLAB validation](#matlabsimulink-validation-models) | R2024b (the `.slx` files open in R2024b or newer) |
 
@@ -143,7 +156,7 @@ The saved `.veragrid` model can be opened in the VeraGrid GUI.
 
 ## Modifying the scenarios
 
-All set-points are defined at the top of each script. By default, Cases 1 and 2 run a balanced scenario. Different set-points in each pole make the operation unbalanced.
+All set-points are defined at the top of each script. By default, every script reproduces the operating point reported in the paper: Case 1 runs the **unbalanced** scenario (`Pdc_vsc4 = -750` MW; set it to `-1000` for the balanced one), Case 2 the OP with $I_2^+ = 1400$ A, and Case 3 the PFC set-points of 400 A and 500 A. Different set-points in each pole make the operation unbalanced.
 
 | Parameter | Cases | Meaning |
 | :--- | :-: | :--- |
@@ -172,7 +185,7 @@ The available PFC control modes are:
 
 ## MATLAB/Simulink validation models
 
-The power flow results were validated against time-domain simulations in MATLAB/Simulink. The models are in [`src/trunk/Paper_CaseStudies/ValidationFilesMatlab/`](src/trunk/Paper_CaseStudies/ValidationFilesMatlab/). They are built with the **Specialized Power Systems** blocks of Simscape Electrical (`powergui`, controlled voltage/current sources, series RLC branches and measurements). The steady state reached at the end of the simulation is compared with the VeraGrid solution.
+The power flow results of Case Studies 1 and 2 were validated in the paper against time-domain simulations in MATLAB/Simulink R2024b. The Simulink model of Case 3 is provided as an additional check of the DC side. The models are in [`src/trunk/Paper_CaseStudies/ValidationFilesMatlab/`](src/trunk/Paper_CaseStudies/ValidationFilesMatlab/). They are built with the **Specialized Power Systems** blocks of Simscape Electrical (`powergui`, controlled voltage/current sources, series RLC branches and measurements). The steady state reached at the end of the simulation is compared with the VeraGrid solution.
 
 | VeraGrid script | Simulink model | Parameter script | Stop time |
 | :--- | :--- | :--- | :-: |
@@ -192,7 +205,7 @@ The power flow results were validated against time-domain simulations in MATLAB/
 
 ## Computational time benchmarks
 
-The scripts in `timing_analysis_data/` solve each case 100 times and report the mean, standard deviation, minimum and maximum solution times. These are the figures quoted in the paper. Absolute times depend on the hardware, so expect different values on another machine. The trend between cases should stay the same.
+The scripts in `timing_analysis_data/` solve each case 100 times. The first runs include the numba JIT compilation, so the mean, standard deviation, minimum and maximum are computed over the **last 50 runs**. These are the figures quoted in the paper (CS 1: 2.05 ms, CS 2: 1.94 ms, CS 3: 11.2 ms on an Intel Core Ultra 7 155H, 32 GB RAM, tolerance $10^{-8}$ p.u.). Absolute times depend on the hardware, so expect different values on another machine. The trend between cases should stay the same.
 
 ```bash
 cd src/trunk/Paper_CaseStudies/timing_analysis_data
@@ -220,11 +233,12 @@ Each script writes the following next to itself:
 
 The paper is currently **under review**. Until it is published, please cite it as:
 
-> J. Béjar *et al.*, "Steady-State Analysis of Bipolar MT-HVDC Networks under Balanced and Unbalanced Conditions incorporating Power Flow Controllers," *under review*, 2026.
+> J. Béjar-Rabascall, J. Girona-Badia, J. Fanals-i-Batllori and O. Gomis-Bellmunt, "Steady-State Analysis of Bipolar MT-HVDC Networks under Balanced and Unbalanced Conditions incorporating Power Flow Controllers," *under review*, 2026.
 
 ```bibtex
 @unpublished{bejar2026bipolar,
-  author = {B{\'e}jar, Jordi and others},
+  author = {B{\'e}jar-Rabascall, Jordi and Girona-Badia, Jaume and
+            Fanals-i-Batllori, Josep and Gomis-Bellmunt, Oriol},
   title  = {Steady-State Analysis of Bipolar {MT-HVDC} Networks under Balanced and
             Unbalanced Conditions incorporating Power Flow Controllers},
   note   = {Under review},
@@ -241,4 +255,4 @@ When using the software, please also cite [VeraGrid](https://github.com/SanPen/V
 
 ## Acknowledgements
 
-This work was developed within the PROSECCO project.
+This project has received funding from the European Union's Horizon Europe research and innovation programme under grant agreement No 101160687 (PROSECCO). Case Study 3 uses the PROSECCO benchmark network.
