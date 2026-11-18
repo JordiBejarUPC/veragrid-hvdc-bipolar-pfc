@@ -1807,7 +1807,7 @@ def dLossvsc_dPtvsc_csc(nvsc, u_vsc_pt, alpha2, alpha3, Vm, Pt, Qt, T_vsc) -> CS
 
         # Populate COO format arrays
         Tx[nnz] = val
-        Ti[nnz] = vsc  # Row index corresponds to the current VSC
+        Ti[nnz] = vsc  # Populate COO format arrays
         Tj[nnz] = k  # Column index aligns with u_vsc_pf, should be equal to k
         nnz += 1
 
@@ -2482,7 +2482,7 @@ def dLossvsc_dIfp_csc(nvsc: int, u_vsc_ifp: IntVec, Udc: Vec) -> CSC:
 def dUdcIfp_dVm_csc(n_eq: int, nbus: int, i_u_vm: IntVec, k_sel: IntVec, factor: Vec,
                     Va: Vec, Fdcp: IntVec, Fdcn: IntVec) -> CSC:
     """
-    d/dVm block of the equations of the shape Udc * Ifp - g(Udc) = 0 
+    d/dVm block of the equations of the shape Udc * Ifp - g(Udc) = 0
     with Udc = Vm[Fdcp] * cos(Va[Fdcp]) - Vm[Fdcn] * cos(Va[Fdcn]), i.e. V diff
     The whole voltage sensitivity collapses to a per-equation factor:
         d/dVm[Fdcp] = +factor * cos(Va[Fdcp])
@@ -2667,5 +2667,309 @@ def dIdc_dIfp_csc(nbus: int, dc_rows: IntVec, u_vsc_ifp: IntVec, Fdcp: IntVec, F
                 Ti[nnz] = rn
                 Tj[nnz] = c
                 nnz += 1
+    mat.fill_from_coo(Ti, Tj, Tx, nnz)
+    return mat
+
+@njit()
+def dKCL_dIpfc_csc(n_pfc,u_pfc_I) -> CSC:
+    """
+    Compute dKCL_dIpfc in CSC format.
+    :param n_pfc: Indices for the rows corresponding to the number of PFC.
+    :param u_pfc_I: Column indices for the sparse matrix.
+    :return: Sparse matrix in CSC format.
+    """
+    n_cols = len(u_pfc_I)  # Number of columns (length of u_vsc_pf).
+    n_rows = n_pfc  # Number of rows (equal to nbus).
+    max_nnz = len(u_pfc_I)  # Maximum number of non-zero entries.
+
+    mat = CSC(n_rows, n_cols, max_nnz, False)
+    Tx = np.empty(max_nnz, dtype=np.float64)
+    Ti = np.empty(max_nnz, dtype=np.int32)
+    Tj = np.empty(max_nnz, dtype=np.int32)
+
+    nnz = 0  # Counter for non-zero entries
+
+    # my way below
+    for k, pfc in enumerate(u_pfc_I):
+
+        val = 1.0
+
+        # Populate COO format arrays
+        Tx[nnz] = val
+        Ti[nnz] = pfc # Populate COO format arrays
+        Tj[nnz] = k # Column index aligns with u_pfc_iq or u_pfc_ir or u_pfc_is, should be equal to k
+        nnz += 1
+    # Convert to CSC
+    mat.fill_from_coo(Ti, Tj, Tx, nnz)
+
+    return mat
+
+
+@njit()
+def dPB_dIrpfc_csc(npfc, u_pfc_ir,vr_pfc) -> CSC:
+    """
+    Compute dPB_dIrpfc in CSC format.
+    :param n_pfc: Indices for the rows corresponding to the number of PFC.
+    :param u_pfc_ir: Column indices for the sparse matrix.
+    :param vr_pfc: PFC Vr internal voltage of the PFC
+    :return: Sparse matrix in CSC format.
+    """
+    n_cols = len(u_pfc_ir)  # Number of columns (length of u_vsc_pf).
+    n_rows = npfc  # Number of rows (equal to nbus).
+    max_nnz = len(u_pfc_ir)  # Maximum number of non-zero entries
+
+    mat = CSC(n_rows, n_cols, max_nnz, False)
+    Tx = np.empty(max_nnz, dtype=np.float64)
+    Ti = np.empty(max_nnz, dtype=np.int32)
+    Tj = np.empty(max_nnz, dtype=np.int32)
+
+    nnz = 0  # Counter for non-zero entries
+
+    for k, pfc in enumerate(u_pfc_ir):
+        val = -vr_pfc[pfc]  # PB = -Vr*Ir + Vs*Is
+
+        # Populate COO format arrays
+        Tx[nnz] = val
+        Ti[nnz] = pfc  # Row index aligns with the PFC index
+        Tj[nnz] = k  # Column index aligns with u_pfc_ir, should be equal to k
+        nnz += 1
+
+    # Convert to CSC
+    mat.fill_from_coo(Ti, Tj, Tx, nnz)
+
+    return mat
+
+@njit()
+def dPB_dIspfc_csc(npfc, u_pfc_is, vs_pfc) -> CSC:
+    """
+    Compute dPB_dIspfc in CSC format.
+    :param n_pfc: Indices for the rows corresponding to the number of PFC.
+    :param u_pfc_is: Column indices for the sparse matrix.
+    :param vs_pfc: PFC Vr internal voltage of the PFC
+    :return: Sparse matrix in CSC format.
+    """
+    n_cols = len(u_pfc_is)  # Number of columns (length of u_vsc_pf).
+    n_rows = npfc  # Number of rows (equal to nbus).
+    max_nnz = len(u_pfc_is)  # Maximum number of non-zero entries
+
+    mat = CSC(n_rows, n_cols, max_nnz, False)
+    Tx = np.empty(max_nnz, dtype=np.float64)
+    Ti = np.empty(max_nnz, dtype=np.int32)
+    Tj = np.empty(max_nnz, dtype=np.int32)
+
+    nnz = 0  # Counter for non-zero entries
+
+    for k, pfc in enumerate(u_pfc_is):
+        val = vs_pfc[pfc]  # PB = -Vr*Ir + Vs*Is
+
+        # Populate COO format arrays
+        Tx[nnz] = val
+        Ti[nnz] = pfc  # Row index aligns with the PFC index
+        Tj[nnz] = k  # Column index aligns with u_pfc_ir, should be equal to k
+        nnz += 1
+
+    # Convert to CSC
+    mat.fill_from_coo(Ti, Tj, Tx, nnz)
+
+    return mat
+
+@njit()
+def dPB_dVrpfc_csc(npfc, u_pfc_vr,ir_pfc) -> CSC:
+    """
+    Compute dPB_dVrpfc in CSC format.
+    :param n_pfc: Indices for the rows corresponding to the number of PFC.
+    :param u_pfc_vr: Column indices for the sparse matrix.
+    :param ir_pfc: PFC Vr internal voltage of the PFC
+    :return: Sparse matrix in CSC format.
+    """
+    n_cols = len(u_pfc_vr)  # Number of columns (length of u_vsc_pf).
+    n_rows = npfc  # Number of rows (equal to nbus).
+    max_nnz = len(u_pfc_vr)  # Maximum number of non-zero entries
+
+    mat = CSC(n_rows, n_cols, max_nnz, False)
+    Tx = np.empty(max_nnz, dtype=np.float64)
+    Ti = np.empty(max_nnz, dtype=np.int32)
+    Tj = np.empty(max_nnz, dtype=np.int32)
+
+    nnz = 0  # Counter for non-zero entries
+
+    for k, pfc in enumerate(u_pfc_vr):
+        val = -ir_pfc[pfc]  # PB = -Vr*Ir + Vs*Is
+
+        # Populate COO format arrays
+        Tx[nnz] = val
+        Ti[nnz] = pfc  # Row index aligns with the PFC index
+        Tj[nnz] = k  # Column index aligns with u_pfc_ir, should be equal to k
+        nnz += 1
+
+    # Convert to CSC
+    mat.fill_from_coo(Ti, Tj, Tx, nnz)
+
+    return mat
+
+@njit()
+def dPB_dVspfc_csc(npfc, u_pfc_vs,is_pfc) -> CSC:
+    """
+    Compute dPB_dVspfc in CSC format.
+    :param n_pfc: Indices for the rows corresponding to the number of PFC.
+    :param u_pfc_vs: Column indices for the sparse matrix.
+    :param is_pfc: PFC Vr internal voltage of the PFC
+    :return: Sparse matrix in CSC format.
+    """
+    n_cols = len(u_pfc_vs)  # Number of columns (length of u_vsc_pf).
+    n_rows = npfc  # Number of rows (equal to nbus).
+    max_nnz = len(u_pfc_vs)  # Maximum number of non-zero entries
+
+    mat = CSC(n_rows, n_cols, max_nnz, False)
+    Tx = np.empty(max_nnz, dtype=np.float64)
+    Ti = np.empty(max_nnz, dtype=np.int32)
+    Tj = np.empty(max_nnz, dtype=np.int32)
+
+    nnz = 0  # Counter for non-zero entries
+
+    for k, pfc in enumerate(u_pfc_vs):
+        val = is_pfc[pfc]  # PB = -Vr*Ir + Vs*Is
+
+        # Populate COO format arrays
+        Tx[nnz] = val
+        Ti[nnz] = pfc  # Row index aligns with the PFC index
+        Tj[nnz] = k  # Column index aligns with u_pfc_ir, should be equal to k
+        nnz += 1
+
+    # Convert to CSC
+    mat.fill_from_coo(Ti, Tj, Tx, nnz)
+
+    return mat
+
+
+@njit()
+def dVqr_dVrpfc_csc(npfc, u_pfc_vr) -> CSC:
+    """
+    Compute dVqr_dVrpfc in CSC format.
+    :param n_pfc: Indices for the rows corresponding to the number of PFC.
+    :param u_pfc_vr: Column indices for the sparse matrix.
+    :return: Sparse matrix in CSC format.
+    """
+    n_cols = len(u_pfc_vr)  # Number of columns (length of u_vsc_pf).
+    n_rows = npfc  # Number of rows (equal to nbus).
+    max_nnz = len(u_pfc_vr)  # Maximum number of non-zero entries
+
+    mat = CSC(n_rows, n_cols, max_nnz, False)
+    Tx = np.empty(max_nnz, dtype=np.float64)
+    Ti = np.empty(max_nnz, dtype=np.int32)
+    Tj = np.empty(max_nnz, dtype=np.int32)
+
+    nnz = 0  # Counter for non-zero entries
+
+    for k, pfc in enumerate(u_pfc_vr):
+        val = -1
+
+        # Populate COO format arrays
+        Tx[nnz] = val
+        Ti[nnz] = pfc  # Row index aligns with the PFC index
+        Tj[nnz] = k  # Column index aligns with u_pfc_ir, should be equal to k
+        nnz += 1
+
+    # Convert to CSC
+    mat.fill_from_coo(Ti, Tj, Tx, nnz)
+
+    return mat
+
+@njit()
+def dVqs_dVspfc_csc(npfc, u_pfc_vs) -> CSC:
+    """
+    Compute dVqs_dVspfc in CSC format.
+    :param n_pfc: Indices for the rows corresponding to the number of PFC.
+    :param u_pfc_vs: Column indices for the sparse matrix.
+    :return: Sparse matrix in CSC format.
+    """
+    n_cols = len(u_pfc_vs)  # Number of columns (length of u_vsc_pf).
+    n_rows = npfc  # Number of rows (equal to nbus).
+    max_nnz = len(u_pfc_vs)  # Maximum number of non-zero entries
+
+    mat = CSC(n_rows, n_cols, max_nnz, False)
+    Tx = np.empty(max_nnz, dtype=np.float64)
+    Ti = np.empty(max_nnz, dtype=np.int32)
+    Tj = np.empty(max_nnz, dtype=np.int32)
+
+    nnz = 0  # Counter for non-zero entries
+
+    for k, pfc in enumerate(u_pfc_vs):
+        val = 1.0
+
+        # Populate COO format arrays
+        Tx[nnz] = val
+        Ti[nnz] = pfc  # Row index aligns with the PFC index
+        Tj[nnz] = k  # Column index aligns with u_pfc_ir, should be equal to k
+        nnz += 1
+
+    # Convert to CSC
+    mat.fill_from_coo(Ti, Tj, Tx, nnz)
+
+    return mat
+
+
+@njit()
+def dVloop_pfc_dVm_csc(npfc: int, nbus: int, i_u_vm: IntVec, bus_pos: IntVec, bus_neg: IntVec) -> CSC:
+    """
+    d/dVm of the PFC voltage loop equations:
+        Vqr = Vm[Q] - Vr - Vm[R]  -> bus_pos = Q_dc, bus_neg = R_dc
+        Vqs = Vm[Q] + Vs - Vm[S]  -> bus_pos = Q_dc, bus_neg = S_dc
+    :param npfc: number of PFCs (rows)
+    :param nbus: number of buses
+    :param i_u_vm: buses with unknown Vm (columns)
+    :param bus_pos: bus entering with +1, per PFC
+    :param bus_neg: bus entering with -1, per PFC
+    :return: CSC block (npfc x len(i_u_vm))
+    """
+    col_lookup = make_lookup(nbus, i_u_vm)
+    max_nnz = 2 * npfc
+    mat = CSC(npfc, len(i_u_vm), max_nnz, False)
+    Tx = np.empty(max_nnz, dtype=np.float64)
+    Ti = np.empty(max_nnz, dtype=np.int32)
+    Tj = np.empty(max_nnz, dtype=np.int32)
+    nnz = 0
+    for i in range(npfc):
+        cp = col_lookup[bus_pos[i]]
+        if cp >= 0:
+            Tx[nnz] = 1.0
+            Ti[nnz] = i
+            Tj[nnz] = cp
+            nnz += 1
+        cn = col_lookup[bus_neg[i]]
+        if cn >= 0:
+            Tx[nnz] = -1.0
+            Ti[nnz] = i
+            Tj[nnz] = cn
+            nnz += 1
+    mat.fill_from_coo(Ti, Tj, Tx, nnz)
+    return mat
+
+
+@njit()
+def dIdc_dIpfc_csc(nbus: int, dc_rows: IntVec, u_pfc_I: IntVec, bus_pfc: IntVec) -> CSC:
+    """
+    d/dI_pfc block of the DC bus current balance. Each PFC injects Iq at Q_dc, Ir at R_dc and Is at S_dc,
+    so dr[bus_pfc[pfc]]/dI = +1
+    :param nbus: number of buses
+    :param dc_rows: non-grounded DC bus indices (rows)
+    :param u_pfc_I: PFC indices whose current (Iq, Ir or Is) is unknown (columns)
+    :param bus_pfc: bus where that current is injected, per PFC (Q_dc, R_dc or S_dc)
+    :return: CSC block (len(dc_rows) x len(u_pfc_I))
+    """
+    row_lookup = make_lookup(nbus, dc_rows)
+    n_cols = len(u_pfc_I)
+    mat = CSC(len(dc_rows), n_cols, n_cols, False)
+    Tx = np.empty(n_cols, dtype=np.float64)
+    Ti = np.empty(n_cols, dtype=np.int32)
+    Tj = np.empty(n_cols, dtype=np.int32)
+    nnz = 0
+    for c in range(n_cols):
+        r = row_lookup[bus_pfc[u_pfc_I[c]]]
+        if r >= 0:
+            Tx[nnz] = 1.0
+            Ti[nnz] = r
+            Tj[nnz] = c
+            nnz += 1
     mat.fill_from_coo(Ti, Tj, Tx, nnz)
     return mat

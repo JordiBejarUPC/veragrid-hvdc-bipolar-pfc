@@ -30,7 +30,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
                                                                                     voltage_pdc_droop_neg,
                                                                                     compute_asynchronous_generator_q_per_bus)
 from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, HvdcControlType, ConverterControlType,
-                                         ShuntControlMode, GeneratorType)
+                                         ShuntControlMode, GeneratorType, PfcControlType)
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
 
@@ -39,6 +39,7 @@ def adv_jacobian(nbus: int,
                  nbr: int,
                  nvsc: int,
                  nhvdc: int,
+                 npfc: int,
                  F: IntVec,
                  T: IntVec,
                  Fdcp_vsc: IntVec,
@@ -84,6 +85,19 @@ def adv_jacobian(nbus: int,
                  Pt_vsc: Vec,
                  Qt_vsc: Vec,
                  Pf_hvdc: Vec,
+                 u_pfc_iq: Vec,
+                 u_pfc_ir: Vec,
+                 u_pfc_is: Vec,
+                 u_pfc_vr: Vec,
+                 u_pfc_vs: Vec,
+                 Iq_pfc: Vec,
+                 Ir_pfc: Vec,
+                 Is_pfc: Vec,
+                 Vr_pfc: Vec,
+                 Vs_pfc: Vec,
+                 Q_dc_pfc: IntVec,
+                 R_dc_pfc: IntVec,
+                 S_dc_pfc: IntVec,
                  Ys: CxVec,
                  Bc: Vec,
                  yff_cbr: CxVec,
@@ -175,6 +189,11 @@ def adv_jacobian(nbus: int,
     n_idc = len(dc_rows)
     nimax = len(k_vsc_imax)
     hvdc_range = np.arange(nhvdc)
+    n_iq_pfc = len(u_pfc_iq)
+    n_ir_pfc = len(u_pfc_ir)
+    n_is_pfc = len(u_pfc_is)
+    n_vr_pfc = len(u_pfc_vr)
+    n_vs_pfc = len(u_pfc_vs)
 
     # -------- ROW 1 + ROW 2 (Sbus): bus-bus derivatives (including I0 Norton current) --------
     dSy_dVm_x, dSy_dVa_x = dSbus_dV_with_I0_numba_sparse_csc(Yx, Yp, Yi, V, Vm, I0)
@@ -201,6 +220,11 @@ def adv_jacobian(nbus: int,
     dP_dQthvdc = CSC(nkp, nhvdc, 0, False)  # fully empty
     dP_dm = deriv.dSbus_dm_csc(nbus, i_k_p, u_cbr_m, F, T, Ys, Bc, tap, tap_modules, V).real
     dP_dtau = deriv.dSbus_dtau_csc(nbus, i_k_p, u_cbr_tau, F, T, Ys, tap, V).real
+    dP_dIqpfc = CSC(nkp, n_iq_pfc, 0, False)  # fully empty
+    dP_dIrpfc = CSC(nkp, n_ir_pfc, 0, False)  # fully empty
+    dP_dIspfc = CSC(nkp, n_is_pfc, 0, False)  # fully empty
+    dP_dVrpfc = CSC(nkp, n_vr_pfc, 0, False)  # fully empty
+    dP_dVspfc = CSC(nkp, n_vs_pfc, 0, False)  # fully empty
 
     # -------- ROW 2 (Q) --------
     dQ_dVa = sp_slice(dS_dVa.imag, i_k_q, i_u_va)
@@ -214,6 +238,11 @@ def adv_jacobian(nbus: int,
     dQ_dQthvdc = deriv.dPQ_dPQft_csc(nbus, nhvdc, i_k_q, hvdc_range, T_hvdc)
     dQ_dm = deriv.dSbus_dm_csc(nbus, i_k_q, u_cbr_m, F, T, Ys, Bc, tap, tap_modules, V).imag
     dQ_dtau = deriv.dSbus_dtau_csc(nbus, i_k_q, u_cbr_tau, F, T, Ys, tap, V).imag
+    dQ_dIqpfc = CSC(nkq, n_iq_pfc, 0, False)  # fully empty
+    dQ_dIrpfc = CSC(nkq, n_ir_pfc, 0, False)  # fully empty
+    dQ_dIspfc = CSC(nkq, n_is_pfc, 0, False)  # fully empty
+    dQ_dVrpfc = CSC(nkq, n_vr_pfc, 0, False)  # fully empty
+    dQ_dVspfc = CSC(nkq, n_vs_pfc, 0, False)  # fully empty
 
     # -------- ROW 3 (Losses VSCs) --------
     dLvsc_dVa = CSC(nvsc, nva, 0, False)  # fully empty
@@ -228,6 +257,11 @@ def adv_jacobian(nbus: int,
     dLvsc_dQthvdc = CSC(nvsc, nhvdc, 0, False)  # fully empty
     dLvsc_dm = CSC(nvsc, nm, 0, False)  # fully empty
     dLvsc_dtau = CSC(nvsc, ntau, 0, False)  # fully empty
+    dLvsc_dIqpfc = CSC(nvsc, n_iq_pfc, 0, False)  # fully empty
+    dLvsc_dIrpfc = CSC(nvsc, n_ir_pfc, 0, False)  # fully empty
+    dLvsc_dIspfc = CSC(nvsc, n_is_pfc, 0, False)  # fully empty
+    dLvsc_dVrpfc = CSC(nvsc, n_vr_pfc, 0, False)  # fully empty
+    dLvsc_dVspfc = CSC(nvsc, n_vs_pfc, 0, False)  # fully empty
 
     # -------- ROW 4 (max current VSCs) --------
     dImax_dVa = CSC(nimax, nva, 0, False)  # fully empty
@@ -241,6 +275,11 @@ def adv_jacobian(nbus: int,
     dImax_dQthvdc = CSC(nimax, nhvdc, 0, False)  # fully empty
     dImax_dm = CSC(nimax, nm, 0, False)  # fully empty
     dImax_dtau = CSC(nimax, ntau, 0, False)  # fully empty
+    dImax_dIqpfc = CSC(nimax, n_iq_pfc, 0, False)  # fully empty
+    dImax_dIrpfc = CSC(nimax, n_ir_pfc, 0, False)  # fully empty
+    dImax_dIspfc = CSC(nimax, n_is_pfc, 0, False)  # fully empty
+    dImax_dVrpfc = CSC(nimax, n_vr_pfc, 0, False)  # fully empty
+    dImax_dVspfc = CSC(nimax, n_vs_pfc, 0, False)  # fully empty
 
     # -------- ROW 5 (Pdc voltage-droop equations: Udc * Ifp - droop(u) = 0) --------
     dDroop_dVa = CSC(n_droop, nva, 0, False)  # fully empty
@@ -255,6 +294,11 @@ def adv_jacobian(nbus: int,
     dDroop_dQthvdc = CSC(n_droop, nhvdc, 0, False)  # fully empty
     dDroop_dm = CSC(n_droop, nm, 0, False)  # fully empty
     dDroop_dtau = CSC(n_droop, ntau, 0, False)  # fully empty
+    dDroop_dIqpfc = CSC(n_droop, n_iq_pfc, 0, False)  # fully empty
+    dDroop_dIrpfc = CSC(n_droop, n_ir_pfc, 0, False)  # fully empty
+    dDroop_dIspfc = CSC(n_droop, n_is_pfc, 0, False)  # fully empty
+    dDroop_dVrpfc = CSC(n_droop, n_vr_pfc, 0, False)  # fully empty
+    dDroop_dVspfc = CSC(n_droop, n_vs_pfc, 0, False)  # fully empty
 
     # -------- ROW 6 (fixed Pdc equations: Udc * Ifp - Pdc_set = 0) --------
     dPdc_dVa = CSC(n_pdc, nva, 0, False)  # fully empty (DC bus angles are not unknowns)
@@ -269,6 +313,11 @@ def adv_jacobian(nbus: int,
     dPdc_dQthvdc = CSC(n_pdc, nhvdc, 0, False)  # fully empty
     dPdc_dm = CSC(n_pdc, nm, 0, False)  # fully empty
     dPdc_dtau = CSC(n_pdc, ntau, 0, False)  # fully empty
+    dPdc_dIqpfc = CSC(n_pdc, n_iq_pfc, 0, False) # fully empty
+    dPdc_dIrpfc = CSC(n_pdc, n_ir_pfc, 0, False) # fully empty
+    dPdc_dIspfc = CSC(n_pdc, n_is_pfc, 0, False) # fully empty
+    dPdc_dVrpfc = CSC(n_pdc, n_vr_pfc, 0, False) # fully empty
+    dPdc_dVspfc = CSC(n_pdc, n_vs_pfc, 0, False) # fully empty
 
     # -------- ROW 7 (bipolar Vm_dc pole-to-pole: (V[F].real - V[F_dcn].real) - Udc_set = 0) --------
     dVmdcDiff_dVa = CSC(n_vmdc, nva, 0, False)  # fully empty (DC bus angles are not unknowns)
@@ -282,6 +331,11 @@ def adv_jacobian(nbus: int,
     dVmdcDiff_dQthvdc = CSC(n_vmdc, nhvdc, 0, False)  # fully empty
     dVmdcDiff_dm = CSC(n_vmdc, nm, 0, False)  # fully empty
     dVmdcDiff_dtau = CSC(n_vmdc, ntau, 0, False)  # fully empty
+    dVmdcDiff_dIqpfc = CSC(n_vmdc, n_iq_pfc, 0, False) # fully empty
+    dVmdcDiff_dIrpfc = CSC(n_vmdc, n_ir_pfc, 0, False) # fully empty
+    dVmdcDiff_dIspfc = CSC(n_vmdc, n_is_pfc, 0, False) # fully empty
+    dVmdcDiff_dVrpfc = CSC(n_vmdc, n_vr_pfc, 0, False) # fully empty
+    dVmdcDiff_dVspfc = CSC(n_vmdc, n_vs_pfc, 0, False) # fully empty
 
     # -------- ROW 8 (DC bus current balance, replaces the DC power balance) --------
     dIdc_dVa = CSC(n_idc, nva, 0, False)  # fully empty (DC bus angles are not unknowns)
@@ -295,6 +349,11 @@ def adv_jacobian(nbus: int,
     dIdc_dQthvdc = CSC(n_idc, nhvdc, 0, False)  # fully empty
     dIdc_dm = CSC(n_idc, nm, 0, False)  # fully empty
     dIdc_dtau = CSC(n_idc, ntau, 0, False)  # fully empty
+    dIdc_dIqpfc = deriv.dIdc_dIpfc_csc(nbus, dc_rows, u_pfc_iq, Q_dc_pfc)
+    dIdc_dIrpfc = deriv.dIdc_dIpfc_csc(nbus, dc_rows, u_pfc_ir, R_dc_pfc)
+    dIdc_dIspfc = deriv.dIdc_dIpfc_csc(nbus, dc_rows, u_pfc_is, S_dc_pfc)
+    dIdc_dVrpfc = CSC(n_idc, n_vr_pfc, 0, False) # fully empty
+    dIdc_dVspfc = CSC(n_idc, n_vs_pfc, 0, False) # fully empty
 
     # -------- ROW 9 (loss HVDCs) --------
     dLhvdc_dVa = CSC(nhvdc, nva, 0, False)  # fully empty
@@ -308,6 +367,11 @@ def adv_jacobian(nbus: int,
     dLhvdc_dQthvdc = CSC(nhvdc, nhvdc, 0, False)  # fully empty
     dLhvdc_dm = CSC(nhvdc, nm, 0, False)  # fully empty
     dLhvdc_dtau = CSC(nhvdc, ntau, 0, False)  # fully empty
+    dLhvdc_dIqpfc = CSC(nhvdc, n_iq_pfc, 0, False) #fully empty
+    dLhvdc_dIrpfc = CSC(nhvdc, n_ir_pfc, 0, False) #fully empty
+    dLhvdc_dIspfc = CSC(nhvdc, n_is_pfc, 0, False) #fully empty
+    dLhvdc_dVrpfc = CSC(nhvdc, n_vr_pfc, 0, False) #fully empty
+    dLhvdc_dVspfc = CSC(nhvdc, n_vs_pfc, 0, False) #fully empty
 
     # -------- ROW 10 (inj HVDCs) --------
     dInjhvdc_dVa = CSC(nhvdc, nva, 0, False)  # fully empty
@@ -322,6 +386,11 @@ def adv_jacobian(nbus: int,
     dInjhvdc_dQthvdc = CSC(nhvdc, nhvdc, 0, False)  # fully empty
     dInjhvdc_dm = CSC(nhvdc, nm, 0, False)  # fully empty
     dInjhvdc_dtau = CSC(nhvdc, ntau, 0, False)  # fully empty
+    dInjhvdc_dIqpfc = CSC(nhvdc, n_iq_pfc, 0, False) #fully empty
+    dInjhvdc_dIrpfc = CSC(nhvdc, n_ir_pfc, 0, False) #fully empty
+    dInjhvdc_dIspfc = CSC(nhvdc, n_is_pfc, 0, False) #fully empty
+    dInjhvdc_dVrpfc = CSC(nhvdc, n_vr_pfc, 0, False) #fully empty
+    dInjhvdc_dVspfc = CSC(nhvdc, n_vs_pfc, 0, False) #fully empty
 
     # -------- ROW 11 (Pf) --------
     dPf_dVa = deriv.dSf_dVa_csc(nbus, k_cbr_pf, i_u_va, yft_cbr, V, F, T).real
@@ -335,6 +404,11 @@ def adv_jacobian(nbus: int,
     dPf_dQthvdc = CSC(npq_f, nhvdc, 0, False)  # fully empty
     dPf_dm = deriv.dSf_dm_csc(nbr, k_cbr_pf, u_cbr_m, F, T, Ys, Bc, tap, tap_modules, V).real
     dPf_dtau = deriv.dSf_dtau_csc(nbr, k_cbr_pf, u_cbr_tau, F, T, Ys, tap, V).real
+    dPf_dIqpfc = CSC(npq_f, n_iq_pfc, 0, False)  # fully empty
+    dPf_dIrpfc = CSC(npq_f, n_ir_pfc, 0, False)  # fully empty
+    dPf_dIspfc = CSC(npq_f, n_is_pfc, 0, False)  # fully empty
+    dPf_dVrpfc = CSC(npq_f, n_vr_pfc, 0, False)  # fully empty
+    dPf_dVspfc = CSC(npq_f, n_vs_pfc, 0, False)  # fully empty
 
     # -------- ROW 12 (Pt) --------
     dPt_dVa = deriv.dSt_dVa_csc(nbus, k_cbr_pt, i_u_va, ytf_cbr, V, F, T).real
@@ -348,6 +422,11 @@ def adv_jacobian(nbus: int,
     dPt_dQthvdc = CSC(npq_t, nhvdc, 0, False)  # fully empty
     dPt_dm = deriv.dSt_dm_csc(nbr, k_cbr_pt, u_cbr_m, F, T, Ys, tap, tap_modules, V).real
     dPt_dtau = deriv.dSt_dtau_csc(nbr, k_cbr_pt, u_cbr_tau, F, T, Ys, tap, V).real
+    dPt_dIqpfc = CSC(npq_t, n_iq_pfc, 0, False) # fully empty
+    dPt_dIrpfc = CSC(npq_t, n_ir_pfc, 0, False) # fully empty
+    dPt_dIspfc = CSC(npq_t, n_is_pfc, 0, False) # fully empty
+    dPt_dVrpfc = CSC(npq_t, n_vr_pfc, 0, False) # fully empty
+    dPt_dVspfc = CSC(npq_t, n_vs_pfc, 0, False) # fully empty
 
     # -------- ROW 13 (Qf) --------
     dQf_dVa = deriv.dSf_dVa_csc(nbus, k_cbr_qf, i_u_va, yft_cbr, V, F, T).imag
@@ -361,6 +440,11 @@ def adv_jacobian(nbus: int,
     dQf_dQthvdc = CSC(nqq_f, nhvdc, 0, False)  # fully empty
     dQf_dm = deriv.dSf_dm_csc(nbr, k_cbr_qf, u_cbr_m, F, T, Ys, Bc, tap, tap_modules, V).imag
     dQf_dtau = deriv.dSf_dtau_csc(nbr, k_cbr_qf, u_cbr_tau, F, T, Ys, tap, V).imag
+    dQf_dIqpfc = CSC(nqq_f, n_iq_pfc, 0, False) # fully empty
+    dQf_dIrpfc = CSC(nqq_f, n_ir_pfc, 0, False) # fully empty
+    dQf_dIspfc = CSC(nqq_f, n_is_pfc, 0, False) # fully empty
+    dQf_dVrpfc = CSC(nqq_f, n_vr_pfc, 0, False) # fully empty
+    dQf_dVspfc = CSC(nqq_f, n_vs_pfc, 0, False) # fully empty
 
     # -------- ROW 14 (Qt) --------
     dQt_dVa = deriv.dSt_dVa_csc(nbus, k_cbr_qt, i_u_va, ytf_cbr, V, F, T).imag
@@ -374,52 +458,159 @@ def adv_jacobian(nbus: int,
     dQt_dQthvdc = CSC(nqq_t, nhvdc, 0, False)  # fully empty
     dQt_dm = deriv.dSt_dm_csc(nbr, k_cbr_qt, u_cbr_m, F, T, Ys, tap, tap_modules, V).imag
     dQt_dtau = deriv.dSt_dtau_csc(nbr, k_cbr_qt, u_cbr_tau, F, T, Ys, tap, V).imag
+    dQt_dIqpfc = CSC(nqq_t, n_iq_pfc, 0, False) # fully empty
+    dQt_dIrpfc = CSC(nqq_t, n_ir_pfc, 0, False) # fully empty
+    dQt_dIspfc = CSC(nqq_t, n_is_pfc, 0, False) # fully empty
+    dQt_dVrpfc = CSC(nqq_t, n_vr_pfc, 0, False) # fully empty
+    dQt_dVspfc = CSC(nqq_t, n_vs_pfc, 0, False) # fully empty
 
-    # compose the Jacobian: 14 block-rows x 11 block-columns
+    # -------- ROW 15 (KCL_PFC) --------
+    dKCL_dVa = CSC(npfc, nva, 0, False)  # fully empty
+    dKCL_dVm = CSC(npfc, nvm, 0, False)  # fully empty
+    dKCL_dIfpvsc = CSC(npfc, nifp, 0, False) # fully empty
+    dKCL_dPtvsc = CSC(npfc, npt, 0, False)  # fully empty
+    dKCL_dQtvsc = CSC(npfc, nqt, 0, False)  # fully empty
+    dKCL_dPfhvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dKCL_dPthvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dKCL_dQfhvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dKCL_dQthvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dKCL_dm = CSC(npfc, nm, 0, False)  # fully empty
+    dKCL_dtau = CSC(npfc, ntau, 0, False)  # fully empty
+    dKCL_dIqpfc = deriv.dKCL_dIpfc_csc(npfc, u_pfc_iq)
+    dKCL_dIrpfc = deriv.dKCL_dIpfc_csc(npfc, u_pfc_ir)
+    dKCL_dIspfc = deriv.dKCL_dIpfc_csc(npfc, u_pfc_is)
+    dKCL_dVrpfc = CSC(npfc, n_vr_pfc, 0, False) # fully empty
+    dKCL_dVspfc = CSC(npfc, n_vs_pfc, 0, False) # fully empty
+
+    # -------- ROW 16 (PB_PFC) --------
+    dPB_dVa = CSC(npfc, nva, 0, False)  # fully empty
+    dPB_dVm = CSC(npfc, nvm, 0, False)  # fully empty
+    dPB_dIfpvsc = CSC(npfc, nifp, 0, False)  # fully empty
+    dPB_dPtvsc = CSC(npfc, npt, 0, False)  # fully empty
+    dPB_dQtvsc = CSC(npfc, nqt, 0, False)  # fully empty
+    dPB_dPfhvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dPB_dPthvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dPB_dQfhvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dPB_dQthvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dPB_dm = CSC(npfc, nm, 0, False)  # fully empty
+    dPB_dtau = CSC(npfc, ntau, 0, False)  # fully empty
+    dPB_dIqpfc = CSC(npfc, n_iq_pfc, 0, False)  # fully empty
+    dPB_dIrpfc = deriv.dPB_dIrpfc_csc(npfc, u_pfc_ir, Vr_pfc)
+    dPB_dIspfc = deriv.dPB_dIspfc_csc(npfc, u_pfc_is, Vs_pfc)
+    dPB_dVrpfc = deriv.dPB_dVrpfc_csc(npfc, u_pfc_vr, Ir_pfc)
+    dPB_dVspfc = deriv.dPB_dVspfc_csc(npfc, u_pfc_vs, Is_pfc)
+
+    # -------- ROW 17 (Vqr_PFC) --------
+    dVqr_dVa = CSC(npfc, nva, 0, False)  # fully empty
+    dVqr_dVm = deriv.dVloop_pfc_dVm_csc(npfc, nbus, i_u_vm, Q_dc_pfc, R_dc_pfc)  # Vm[Q] - Vm[R]
+    dVqr_dIfpvsc = CSC(npfc, nifp, 0, False)  # fully empty
+    dVqr_dPtvsc = CSC(npfc, npt, 0, False)  # fully empty
+    dVqr_dQtvsc = CSC(npfc, nqt, 0, False) # fully empty
+    dVqr_dPfhvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dVqr_dPthvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dVqr_dQfhvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dVqr_dQthvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dVqr_dm = CSC(npfc, nm, 0, False)  # fully empty
+    dVqr_dtau = CSC(npfc, ntau, 0, False)  # fully empty
+    dVqr_dIqpfc = CSC(npfc, n_iq_pfc, 0, False)  # fully empty
+    dVqr_dIrpfc = CSC(npfc, n_ir_pfc, 0, False) # fully empty
+    dVqr_dIspfc = CSC(npfc, n_is_pfc, 0, False) #fully empty
+    dVqr_dVrpfc = deriv.dVqr_dVrpfc_csc(npfc, u_pfc_vr)
+    dVqr_dVspfc = CSC(npfc, n_vs_pfc, 0, False) # fully empty
+
+    # -------- ROW 18 (Vqs_PFC) --------
+    dVqs_dVa = CSC(npfc, nva, 0, False)  # fully empty
+    dVqs_dVm = deriv.dVloop_pfc_dVm_csc(npfc, nbus, i_u_vm, Q_dc_pfc, S_dc_pfc)  # Vm[Q] - Vm[S]
+    dVqs_dIfpvsc = CSC(npfc, nifp, 0, False)  # fully empty
+    dVqs_dPtvsc = CSC(npfc, npt, 0, False)  # fully empty
+    dVqs_dQtvsc = CSC(npfc, nqt, 0, False)  # fully empty
+    dVqs_dPfhvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dVqs_dPthvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dVqs_dQfhvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dVqs_dQthvdc = CSC(npfc, nhvdc, 0, False)  # fully empty
+    dVqs_dm = CSC(npfc, nm, 0, False)  # fully empty
+    dVqs_dtau = CSC(npfc, ntau, 0, False)  # fully empty
+    dVqs_dIqpfc = CSC(npfc, n_iq_pfc, 0, False)  # fully empty
+    dVqs_dIrpfc = CSC(npfc, n_ir_pfc, 0, False)  # fully empty
+    dVqs_dIspfc = CSC(npfc, n_is_pfc, 0, False)  # fully empty
+    dVqs_dVrpfc = CSC(npfc, n_vr_pfc, 0, False)  # fully empty
+    dVqs_dVspfc = deriv.dVqs_dVspfc_csc(npfc, u_pfc_vs)
+
+    # compose the Jacobian: 18 block-rows x 16 block-columns
     J = csc_stack_2d_ff(mats=[
         dP_dVa, dP_dVm, dP_dIfpvsc, dP_dPtvsc, dP_dQtvsc,
         dP_dPfhvdc, dP_dPthvdc, dP_dQfhvdc, dP_dQthvdc, dP_dm, dP_dtau,
+        dP_dIqpfc, dP_dIrpfc, dP_dIspfc, dP_dVrpfc, dP_dVspfc,
 
         dQ_dVa, dQ_dVm, dQ_dIfpvsc, dQ_dPtvsc, dQ_dQtvsc,
         dQ_dPfhvdc, dQ_dPthvdc, dQ_dQfhvdc, dQ_dQthvdc, dQ_dm, dQ_dtau,
+        dQ_dIqpfc, dQ_dIrpfc, dQ_dIspfc, dQ_dVrpfc, dQ_dVspfc,
 
         dLvsc_dVa, dLvsc_dVm, dLvsc_dIfpvsc, dLvsc_dPtvsc, dLvsc_dQtvsc,
         dLvsc_dPfhvdc, dLvsc_dPthvdc, dLvsc_dQfhvdc, dLvsc_dQthvdc, dLvsc_dm, dLvsc_dtau,
+        dLvsc_dIqpfc, dLvsc_dIrpfc, dLvsc_dIspfc, dLvsc_dVrpfc, dLvsc_dVspfc,
 
         dImax_dVa, dImax_dVm, dImax_dIfpvsc, dImax_dPtvsc, dImax_dQtvsc,
         dImax_dPfhvdc, dImax_dPthvdc, dImax_dQfhvdc, dImax_dQthvdc, dImax_dm, dImax_dtau,
+        dImax_dIqpfc, dImax_dIrpfc, dImax_dIspfc, dImax_dVrpfc, dImax_dVspfc,
 
         dDroop_dVa, dDroop_dVm, dDroop_dIfpvsc, dDroop_dPtvsc, dDroop_dQtvsc,
         dDroop_dPfhvdc, dDroop_dPthvdc, dDroop_dQfhvdc, dDroop_dQthvdc, dDroop_dm, dDroop_dtau,
+        dDroop_dIqpfc, dDroop_dIrpfc, dDroop_dIspfc, dDroop_dVrpfc, dDroop_dVspfc,
 
         dPdc_dVa, dPdc_dVm, dPdc_dIfpvsc, dPdc_dPtvsc, dPdc_dQtvsc,
         dPdc_dPfhvdc, dPdc_dPthvdc, dPdc_dQfhvdc, dPdc_dQthvdc, dPdc_dm, dPdc_dtau,
+        dPdc_dIqpfc, dPdc_dIrpfc, dPdc_dIspfc, dPdc_dVrpfc, dPdc_dVspfc,
 
         dVmdcDiff_dVa, dVmdcDiff_dVm, dVmdcDiff_dIfpvsc, dVmdcDiff_dPtvsc, dVmdcDiff_dQtvsc,
         dVmdcDiff_dPfhvdc, dVmdcDiff_dPthvdc, dVmdcDiff_dQfhvdc, dVmdcDiff_dQthvdc, dVmdcDiff_dm, dVmdcDiff_dtau,
+        dVmdcDiff_dIqpfc, dVmdcDiff_dIrpfc, dVmdcDiff_dIspfc, dVmdcDiff_dVrpfc, dVmdcDiff_dVspfc,
 
         dIdc_dVa, dIdc_dVm, dIdc_dIfpvsc, dIdc_dPtvsc, dIdc_dQtvsc,
         dIdc_dPfhvdc, dIdc_dPthvdc, dIdc_dQfhvdc, dIdc_dQthvdc, dIdc_dm, dIdc_dtau,
+        dIdc_dIqpfc, dIdc_dIrpfc, dIdc_dIspfc, dIdc_dVrpfc, dIdc_dVspfc,
+
+        dKCL_dVa, dKCL_dVm, dKCL_dIfpvsc, dKCL_dPtvsc, dKCL_dQtvsc,
+        dKCL_dPfhvdc, dKCL_dPthvdc, dKCL_dQfhvdc, dKCL_dQthvdc, dKCL_dm, dKCL_dtau,
+        dKCL_dIqpfc, dKCL_dIrpfc, dKCL_dIspfc, dKCL_dVrpfc, dKCL_dVspfc,
+
+        dPB_dVa, dPB_dVm, dPB_dIfpvsc, dPB_dPtvsc, dPB_dQtvsc,
+        dPB_dPfhvdc, dPB_dPthvdc, dPB_dQfhvdc, dPB_dQthvdc, dPB_dm, dPB_dtau,
+        dPB_dIqpfc, dPB_dIrpfc, dPB_dIspfc, dPB_dVrpfc, dPB_dVspfc,
+
+        dVqr_dVa, dVqr_dVm, dVqr_dIfpvsc, dVqr_dPtvsc, dVqr_dQtvsc,
+        dVqr_dPfhvdc, dVqr_dPthvdc, dVqr_dQfhvdc, dVqr_dQthvdc, dVqr_dm, dVqr_dtau,
+        dVqr_dIqpfc, dVqr_dIrpfc, dVqr_dIspfc, dVqr_dVrpfc, dVqr_dVspfc,
+
+        dVqs_dVa, dVqs_dVm, dVqs_dIfpvsc, dVqs_dPtvsc, dVqs_dQtvsc,
+        dVqs_dPfhvdc, dVqs_dPthvdc, dVqs_dQfhvdc, dVqs_dQthvdc, dVqs_dm, dVqs_dtau,
+        dVqs_dIqpfc, dVqs_dIrpfc, dVqs_dIspfc, dVqs_dVrpfc, dVqs_dVspfc,
 
         dLhvdc_dVa, dLhvdc_dVm, dLhvdc_dIfpvsc, dLhvdc_dPtvsc, dLhvdc_dQtvsc,
         dLhvdc_dPfhvdc, dLhvdc_dPthvdc, dLhvdc_dQfhvdc, dLhvdc_dQthvdc, dLhvdc_dm, dLhvdc_dtau,
+        dLhvdc_dIqpfc, dLhvdc_dIrpfc, dLhvdc_dIspfc, dLhvdc_dVrpfc, dLhvdc_dVspfc,
 
         dInjhvdc_dVa, dInjhvdc_dVm, dInjhvdc_dIfpvsc, dInjhvdc_dPtvsc, dInjhvdc_dQtvsc,
         dInjhvdc_dPfhvdc, dInjhvdc_dPthvdc, dInjhvdc_dQfhvdc, dInjhvdc_dQthvdc, dInjhvdc_dm, dInjhvdc_dtau,
+        dInjhvdc_dIqpfc, dInjhvdc_dIrpfc, dInjhvdc_dIspfc, dInjhvdc_dVrpfc, dInjhvdc_dVspfc,
 
         dPf_dVa, dPf_dVm, dPf_dIfpvsc, dPf_dPtvsc, dPf_dQtvsc,
         dPf_dPfhvdc, dPf_dPthvdc, dPf_dQfhvdc, dPf_dQthvdc, dPf_dm, dPf_dtau,
+        dPf_dIqpfc, dPf_dIrpfc, dPf_dIspfc, dPf_dVrpfc, dPf_dVspfc,
 
         dPt_dVa, dPt_dVm, dPt_dIfpvsc, dPt_dPtvsc, dPt_dQtvsc,
         dPt_dPfhvdc, dPt_dPthvdc, dPt_dQfhvdc, dPt_dQthvdc, dPt_dm, dPt_dtau,
+        dPt_dIqpfc, dPt_dIrpfc, dPt_dIspfc, dPt_dVrpfc, dPt_dVspfc,
 
         dQf_dVa, dQf_dVm, dQf_dIfpvsc, dQf_dPtvsc, dQf_dQtvsc,
         dQf_dPfhvdc, dQf_dPthvdc, dQf_dQfhvdc, dQf_dQthvdc, dQf_dm, dQf_dtau,
+        dQf_dIqpfc, dQf_dIrpfc, dQf_dIspfc, dQf_dVrpfc, dQf_dVspfc,
 
         dQt_dVa, dQt_dVm, dQt_dIfpvsc, dQt_dPtvsc, dQt_dQtvsc,
         dQt_dPfhvdc, dQt_dPthvdc, dQt_dQfhvdc, dQt_dQthvdc, dQt_dm, dQt_dtau,
+        dQt_dIqpfc, dQt_dIrpfc, dQt_dIspfc, dQt_dVrpfc, dQt_dVspfc
 
-    ], n_rows=14, n_cols=11)
+    ], n_rows=18, n_cols=16)
 
     return J
 
@@ -499,7 +690,8 @@ def calc_flows_summation_per_bus(nbus: int,
                                  F_br: IntVec, T_br: IntVec, Sf_br: CxVec, St_br: CxVec,
                                  F_hvdc: IntVec, T_hvdc: IntVec, Sf_hvdc: CxVec, St_hvdc: CxVec,
                                  Fdcp_vsc: IntVec, Fdcn_vsc: IntVec, T_vsc: IntVec,
-                                 Pfp_vsc: Vec, Pfn_vsc: Vec, St_vsc: CxVec) -> CxVec:
+                                 Pfp_vsc: Vec, Pfn_vsc: Vec, St_vsc: CxVec, Q_dc_pfc: IntVec,
+                                 R_dc_pfc: IntVec, S_dc_pfc: IntVec, Pq_pfc: Vec, Pr_pfc: Vec, Ps_pfc: Vec) -> CxVec:
     """
     Summation of magnitudes per bus (complex)
     Includes everything: VSCs, HVDCs, and all
@@ -519,6 +711,12 @@ def calc_flows_summation_per_bus(nbus: int,
     :param Pfp_vsc:
     :param Pfn_vsc:
     :param St_vsc:
+    :param Q_pfc:
+    :param R_pfc:
+    :param S_pfc:
+    :param Pq_pfc:
+    :param Pr_pfc:
+    :param Ps_pfc:
     :return:
     """
 
@@ -543,6 +741,12 @@ def calc_flows_summation_per_bus(nbus: int,
 
         res[T_vsc[i]] += St_vsc[i]
 
+    #Add PFC
+    for i in range(len(R_dc_pfc)):
+        res[Q_dc_pfc[i]] += Pq_pfc[i]
+        res[R_dc_pfc[i]] += Pr_pfc[i]
+        res[S_dc_pfc[i]] += Ps_pfc[i]
+
     return res
 
 
@@ -550,7 +754,8 @@ def calc_flows_summation_per_bus(nbus: int,
 def calc_flows_active_branch_per_bus(nbus: int,
                                      F_hvdc: IntVec, T_hvdc: IntVec, Sf_hvdc: CxVec, St_hvdc: CxVec,
                                      Fdcp_vsc: IntVec, Fdcn_vsc: IntVec, T_vsc: IntVec,
-                                     Vm: Vec, Va: Vec, Ifp_vsc: Vec, St_vsc: CxVec) -> CxVec:
+                                     Vm: Vec, Va: Vec, Ifp_vsc: Vec, St_vsc: CxVec, Q_dc_pfc: IntVec,
+                                     R_dc_pfc: IntVec, S_dc_pfc: IntVec, Pq_pfc: Vec, Pr_pfc: Vec, Ps_pfc: Vec) -> CxVec:
     """
     Summation of magnitudes per bus (complex)
     Used to add effects of VSCs and HVDCs to the traditional branches
@@ -568,6 +773,12 @@ def calc_flows_active_branch_per_bus(nbus: int,
     :param Va:
     :param Ifp_vsc:
     :param St_vsc:
+    :param Q_dc_pfc:
+    :param R_dc_pfc:
+    :param S_dc_pfc:
+    :param Pq_pfc:
+    :param Pr_pfc:
+    :param Ps_pfc:
     :return:
     """
 
@@ -588,6 +799,12 @@ def calc_flows_active_branch_per_bus(nbus: int,
             res[Fdcn_vsc[i]] += Pfn_vsc
 
         res[T_vsc[i]] += St_vsc[i]
+
+    # Add PFC
+    for i in range(len(R_dc_pfc)):
+        res[Q_dc_pfc[i]] += Pq_pfc[i]
+        res[R_dc_pfc[i]] += Pr_pfc[i]
+        res[S_dc_pfc[i]] += Ps_pfc[i]
 
     return res
 
@@ -617,6 +834,34 @@ def calculate_vsc_currents(nbus: int,
             Iconv[Fdcn_vsc[i]] -= Ifp_vsc[i]
 
     return Iconv
+
+@njit(cache=True)
+def calculate_pfc_currents(nbus: int,
+                           Q_dc_pfc: IntVec,
+                           R_dc_pfc: IntVec,
+                           S_dc_pfc: IntVec,
+                           Iq_pfc: Vec,
+                           Ir_pfc: Vec,
+                           Is_pfc: Vec) -> CxVec:
+    """
+    Aggregate the PFC current injections per bus, used by
+    the DC bus current-balance residuals
+    :param nbus: Total number of nodes (buses)
+    :param Q_dc_pfc: Node index vector for the Q bus of each PFC
+    :param R_dc_pfc: Node index vector for the R bus of each PFC
+    :param S_dc_pfc: Node index vector for the S bus of each PFC
+    :param Iq_pfc: Quadrature axis current injections (p.u.)
+    :param Ir_pfc: Real axis current injections (p.u.)
+    :param Is_pfc: Synchronous axis current injections (p.u.)
+    :return: vector of current injections per node
+    """
+    Ipfc = np.zeros(nbus, dtype=np.complex128)
+
+    for i in range(len(Q_dc_pfc)):
+        Ipfc[Q_dc_pfc[i]] += Iq_pfc[i]
+        Ipfc[R_dc_pfc[i]] += Ir_pfc[i]
+        Ipfc[S_dc_pfc[i]] += Is_pfc[i]
+    return Ipfc
 
 
 def calc_autodiff_jacobian(func: Callable[[Vec], Vec],
@@ -845,6 +1090,27 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.vsc_pdc_set = np.zeros(0, dtype=float)  # Pdc setpoints in MW aligned with k_vsc_pdc
         self._set_vsc_control_indices()
 
+        #Fill PFC Indices
+        self.u_pfc_iq = np.zeros(0, dtype=int)
+        self.u_pfc_ir = np.zeros(0, dtype=int)
+        self.u_pfc_is = np.zeros(0, dtype=int)
+        self.u_pfc_vr = np.zeros(0, dtype=int)
+        self.u_pfc_vs = np.zeros(0, dtype=int)
+        self.k_pfc_iq = np.zeros(0, dtype=int)
+        self.k_pfc_ir = np.zeros(0, dtype=int)
+        self.k_pfc_is = np.zeros(0, dtype=int)
+        self.k_pfc_vr = np.zeros(0, dtype=int)
+        self.k_pfc_vs = np.zeros(0, dtype=int)
+        self.pfc_iq_set = np.zeros(0, dtype=int)
+        self.pfc_ir_set = np.zeros(0, dtype=int)
+        self.pfc_is_set = np.zeros(0, dtype=int)
+        self.pfc_pq_set = np.zeros(0, dtype=int)
+        self.pfc_pr_set = np.zeros(0, dtype=int)
+        self.pfc_ps_set = np.zeros(0, dtype=int)
+        self.pfc_vr_set = np.zeros(0, dtype=int)
+        self.pfc_vs_set = np.zeros(0, dtype=int)
+        self._set_pfc_control_indices()
+
         # Fill HVDC Indices
         self.hvdc_droop_idx = np.zeros(0, dtype=int)
         self._set_hvdc_control_indices()
@@ -862,6 +1128,14 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # it is structurally -Ifp for converters with a modelled negative pole
         self.Ifp_vsc = np.zeros(nc.vsc_data.nelm)
         self.Pt_vsc = np.zeros(nc.vsc_data.nelm)
+        self.Iq_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Ir_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Is_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Pq_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Pr_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Ps_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Vr_pfc = np.zeros(nc.pfc_data.nelm)
+        self.Vs_pfc = np.zeros(nc.pfc_data.nelm)
         self.Qt_vsc = np.zeros(nc.vsc_data.nelm)
         self.Pf_hvdc = np.zeros(nc.hvdc_data.nelm)
         self.Qf_hvdc = np.zeros(nc.hvdc_data.nelm)
@@ -873,6 +1147,13 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # set the VSC AC-side set-points
         self.Pt_vsc[self.k_vsc_pt] = self.vsc_pt_set / self.nc.Sbase
         self.Qt_vsc[self.k_vsc_qt] = self.vsc_qt_set / self.nc.Sbase
+
+        # set the PFC set-points
+        self.Iq_pfc[self.k_pfc_iq] = self.pfc_iq_set #in p.u.
+        self.Ir_pfc[self.k_pfc_ir] = self.pfc_ir_set #in p.u.
+        self.Is_pfc[self.k_pfc_is] = self.pfc_is_set #in p.u.
+        self.Vr_pfc[self.k_pfc_vr] = self.pfc_vr_set #in p.u.
+        self.Vs_pfc[self.k_pfc_vs] = self.pfc_vs_set #in p.u.
 
         # Admittance ---------------------------------------------------------------------------------------------------
         self.adm = compute_admittances_fast(
@@ -2073,6 +2354,107 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             else:
                 pass
 
+
+    def _set_pfc_control_indices(self) -> None:
+        #PFC Indices
+        u_pfc_iq = list()
+        u_pfc_ir = list()
+        u_pfc_is = list()
+        u_pfc_vr = list()
+        u_pfc_vs = list()
+        k_pfc_iq = list()
+        k_pfc_ir = list()
+        k_pfc_is = list()
+        k_pfc_vr = list()
+        k_pfc_vs = list()
+        pfc_iq_set = list()
+        pfc_ir_set = list()
+        pfc_is_set = list()
+        pfc_vr_set = list()
+        pfc_vs_set = list()
+
+        #PFC LOOP
+        for k in range(self.nc.pfc_data.nelm):
+
+            if self.nc.pfc_data.active[k]:
+
+                control1 = self.nc.pfc_data.control1_int[k]
+
+                control1_magnitude = self.nc.pfc_data.control1_val[k]
+
+                control1_bus_device = self.nc.pfc_data.control1_bus_idx[k]
+
+                control1_branch_device = self.nc.pfc_data.control1_branch_idx[k]
+
+                """
+                Iq_pfc = 'Iq_pfc'
+                Ir_pfc = 'Ir_pfc'
+                Is_pfc = 'Is_pfc'
+                Vr_pfc = 'Vr_pfc'
+                Vs_pfc = 'Vs_pfc'
+                """
+
+                if control1 == PfcControlType.Iq_pfc.idx():
+                    if control1_branch_device > -1:
+                        u_pfc_ir.append(control1_branch_device)
+                        u_pfc_is.append(control1_branch_device)
+                        u_pfc_vr.append(control1_branch_device)
+                        u_pfc_vs.append(control1_branch_device)
+                        k_pfc_iq.append(control1_branch_device)
+                        pfc_iq_set.append(control1_magnitude)
+
+                if control1 == PfcControlType.Ir_pfc.idx():
+                    if control1_branch_device > -1:
+                        u_pfc_iq.append(control1_branch_device)
+                        u_pfc_is.append(control1_branch_device)
+                        u_pfc_vr.append(control1_branch_device)
+                        u_pfc_vs.append(control1_branch_device)
+                        k_pfc_ir.append(control1_branch_device)
+                        pfc_ir_set.append(control1_magnitude)
+
+                if control1 == PfcControlType.Is_pfc.idx():
+                    if control1_branch_device > -1:
+                        u_pfc_iq.append(control1_branch_device)
+                        u_pfc_ir.append(control1_branch_device)
+                        u_pfc_vr.append(control1_branch_device)
+                        u_pfc_vs.append(control1_branch_device)
+                        k_pfc_is.append(control1_branch_device)
+                        pfc_is_set.append(control1_magnitude)
+
+                if  control1 == PfcControlType.Vr_pfc.idx():
+                    if control1_branch_device > -1:
+                        u_pfc_iq.append(control1_branch_device)
+                        u_pfc_ir.append(control1_branch_device)
+                        u_pfc_is.append(control1_branch_device)
+                        u_pfc_vs.append(control1_branch_device)
+                        k_pfc_vr.append(control1_branch_device)
+                        pfc_vr_set.append(control1_magnitude)
+
+                if control1 == PfcControlType.Vs_pfc.idx():
+                    if control1_branch_device > -1:
+                        u_pfc_iq.append(control1_branch_device)
+                        u_pfc_ir.append(control1_branch_device)
+                        u_pfc_is.append(control1_branch_device)
+                        u_pfc_vr.append(control1_branch_device)
+                        k_pfc_vs.append(control1_branch_device)
+                        pfc_vs_set.append(control1_magnitude)
+
+        self.u_pfc_iq = np.array(u_pfc_iq, dtype=int)
+        self.u_pfc_ir = np.array(u_pfc_ir, dtype=int)
+        self.u_pfc_is = np.array(u_pfc_is, dtype=int)
+        self.u_pfc_vr = np.array(u_pfc_vr, dtype=int)
+        self.u_pfc_vs = np.array(u_pfc_vs, dtype=int)
+        self.k_pfc_iq = np.array(k_pfc_iq, dtype=int)
+        self.k_pfc_ir = np.array(k_pfc_ir, dtype=int)
+        self.k_pfc_is = np.array(k_pfc_is, dtype=int)
+        self.k_pfc_vr = np.array(k_pfc_vr, dtype=int)
+        self.k_pfc_vs = np.array(k_pfc_vs, dtype=int)
+        self.pfc_iq_set = np.array(pfc_iq_set, dtype=float)
+        self.pfc_ir_set = np.array(pfc_ir_set, dtype=float)
+        self.pfc_is_set = np.array(pfc_is_set, dtype=float)
+        self.pfc_vr_set = np.array(pfc_vr_set, dtype=float)
+        self.pfc_vs_set = np.array(pfc_vs_set, dtype=float)
+
     def _set_hvdc_control_indices(self) -> None:
         """
         Analyze the control hvdc and compute the indices
@@ -2110,6 +2492,11 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         i = h + self.nc.hvdc_data.nelm
         j = i + len(self.u_cbr_m)
         k = j + len(self.u_cbr_tau)
+        l = k + len(self.u_pfc_iq)
+        m = l + len(self.u_pfc_ir)
+        n = m + len(self.u_pfc_is)
+        o = n + len(self.u_pfc_vr)
+        p = o + len(self.u_pfc_vs)
 
         # update the vectors
         self.Va[self.i_u_va] = x[0:a]
@@ -2123,6 +2510,11 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.Qt_hvdc = x[h:i]
         self.m = x[i:j]
         self.tau = x[j:k]
+        self.Iq_pfc[self.u_pfc_iq] = x[k:l]
+        self.Ir_pfc[self.u_pfc_ir] = x[l:m]
+        self.Is_pfc[self.u_pfc_is] = x[m:n]
+        self.Vr_pfc[self.u_pfc_vr] = x[n:o]
+        self.Vs_pfc[self.u_pfc_vs] = x[o:p]
 
     def var2x(self) -> Vec:
         """
@@ -2140,7 +2532,12 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             self.Qf_hvdc,
             self.Qt_hvdc,
             self.m,
-            self.tau
+            self.tau,
+            self.Iq_pfc[self.u_pfc_iq],
+            self.Ir_pfc[self.u_pfc_ir],
+            self.Is_pfc[self.u_pfc_is],
+            self.Vr_pfc[self.u_pfc_vr],
+            self.Vs_pfc[self.u_pfc_vs]
         ]
 
     def size(self) -> int:
@@ -2158,7 +2555,12 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 + self.nc.hvdc_data.nelm
                 + self.nc.hvdc_data.nelm
                 + len(self.u_cbr_m)
-                + len(self.u_cbr_tau))
+                + len(self.u_cbr_tau)
+                + len(self.u_pfc_iq)
+                + len(self.u_pfc_ir)
+                + len(self.u_pfc_is)
+                + len(self.u_pfc_vr)
+                + len(self.u_pfc_vs))
 
     def _pfp_droop_values(self, V: CxVec) -> Vec:
         """
@@ -2267,7 +2669,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         :param update_class_vars: Update the class vars related to the calculation step
         :return: Residual vector
         """
-        tm = [None] * 9
+        tm = [None] * 10
 
         tm[0] = time.time()
         nhvdc = self.nc.hvdc_data.nelm
@@ -2283,6 +2685,11 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         i = h + nhvdc
         j = i + len(self.u_cbr_m)
         k = j + len(self.u_cbr_tau)
+        l = k + len(self.u_pfc_iq)
+        m = l + len(self.u_pfc_ir)
+        n = m + len(self.u_pfc_is)
+        o = n + len(self.u_pfc_vr)
+        p = o + len(self.u_pfc_vs)
 
         # copy the sliceable vectors
         Vm_ = self.Vm.copy()
@@ -2290,6 +2697,11 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         Ifp_vsc_ = self.Ifp_vsc.copy()
         Pt_vsc_ = self.Pt_vsc.copy()
         Qt_vsc_ = self.Qt_vsc.copy()
+        Iq_pfc_ = self.Iq_pfc.copy()
+        Ir_pfc_ = self.Ir_pfc.copy()
+        Is_pfc_ = self.Is_pfc.copy()
+        Vr_pfc_ = self.Vr_pfc.copy()
+        Vs_pfc_ = self.Vs_pfc.copy()
 
         # update the vectors
         Va_[self.i_u_va] = x[0:a]
@@ -2303,6 +2715,11 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         Qt_hvdc_ = x[h:i]
         m_ = x[i:j]
         tau_ = x[j:k]
+        Iq_pfc_[self.u_pfc_iq] = x[k:l]
+        Ir_pfc_[self.u_pfc_ir] = x[l:m]
+        Is_pfc_[self.u_pfc_is] = x[m:n]
+        Vr_pfc_[self.u_pfc_vr] = x[n:o]
+        Vs_pfc_[self.u_pfc_vs] = x[o:p]
 
         # Controllable branches ----------------------------------------------------------------------------------------
         tm[1] = time.time()
@@ -2506,13 +2923,33 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Ifp_vsc=Ifp_vsc_
         )
 
+        I_pfc = calculate_pfc_currents(
+            nbus=self.nc.bus_data.nbus,
+            Q_dc_pfc=self.nc.pfc_data.Q_dc,
+            R_dc_pfc=self.nc.pfc_data.R_dc,
+            S_dc_pfc=self.nc.pfc_data.S_dc,
+            Iq_pfc=Iq_pfc_,
+            Ir_pfc=Ir_pfc_,
+            Is_pfc=Is_pfc_
+        )
+
         # The injections of loads and generators at DC buses enter as currents too
         I_injections = np.conj(Sbus[is_dc_indices] / (V[is_dc_indices] + 1e-20))
 
-        dI_dc = (I_conv[is_dc_indices] + I_passive_all[is_dc_indices] - I_injections).real
+        dI_dc = (I_conv[is_dc_indices] + I_passive_all[is_dc_indices] + I_pfc[is_dc_indices] - I_injections).real
+
+        # PFC ---------------------------------------------------------------------------------------------------------
+        tm[5] = time.time()
+        KCL_pfc_ = Iq_pfc_ + Ir_pfc_ + Is_pfc_
+        PB_pfc_ = -(Vr_pfc_ * Ir_pfc_) + (Vs_pfc_ * Is_pfc_)
+        Vqr_pfc_ = Vm_[self.nc.pfc_data.Q_dc] - Vr_pfc_ - Vm_[self.nc.pfc_data.R_dc]
+        Vqs_pfc_ = Vm_[self.nc.pfc_data.Q_dc] + Vs_pfc_ - Vm_[self.nc.pfc_data.S_dc]
+        Pq_pfc_ = Vm_[self.nc.pfc_data.Q_dc] * Iq_pfc_
+        Pr_pfc_ = Vm_[self.nc.pfc_data.R_dc] * Ir_pfc_
+        Ps_pfc_ = Vm_[self.nc.pfc_data.S_dc] * Is_pfc_
 
         # HVDC ---------------------------------------------------------------------------------------------------------
-        tm[5] = time.time()
+        tm[6] = time.time()
 
         Vmf_hvdc = Vm_[self.nc.hvdc_data.F]
         zbase = self.nc.hvdc_data.Vnf * self.nc.hvdc_data.Vnf / self.nc.Sbase
@@ -2530,7 +2967,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         St_hvdc = make_complex(Pt_hvdc_, Qt_hvdc_)
 
         # total nodal power --------------------------------------------------------------------------------------------
-        tm[6] = time.time()
+        tm[7] = time.time()
 
         Scalc_active = calc_flows_active_branch_per_bus(
             nbus=self.nc.bus_data.nbus,
@@ -2544,14 +2981,20 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Vm=Vm_,
             Va=Va_,
             Ifp_vsc=Ifp_vsc_,
-            St_vsc=St_vsc)
+            St_vsc=St_vsc,
+            Q_dc_pfc=self.nc.pfc_data.Q_dc,
+            R_dc_pfc=self.nc.pfc_data.R_dc,
+            S_dc_pfc=self.nc.pfc_data.S_dc,
+            Pq_pfc=Pq_pfc_,
+            Pr_pfc=Pr_pfc_,
+            Ps_pfc=Ps_pfc_)
 
         Scalc_ = Scalc_active + Scalc_passive
 
         dS = Scalc_ - Sbus
 
         # compose the residuals vector ---------------------------------------------------------------------------------
-        tm[7] = time.time()
+        tm[8] = time.time()
 
         f_ = np.r_[
             dS[self.i_k_p].real,
@@ -2562,6 +3005,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             pdc_vsc,
             vmdc_diff,
             dI_dc,
+            KCL_pfc_,
+            PB_pfc_,
+            Vqr_pfc_,
+            Vqs_pfc_,
             loss_hvdc,
             inj_hvdc,
             Pf_cbr - self.cbr_pf_set,
@@ -2570,7 +3017,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Qt_cbr - self.cbr_qt_set
         ]
 
-        tm[8] = time.time()
+        tm[9] = time.time()
 
         if update_class_vars:
             self._Va = Va_
@@ -2578,6 +3025,14 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             self.Ifp_vsc = Ifp_vsc_
             self.Pt_vsc = Pt_vsc_
             self.Qt_vsc = Qt_vsc_
+            self.Iq_pfc = Iq_pfc_
+            self.Ir_pfc = Ir_pfc_
+            self.Is_pfc = Is_pfc_
+            self.Pq_pfc = Pq_pfc_
+            self.Pr_pfc = Pr_pfc_
+            self.Ps_pfc = Ps_pfc_
+            self.Vr_pfc = Vr_pfc_
+            self.Vs_pfc = Vs_pfc_
             self.Pf_hvdc = Pf_hvdc_
             self.Pt_hvdc = Pt_hvdc_
             self.Qf_hvdc = Qf_hvdc_
@@ -2949,6 +3404,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 self.is_vm_controlled = self.nc.bus_data.is_vm_controlled.copy()
                 self.is_va_controlled = self.nc.bus_data.is_va_controlled.copy()
                 self._set_vsc_control_indices()
+                self._set_pfc_control_indices()
                 self._set_branch_control_indices()
                 self._set_bus_control_indices()
 
@@ -3119,9 +3575,34 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Ifp_vsc=self.Ifp_vsc
         )
 
+        I_pfc = calculate_pfc_currents(
+            nbus=self.nc.bus_data.nbus,
+            Q_dc_pfc=self.nc.pfc_data.Q_dc,
+            R_dc_pfc=self.nc.pfc_data.R_dc,
+            S_dc_pfc=self.nc.pfc_data.S_dc,
+            Iq_pfc=self.Iq_pfc,
+            Ir_pfc=self.Ir_pfc,
+            Is_pfc=self.Is_pfc
+        )
+
         I_injections = np.conj(Sbus[is_dc_indices] / (V[is_dc_indices] + 1e-20))
 
-        dI_dc = (I_conv[is_dc_indices] + I_passive_all[is_dc_indices] - I_injections).real
+        dI_dc = (I_conv[is_dc_indices] + I_passive_all[is_dc_indices] + I_pfc[is_dc_indices] - I_injections).real
+
+        # PFC ----------------------------------------------------------------------------------------------------------
+        Q_dc_pfc = self.nc.pfc_data.Q_dc
+        R_dc_pfc = self.nc.pfc_data.R_dc
+        S_dc_pfc = self.nc.pfc_data.S_dc
+
+        KCL_pfc = self.Iq_pfc + self.Ir_pfc + self.Is_pfc
+        PB_pfc = - self.Vr_pfc * self.Ir_pfc + self.Vs_pfc * self.Is_pfc
+        Vqr_pfc = self.Vm[Q_dc_pfc] - self.Vr_pfc - self.Vm[R_dc_pfc]
+        Vqs_pfc = self.Vm[Q_dc_pfc] + self.Vs_pfc - self.Vm[S_dc_pfc]
+        Pq_pfc = self.Vm[Q_dc_pfc] * self.Iq_pfc
+        Pr_pfc = self.Vm[R_dc_pfc] * self.Ir_pfc
+        Ps_pfc = self.Vm[S_dc_pfc] * self.Is_pfc
+
+        ##To be done: Add the Power Control for each node##
 
         # HVDC ---------------------------------------------------------------------------------------------------------
         Vmf_hvdc = self.Vm[self.nc.hvdc_data.F]
@@ -3152,7 +3633,13 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Vm=self.Vm,
             Va=self.Va,
             Ifp_vsc=self.Ifp_vsc,
-            St_vsc=St_vsc)
+            St_vsc=St_vsc,
+            Q_dc_pfc=Q_dc_pfc,
+            R_dc_pfc=R_dc_pfc,
+            S_dc_pfc=S_dc_pfc,
+            Pq_pfc=Pq_pfc,
+            Pr_pfc=Pr_pfc,
+            Ps_pfc=Ps_pfc)
 
         self.Scalc = Scalc_active + Scalc_passive
 
@@ -3168,6 +3655,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             pdc_vsc,
             vmdc_diff,
             dI_dc,
+            KCL_pfc,
+            PB_pfc,
+            Vqr_pfc,
+            Vqs_pfc,
             dloss_hvdc,
             dinj_hvdc,
             Pf_cbr - self.cbr_pf_set,
@@ -3212,6 +3703,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
             # signed DC voltages per bus and pole-to-return per converter
             vd = self.nc.vsc_data
+            pfc_el = self.nc.pfc_data
             Vdc_bus: Vec = self.Vm * np.cos(self.Va)
             Udc_vsc: Vec = Vdc_bus[vd.F].copy()
             has_return = vd.F_dcn > -1
@@ -3231,6 +3723,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 nbr=self.nc.nbr,
                 nvsc=vd.nelm,
                 nhvdc=nhvdc,
+                npfc=pfc_el.nelm,
                 F=self.nc.passive_branch_data.F,
                 T=self.nc.passive_branch_data.T,
                 Fdcp_vsc=vd.F,
@@ -3276,6 +3769,19 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 Pt_vsc=self.Pt_vsc,
                 Qt_vsc=self.Qt_vsc,
                 Pf_hvdc=self.Pf_hvdc,
+                u_pfc_iq= self.u_pfc_iq,
+                u_pfc_ir= self.u_pfc_ir,
+                u_pfc_is= self.u_pfc_is,
+                u_pfc_vr= self.u_pfc_vr,
+                u_pfc_vs= self.u_pfc_vs,
+                Iq_pfc= self.Iq_pfc,
+                Ir_pfc= self.Ir_pfc,
+                Is_pfc= self.Is_pfc,
+                Vr_pfc= self.Vr_pfc,
+                Vs_pfc= self.Vs_pfc,
+                Q_dc_pfc=pfc_el.Q_dc,
+                R_dc_pfc=pfc_el.R_dc,
+                S_dc_pfc=pfc_el.S_dc,
                 Ys=self.adm.ys,
                 Bc=self.nc.passive_branch_data.B,
                 yff_cbr=self.adm.yff,
@@ -3299,6 +3805,12 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         cols += [f'dIfp_vsc_{i}' for i in self.u_vsc_ifp]
         cols += [f'dPt_vsc_{i}' for i in self.u_vsc_pt]
         cols += [f'dQt_vsc_{i}' for i in self.u_vsc_qt]
+
+        cols += [f'dIq_pfc_{i}' for i in self.u_pfc_iq]
+        cols += [f'dIr_pfc_{i}' for i in self.u_pfc_ir]
+        cols += [f'dIs_pfc_{i}' for i in self.u_pfc_is]
+        cols += [f'dVr_pfc_{i}' for i in self.u_pfc_vr]
+        cols += [f'dVs_pfc_{i}' for i in self.u_pfc_vs]
 
         cols += [f'dPf_hvdc_{i}' for i in range(self.nc.hvdc_data.nelm)]
         cols += [f'dPt_hvdc_{i}' for i in range(self.nc.hvdc_data.nelm)]
@@ -3325,6 +3837,12 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         rows += [f'dpdc_vsc_{i}' for i in self.k_vsc_pdc]
         rows += [f'dvmdc_diff_{i}' for i in self.k_vsc_vmdc_diff]
         rows += [f'dI_{i}' for i in bus_dc]
+
+        rows += [f'dKCL_pfc_{i}' for i in range(self.nc.pfc_data.nelm)]
+        rows += [f'dPB_pfc_{i}' for i in range(self.nc.pfc_data.nelm)]
+        rows += [f'Vqr_pfc_{i}' for i in range(self.nc.pfc_data.nelm)]
+        rows += [f'Vqs_pfc_{i}' for i in range(self.nc.pfc_data.nelm)]
+
         rows += [f'dloss_hvdc_{i}' for i in range(self.nc.hvdc_data.nelm)]
         rows += [f'dinj_hvdc_{i}' for i in range(self.nc.hvdc_data.nelm)]
 
@@ -3383,6 +3901,22 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 self.nc.vsc_data.rates / self.nc.Sbase + 1e-20)
         losses_vsc = (self.Pt_vsc + self.Ifp_vsc * (Vdc_p_vsc - Vdc_n_vsc)) * self.nc.Sbase
 
+        # PFC ----------------------------------------------------------------------------------------------------------
+        Iq_pfc = self.Iq_pfc
+        Ir_pfc = self.Ir_pfc
+        Is_pfc = self.Is_pfc
+        Pq_pfc = self.Pq_pfc
+        Pr_pfc = self.Pr_pfc
+        Ps_pfc = self.Ps_pfc
+        Vr_pfc = self.Vr_pfc
+        Vs_pfc = self.Vs_pfc
+        KCL_pfc = Iq_pfc + Ir_pfc + Is_pfc
+        PB_pfc = - Vr_pfc *  Ir_pfc + Vs_pfc * Is_pfc
+        P_Vr_pfc = Vr_pfc *  Ir_pfc
+        P_Vs_pfc = Vs_pfc * Is_pfc
+        Vqr_pfc = self.Vm[self.nc.pfc_data.Q_dc] - Vr_pfc - self.Vm[self.nc.pfc_data.R_dc]
+        Vqs_pfc = self.Vm[self.nc.pfc_data.Q_dc] + Vs_pfc - self.Vm[self.nc.pfc_data.S_dc]
+
         # HVDC ---------------------------------------------------------------------------------------------------------
         Sf_hvdc = make_complex(self.Pf_hvdc, self.Qf_hvdc) * self.nc.Sbase
         St_hvdc = make_complex(self.Pt_hvdc, self.Qt_hvdc) * self.nc.Sbase
@@ -3407,7 +3941,13 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             T_vsc=self.nc.vsc_data.T,
             Pfp_vsc=Pfp_vsc,
             Pfn_vsc=Pfn_vsc,
-            St_vsc=St_vsc)
+            St_vsc=St_vsc,
+            Q_dc_pfc=self.nc.pfc_data.Q_dc,
+            R_dc_pfc=self.nc.pfc_data.R_dc,
+            S_dc_pfc=self.nc.pfc_data.S_dc,
+            Pq_pfc=Pq_pfc,
+            Pr_pfc=Pr_pfc,
+            Ps_pfc=Ps_pfc)
 
         m2 = self.nc.active_branch_data.tap_module.copy()
         tau2 = self.nc.active_branch_data.tap_angle.copy()
@@ -3433,6 +3973,20 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             It_vsc=It_vsc,
             losses_vsc=losses_vsc,
             loading_vsc=loading_vsc,
+            Iq_pfc=Iq_pfc,
+            Ir_pfc=Ir_pfc,
+            Is_pfc=Is_pfc,
+            Pq_pfc=Pq_pfc,
+            Pr_pfc=Pr_pfc,
+            Ps_pfc=Ps_pfc,
+            Vr_pfc=Vr_pfc,
+            Vs_pfc=Vs_pfc,
+            KCL_pfc=KCL_pfc,
+            PB_pfc=PB_pfc,
+            P_Vr_pfc=P_Vr_pfc,
+            P_Vs_pfc=P_Vs_pfc,
+            Vqr_pfc=Vqr_pfc,
+            Vqs_pfc=Vqs_pfc,
             Sf_hvdc=Sf_hvdc,
             St_hvdc=St_hvdc,
             losses_hvdc=losses_hvdc,
@@ -3442,3 +3996,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             iterations=iterations,
             elapsed=elapsed
         )
+
+
+

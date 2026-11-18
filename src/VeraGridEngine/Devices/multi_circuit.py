@@ -756,8 +756,8 @@ class MultiCircuit(Assets):
         :return: array with branch active status
         """
         active = np.empty((self.get_time_number(),
-                           self.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True)), dtype=int)
-        for i, b in enumerate(self.get_branches(add_hvdc=False, add_vsc=False, add_switch=True)):
+                           self.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True, add_pfc=False)), dtype=int)
+        for i, b in enumerate(self.get_branches(add_hvdc=False, add_vsc=False, add_switch=True, add_pfc=False)):
             active[:, i] = b.active_prof.toarray()
         return active
 
@@ -787,6 +787,7 @@ class MultiCircuit(Assets):
                 'transformers2w',
                 'hvdc_lines',
                 'vsc_devices',
+                'pfc_devices',
                 'upfc_devices',
                 'switch_devices',
                 'transformers3w',
@@ -902,7 +903,7 @@ class MultiCircuit(Assets):
             bus_dictionary[bus.idtag] = i
 
         tuples = list()
-        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             for branch in branch_list:
                 f = bus_dictionary[branch.bus_from.idtag]
                 t = bus_dictionary[branch.bus_to.idtag]
@@ -942,7 +943,7 @@ class MultiCircuit(Assets):
         bus_dictionary = self.get_elements_dict_by_type(element_type=DeviceType.BusDevice,
                                                         use_secondary_key=False)
 
-        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             for direction, branch in zip(current_flow_direction, branch_list):
                 f = bus_dictionary[branch.bus_from.idtag]
                 t = bus_dictionary[branch.bus_to.idtag]
@@ -1389,7 +1390,7 @@ class MultiCircuit(Assets):
         """
         d: Dict[dev.Bus, List[BRANCH_TYPES]] = {b: list() for b in self._buses}
 
-        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             for br in branch_list:
                 d[br.bus_from].append(br)
                 d[br.bus_to].append(br)
@@ -1409,7 +1410,7 @@ class MultiCircuit(Assets):
         bus_dict = {bus: i for i, bus in enumerate(self.buses)}
 
         k = 0
-        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             for br in branch_list:
                 i = bus_dict[br.bus_from]  # store the row indices
                 j = bus_dict[br.bus_to]  # store the row indices
@@ -1734,7 +1735,7 @@ class MultiCircuit(Assets):
         :return: List of (branch index, branch object, flow sense w.r.t the area exchange)
         """
         lst: List[Tuple[int, BRANCH_TYPES, float]] = list()
-        for k, branch in enumerate(self.get_branches(add_hvdc=False, add_vsc=False, add_switch=True)):
+        for k, branch in enumerate(self.get_branches(add_hvdc=False, add_vsc=False, add_switch=True, add_pfc=False)):
             if branch.bus_from.area in a1 and branch.bus_to.area in a2:
                 lst.append((k, branch, 1.0))
             elif branch.bus_from.area in a2 and branch.bus_to.area in a1:
@@ -1753,7 +1754,7 @@ class MultiCircuit(Assets):
         :return: List of (branch index, branch object, flow sense w.r.t the area exchange)
         """
         lst: List[Tuple[int, BRANCH_TYPES, float]] = list()
-        for k, branch in enumerate(self.get_branches(add_hvdc=False, add_vsc=False, add_switch=True)):
+        for k, branch in enumerate(self.get_branches(add_hvdc=False, add_vsc=False, add_switch=True, add_pfc=False)):
             if branch.bus_from in a1 and branch.bus_to in a2:
                 lst.append((k, branch, 1.0))
             elif branch.bus_from in a2 and branch.bus_to in a1:
@@ -1842,7 +1843,7 @@ class MultiCircuit(Assets):
         :return: List of (branch index, branch object, flow sense w.r.t the area exchange)
         """
         lst: List[Tuple[int, BRANCH_TYPES, float]] = list()
-        for k, branch in enumerate(self.get_branches(add_vsc=False, add_hvdc=False, add_switch=True)):
+        for k, branch in enumerate(self.get_branches(add_vsc=False, add_hvdc=False, add_switch=True, add_pfc=False)):
             if branch.bus_from.zone == z1 and branch.bus_to.zone == z2:
                 lst.append((k, branch, 1.0))
             elif branch.bus_from.zone == z2 and branch.bus_to.zone == z1:
@@ -1891,10 +1892,10 @@ class MultiCircuit(Assets):
         area_names = [a.name for a in self.get_areas()]
         bus_area_indices = np.array([area_dict.get(b.area, 0) for b in self.get_buses()])
 
-        nbr = self.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True)
+        nbr = self.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True, add_pfc=False)
         F: IntVec = np.zeros(nbr, dtype=int)
         T: IntVec = np.zeros(nbr, dtype=int)
-        for k, elm in enumerate(self.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
+        for k, elm in enumerate(self.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True, add_pfc=False)):
             F[k] = bus_dict.get(elm.bus_from, -1)
             T[k] = bus_dict.get(elm.bus_to, -1)
 
@@ -1966,7 +1967,7 @@ class MultiCircuit(Assets):
         Sbase_old = self.Sbase
 
         # get all the Branches with impedance
-        elms = self.get_branches(add_vsc=False, add_hvdc=False, add_switch=True)
+        elms = self.get_branches(add_vsc=False, add_hvdc=False, add_switch=True, add_pfc=False)
 
         # change the base at each element
         for elm in elms:
@@ -2471,52 +2472,52 @@ class MultiCircuit(Assets):
 
         return ratio
 
-    def get_branch_rates_prof(self, add_hvdc=False, add_vsc=False, add_switch=True) -> Mat:
+    def get_branch_rates_prof(self, add_hvdc=False, add_vsc=False, add_switch=True, add_pfc=False) -> Mat:
         """
         Get the complex bus power Injections
         :return: (ntime, nbr) [MVA]
         """
         val = np.zeros((self.get_time_number(),
-                        self.get_branch_number(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch)))
+                        self.get_branch_number(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch, add_pfc=add_pfc)))
 
-        for i, branch in enumerate(self.get_branches(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch)):
+        for i, branch in enumerate(self.get_branches(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch, add_pfc=add_pfc)):
             val[:, i] = branch.rate_prof.toarray()
 
         return val
 
-    def get_branch_rates(self, add_hvdc=False, add_vsc=False, add_switch=True) -> Vec:
+    def get_branch_rates(self, add_hvdc=False, add_vsc=False, add_switch=True, add_pfc=False) -> Vec:
         """
         Get the complex bus power Injections
         :return: (nbr) [MVA]
         """
-        val: Vec = np.zeros(self.get_branch_number(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch))
+        val: Vec = np.zeros(self.get_branch_number(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch, add_pfc=add_pfc))
 
-        for i, branch in enumerate(self.get_branches(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch)):
+        for i, branch in enumerate(self.get_branches(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch, add_pfc=add_pfc)):
             val[i] = branch.rate
 
         return val
 
-    def get_branch_contingency_rates_prof(self, add_hvdc=False, add_vsc=False, add_switch=True) -> Mat:
+    def get_branch_contingency_rates_prof(self, add_hvdc=False, add_vsc=False, add_switch=True, add_pfc=False) -> Mat:
         """
         Get the complex bus power Injections
         :return: (ntime, nbr) [MVA]
         """
         val = np.zeros((self.get_time_number(),
-                        self.get_branch_number(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch)))
+                        self.get_branch_number(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch, add_pfc=add_pfc)))
 
-        for i, branch in enumerate(self.get_branches(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch)):
+        for i, branch in enumerate(self.get_branches(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch, add_pfc=add_pfc)):
             val[:, i] = branch.rate_prof.toarray() * branch.contingency_factor_prof.toarray()
 
         return val
 
-    def get_branch_contingency_rates(self, add_hvdc=False, add_vsc=False, add_switch=True) -> Vec:
+    def get_branch_contingency_rates(self, add_hvdc=False, add_vsc=False, add_switch=True, add_pfc=False) -> Vec:
         """
         Get the complex bus power Injections
         :return: (nbr) [MVA]
         """
-        val: Vec = np.zeros(self.get_branch_number(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch))
+        val: Vec = np.zeros(self.get_branch_number(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch, add_pfc=add_pfc))
 
-        for i, branch in enumerate(self.get_branches(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch)):
+        for i, branch in enumerate(self.get_branches(add_hvdc=add_hvdc, add_vsc=add_vsc, add_switch=add_switch, add_pfc=add_pfc)):
             val[i] = branch.rate_prof.toarray() * branch.contingency_factor.toarray()
 
         return val
@@ -2991,7 +2992,7 @@ class MultiCircuit(Assets):
         :param logger: Logger
         """
         elements_to_delete = list()
-        for lst in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+        for lst in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
             for elm in lst:
                 if elm.bus_from is not None:
                     if elm.bus_from not in bus_set:
@@ -3519,7 +3520,8 @@ class MultiCircuit(Assets):
             reduction_bus_indices: Sequence[int],
             add_vsc=False,
             add_hvdc=False,
-            add_switch=True
+            add_switch=True,
+            add_pfc=False
     ) -> Tuple[IntVec, IntVec, IntVec, IntVec, IntVec]:
         """
         Generate the set of bus indices for grid reduction
@@ -3536,7 +3538,7 @@ class MultiCircuit(Assets):
         boundary_branches = list()
         internal_branches = list()
 
-        for k, branch in enumerate(self.get_branches(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch)):
+        for k, branch in enumerate(self.get_branches(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch, add_pfc=add_pfc)):
             f = bus_idx_dict[branch.bus_from]
             t = bus_idx_dict[branch.bus_to]
             if f in external_set:
@@ -3638,6 +3640,7 @@ class MultiCircuit(Assets):
                        DeviceType.Transformer2WDevice,
                        DeviceType.HVDCLineDevice,
                        DeviceType.VscDevice,
+                       DeviceType.PfcDevice,
                        DeviceType.SeriesReactanceDevice,
                        DeviceType.UpfcDevice,
                        DeviceType.SwitchDevice]:
@@ -3657,9 +3660,10 @@ class MultiCircuit(Assets):
         :return:
         """
         nbus = self.get_bus_number()
-        nbr = self.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True)
+        nbr = self.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True, add_pfc=False)
         nhvdc = self.get_hvdc_number()
         nvsc = self.get_vsc_number()
+        npfc = self.get_pfc_number()
 
         bus_active: IntVec = np.zeros(nbus, dtype=int)
         bus_dict: Dict[dev.Bus, int] = dict()
@@ -3670,7 +3674,7 @@ class MultiCircuit(Assets):
         branch_active: IntVec = np.zeros(nbr, dtype=int)
         branch_F: IntVec = np.zeros(nbr, dtype=int)
         branch_T: IntVec = np.zeros(nbr, dtype=int)
-        for i, elm in enumerate(self.get_branches(add_vsc=False, add_hvdc=False, add_switch=True)):
+        for i, elm in enumerate(self.get_branches(add_vsc=False, add_hvdc=False, add_switch=True, add_pfc=False)):
             branch_active[i] = elm.active if t_idx is None else elm.active_prof[t_idx]
             branch_F[i] = bus_dict[elm.bus_from]
             branch_T[i] = bus_dict[elm.bus_to]
@@ -3691,10 +3695,18 @@ class MultiCircuit(Assets):
             vsc_F[i] = bus_dict[elm.bus_from]
             vsc_T[i] = bus_dict[elm.bus_to]
 
+        pfc_active: IntVec = np.zeros(npfc, dtype=int)
+        pfc_F: IntVec = np.zeros(npfc, dtype=int)
+        pfc_T: IntVec = np.zeros(npfc, dtype=int)
+        for i, elm in enumerate(self.pfc_devices):
+            pfc_active[i] = elm.active if t_idx is None else elm.active_prof[t_idx]
+            pfc_F[i] = bus_dict[elm.bus_from]
+            pfc_T[i] = bus_dict[elm.bus_to]
+
         return (bus_active,
                 branch_active, branch_F, branch_T,
                 hvdc_active, hvdc_F, hvdc_T,
-                vsc_active, vsc_F, vsc_T)
+                vsc_active, vsc_F, vsc_T, pfc_active, pfc_F, pfc_T)
 
     def move_behind_converter(self, api_object: INJECTION_DEVICE_TYPES) -> Tuple[dev.Bus, dev.VSC]:
         """
@@ -3749,7 +3761,7 @@ class MultiCircuit(Assets):
         bus_set = set(buses)
 
         # add the branches and extend the set of buses
-        for br in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+        for br in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True, add_pfc=True):
 
             if br.bus_from in bus_set:
                 bus_set.add(br.bus_to)
