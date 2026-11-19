@@ -80,20 +80,6 @@ class NumericPowerFlowResults:
                  It_vsc: CxVec,
                  losses_vsc: Vec,
                  loading_vsc: Vec,
-                 Iq_pfc: Vec,
-                 Ir_pfc: Vec,
-                 Is_pfc: Vec,
-                 Pq_pfc: Vec,
-                 Pr_pfc: Vec,
-                 Ps_pfc: Vec,
-                 Vr_pfc: Vec,
-                 Vs_pfc: Vec,
-                 KCL_pfc: Vec,
-                 PB_pfc: Vec,
-                 P_Vr_pfc: Vec,
-                 P_Vs_pfc: Vec,
-                 Vqr_pfc: Vec,
-                 Vqs_pfc: Vec,
                  Sf_hvdc: CxVec,
                  St_hvdc: CxVec,
                  losses_hvdc: CxVec,
@@ -102,7 +88,21 @@ class NumericPowerFlowResults:
                  converged: bool,
                  iterations: int,
                  elapsed: float,
-                 Vdc_vsc: Vec | None = None):
+                 Vdc_vsc: Vec | None = None,
+                 Iq_pfc: Vec | None = None,
+                 Ir_pfc: Vec | None = None,
+                 Is_pfc: Vec | None = None,
+                 Pq_pfc: Vec | None = None,
+                 Pr_pfc: Vec | None = None,
+                 Ps_pfc: Vec | None = None,
+                 Vr_pfc: Vec | None = None,
+                 Vs_pfc: Vec | None = None,
+                 KCL_pfc: Vec | None = None,
+                 PB_pfc: Vec | None = None,
+                 P_Vr_pfc: Vec | None = None,
+                 P_Vs_pfc: Vec | None = None,
+                 Vqr_pfc: Vec | None = None,
+                 Vqs_pfc: Vec | None = None):
         """
         Object to store the results returned by a numeric power flow routine
         :param V: Voltage vector
@@ -169,20 +169,20 @@ class NumericPowerFlowResults:
         self.loading_vsc = loading_vsc
 
         #PFC
-        self.Iq_pfc = Iq_pfc
-        self.Ir_pfc = Ir_pfc
-        self.Is_pfc = Is_pfc
-        self.Pq_pfc = Pq_pfc
-        self.Pr_pfc = Pr_pfc
-        self.Ps_pfc = Ps_pfc
-        self.Vr_pfc = Vr_pfc
-        self.Vs_pfc = Vs_pfc
-        self.KCL_pfc = KCL_pfc
-        self.PB_pfc = PB_pfc
-        self.P_Vr_pfc=P_Vr_pfc
-        self.P_Vs_pfc=P_Vs_pfc
-        self.Vqr_pfc = Vqr_pfc
-        self.Vqs_pfc = Vqs_pfc
+        self.Iq_pfc = Iq_pfc if Iq_pfc is not None else np.zeros(0)
+        self.Ir_pfc = Ir_pfc if Ir_pfc is not None else np.zeros(0)
+        self.Is_pfc = Is_pfc if Is_pfc is not None else np.zeros(0)
+        self.Pq_pfc = Pq_pfc if Pq_pfc is not None else np.zeros(0)
+        self.Pr_pfc = Pr_pfc if Pr_pfc is not None else np.zeros(0)
+        self.Ps_pfc = Ps_pfc if Ps_pfc is not None else np.zeros(0)
+        self.Vr_pfc = Vr_pfc if Vr_pfc is not None else np.zeros(0)
+        self.Vs_pfc = Vs_pfc if Vs_pfc is not None else np.zeros(0)
+        self.KCL_pfc = KCL_pfc if KCL_pfc is not None else np.zeros(0)
+        self.PB_pfc = PB_pfc if PB_pfc is not None else np.zeros(0)
+        self.P_Vr_pfc = P_Vr_pfc if P_Vr_pfc is not None else np.zeros(0)
+        self.P_Vs_pfc = P_Vs_pfc if P_Vs_pfc is not None else np.zeros(0)
+        self.Vqr_pfc = Vqr_pfc if Vqr_pfc is not None else np.zeros(0)
+        self.Vqs_pfc = Vqs_pfc if Vqs_pfc is not None else np.zeros(0)
 
         # Hvdc
         self.Sf_hvdc = Sf_hvdc

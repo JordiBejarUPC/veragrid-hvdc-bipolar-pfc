@@ -414,7 +414,7 @@ def build_branches_C_coo_2(bus_active: IntVec,
 
 
 @nb.jit(cache=True)
-def build_branches_C_coo_4(bus_active: IntVec,
+def build_branches_C_coo_4_pfc(bus_active: IntVec,
                            F1: IntVec, T1: IntVec, active1: BoolVec,
                            F2: IntVec, T2: IntVec, FN2: IntVec, active2: BoolVec,
                            F3: IntVec, T3: IntVec, active3: BoolVec,
