@@ -8,7 +8,7 @@ Case Study 2: Bipolar System with PFC in both poles
     - For changin the PFC controlled variable, you can modify the control1 parameter in the PFC definition. The options are:
         - gce.PfcControlType.Iq_pfc or gce.PfcControlType.Ir_pfc or gce.PfcControlType.Is_pfc: Control the PFC by the setpoint current for one of the three controlled lines (Q, R, S) of the PFC.
         - gce.PfcControlType.Vr_pfc or gce.PfcControlType.Vs_pfc: Control the PFC by the setpoint voltage (Vr or Vs) of one of the voltage sources representing the PFC.
-- The results are saved to both Excel and CSV formats for further analysis.
+- The results are saved to both Excel and CSV formats for further analysis. hello
 """
 
 import VeraGridEngine.api as gce
